@@ -39,10 +39,12 @@ jobs:
         run: uv run pytest
 
       - name: Smoke-тест на живом бэкенде
+        # uvicorn напрямую из .venv: фоновый `uv run` держит блокировку кеша uv до конца джобы
         run: |
-          uv run uvicorn app.main:app --port 8000 &
+          .venv/bin/uvicorn app.main:app --port 8000 &
           for i in $(seq 1 30); do curl -fs http://localhost:8000/health && break; sleep 1; done
           bash scripts/smoke_test.sh http://localhost:8000
+          kill %1
 
   miniapp:
     name: Mini App — типы и сборка
