@@ -1,0 +1,111 @@
+# Локально:  make up              → backend :8000, web :8501, miniapp :8080, bot (если задан токен)
+# GigaChat:  docker compose --profile gigachat up -d   (+ LLM_PROVIDER=gigachat в .env)
+# Туннель:   make tunnel           → публичный https-адрес для Mini App
+# Сервер:    make deploy           → то же + Caddy с HTTPS (профиль prod)
+
+# Один Python-образ на backend, bot и web: собирает его backend, остальные переиспользуют
+x-python: &python
+  image: kod-so-smyslom-2-python
+  pull_policy: never
+  env_file:
+    - path: .env
+      required: false
+  restart: unless-stopped
+
+services:
+  backend:
+    <<: *python
+    build:
+      context: .
+      dockerfile: docker/python.Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    environment:
+      GIGACHAT_BASE_URL: http://gpt2giga:8090/v1
+    volumes:
+      - ./data:/app/data # Chroma, SQLite и загруженные файлы переживают пересборку
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    <<: *python
+    command: python -m bot.main
+    environment:
+      BACKEND_URL: http://backend:8000
+    restart: on-failure # без токена бот штатно завершается и не перезапускается
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  web:
+    <<: *python
+    command: >
+      streamlit run web/streamlit_app.py
+      --server.address 0.0.0.0 --server.port 8501 --server.headless true
+      --server.baseUrlPath "${STREAMLIT_BASE_PATH:-}"
+      --browser.gatherUsageStats false
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  miniapp:
+    build: ./miniapp
+    environment:
+      BACKEND_HOST: backend:8000
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  # --- опционально: GigaChat через OpenAI-совместимый прокси gpt2giga ---
+  gpt2giga:
+    image: ghcr.io/ai-forever/gpt2giga:latest
+    profiles: ["gigachat"]
+    environment:
+      GPT2GIGA_HOST: 0.0.0.0
+      GPT2GIGA_PORT: 8090
+      GPT2GIGA_ENABLE_API_KEY_AUTH: "True"
+      GPT2GIGA_API_KEY: ${GPT2GIGA_API_KEY:-}
+      GIGACHAT_CREDENTIALS: ${GIGACHAT_CREDENTIALS:-}
+      GIGACHAT_SCOPE: ${GIGACHAT_SCOPE:-GIGACHAT_API_PERS}
+      GIGACHAT_VERIFY_SSL_CERTS: ${GIGACHAT_VERIFY_SSL_CERTS:-False}
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+
+  # --- прод: HTTPS на домене из .env ---
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["prod"]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    restart: unless-stopped
+    depends_on:
+      - miniapp
+      - web
+
+  # --- запасной вариант: туннель с ноутбука без домена и сервера ---
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate --url http://miniapp:80
+    depends_on:
+      - miniapp
+
+volumes:
+  caddy_data:

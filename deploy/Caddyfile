@@ -1,0 +1,17 @@
+# Внешний Caddy на сервере (docker compose --profile prod). HTTPS-сертификат получает сам.
+# DOMAIN задаётся в .env, DNS-запись A должна указывать на сервер, порты 80/443 открыты.
+#
+#   https://DOMAIN/        → Mini App (а она проксирует /api → бэкенд)
+#   https://DOMAIN/api/... → бэкенд (через контейнер miniapp)
+#   https://DOMAIN/demo    → Streamlit (нужен STREAMLIT_BASE_PATH=demo в .env)
+{$DOMAIN} {
+	encode gzip
+
+	handle /demo* {
+		reverse_proxy web:8501
+	}
+
+	handle {
+		reverse_proxy miniapp:80
+	}
+}

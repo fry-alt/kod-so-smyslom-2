@@ -1,0 +1,46 @@
+"""Все тесты идут на провайдере fake: без сети и ключей, с временными БД и Chroma."""
+
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.config import get_settings
+from app.db import get_engine
+from app.llm.client import get_llm
+from app.rag.store import get_collection
+
+DEMO_DIR = Path(__file__).resolve().parents[2] / "data" / "demo"
+BOT_TOKEN = "123456:TEST-TOKEN"
+
+
+def _clear_caches() -> None:
+    for cached in (get_settings, get_llm, get_engine, get_collection):
+        cached.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def test_env(tmp_path, monkeypatch):
+    # переменные окружения важнее .env — локальный .env разработчика тестам не мешает
+    env = {
+        "LLM_PROVIDER": "fake",
+        "EMBEDDINGS_PROVIDER": "auto",
+        "CHROMA_DIR": str(tmp_path / "chroma"),
+        "UPLOADS_DIR": str(tmp_path / "uploads"),
+        "DATABASE_URL": f"sqlite:///{(tmp_path / 'app.db').as_posix()}",
+        "TELEGRAM_BOT_TOKEN": BOT_TOKEN,
+        "TELEGRAM_AUTH_REQUIRED": "false",
+    }
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    _clear_caches()
+    yield
+    _clear_caches()
+
+
+@pytest.fixture
+def client():
+    from app.main import app
+
+    with TestClient(app) as c:
+        yield c

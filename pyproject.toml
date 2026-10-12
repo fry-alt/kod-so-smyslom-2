@@ -1,0 +1,56 @@
+[project]
+name = "kod-so-smyslom-2"
+version = "0.1.0"
+description = "Стартовый шаблон к хакатону «Код со смыслом 2»: данные НКО → LLM → интерфейс"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+# Ядро бэкенда. Бот и Streamlit — в отдельных группах ниже.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "python-multipart>=0.0.12",
+    "openai>=1.55",
+    "httpx>=0.27",
+    "chromadb>=1.0",
+    "sqlmodel>=0.0.22",
+    "pypdf>=5.0",
+    "python-docx>=1.1",
+    "openpyxl>=3.1",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.8", "pytest>=8.3"]
+bot = ["aiogram>=3.15"]
+web = ["streamlit>=1.40"]
+anthropic = ["anthropic>=0.40"]
+# Тяжёлая (torch). Ставится только по запросу: uv sync --group local-embeddings
+local-embeddings = ["sentence-transformers>=3.3"]
+
+[tool.uv]
+default-groups = ["dev", "bot", "web"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/app", "bot"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["miniapp"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+# B008: Depends()/File() в аргументах FastAPI — норма; E501: длину строк держит ruff format
+ignore = ["B008", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "bot", "conftest"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+addopts = "-q"

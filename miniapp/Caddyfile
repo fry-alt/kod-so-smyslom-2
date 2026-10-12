@@ -1,0 +1,15 @@
+# Caddy внутри контейнера miniapp: отдаёт собранный фронт и проксирует /api → бэкенд.
+# Поэтому Mini App одинаково работает локально, через туннель и за внешним Caddy в проде.
+:80 {
+	encode gzip
+
+	handle_path /api/* {
+		reverse_proxy {$BACKEND_HOST:backend:8000}
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

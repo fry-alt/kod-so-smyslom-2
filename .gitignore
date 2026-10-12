@@ -1,0 +1,30 @@
+# секреты
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# данные, которые создаются при работе
+data/chroma/
+data/uploads/
+data/*.db
+
+# node
+node_modules/
+miniapp/dist/
+
+# прочее
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.claude/settings.local.json

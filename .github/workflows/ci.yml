@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    name: Python — lint, тесты, smoke
+    runs-on: ubuntu-latest
+    env:
+      LLM_PROVIDER: fake
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Нет атрибуции Claude/Anthropic в сообщениях коммитов
+        run: |
+          if git log --format=%B | grep -qiE 'co-authored-by:.*(claude|anthropic)|generated with[^a-z]*claude|noreply@anthropic\.com'; then
+            echo "::error::В истории коммитов есть атрибуция Claude/Anthropic"
+            exit 1
+          fi
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Зависимости
+        run: uv sync --frozen
+
+      - name: Ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Тесты (провайдер fake)
+        run: uv run pytest
+
+      - name: Smoke-тест на живом бэкенде
+        run: |
+          uv run uvicorn app.main:app --port 8000 &
+          for i in $(seq 1 30); do curl -fs http://localhost:8000/health && break; sleep 1; done
+          bash scripts/smoke_test.sh http://localhost:8000
+
+  miniapp:
+    name: Mini App — типы и сборка
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: miniapp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: miniapp/package-lock.json
+      - run: npm ci
+      - run: npm run build

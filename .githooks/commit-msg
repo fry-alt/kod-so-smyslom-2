@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+# Отклоняет коммит, если в сообщении есть атрибуция AI-ассистента:
+#   Co-Authored-By: ... claude / anthropic   или   «Generated with Claude ...»
+# Подключается командой make setup (git config core.hooksPath .githooks).
+
+msg_file="$1"
+
+if grep -v '^#' "$msg_file" | grep -qiE 'co-authored-by:.*(claude|anthropic)|generated with[^a-z]*claude|noreply@anthropic\.com'; then
+  echo "commit-msg: коммит отклонён — уберите из сообщения атрибуцию Claude/Anthropic" >&2
+  echo "  (Co-Authored-By с claude/anthropic или «Generated with Claude»)." >&2
+  exit 1
+fi
