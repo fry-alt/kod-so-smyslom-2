@@ -63,7 +63,7 @@ function PrimaryButton(props: { onClick: () => void; children: string }) {
       type="button"
       onClick={props.onClick}
       {...flairHandlers}
-      className={`btn-flair min-h-14 rounded-full bg-accent px-8 text-lg font-semibold whitespace-nowrap text-accent-text shadow-[0_8px_24px_-8px_var(--p-accent)] ${FLAIR.primary}`}
+      className={`btn-flair min-h-14 rounded-full bg-cta px-8 text-lg font-bold whitespace-nowrap text-white shadow-[0_8px_24px_-8px_var(--p-cta)] ${FLAIR.cta}`}
     >
       {props.children}
     </button>

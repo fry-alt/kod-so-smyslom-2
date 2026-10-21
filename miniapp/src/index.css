@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Палитра «Мята». Все цвета интерфейса берутся только отсюда.
+/* Палитра «Мята» с цветами логотипа фонда. Все цвета интерфейса берутся только отсюда.
    page — фон страницы, surface — подложки, soft — мягкий акцент, ink — текст, hint — второстепенный текст,
    accent — главные кнопки и ссылки, pop и pop-2 — яркие декоративные акценты (иллюстрации и метки). */
 :root {
@@ -9,10 +9,20 @@
   --p-soft: #d9ece4;
   --p-ink: #13231d;
   --p-hint: #55665f;
-  --p-accent: #1b6b55;
+  --p-accent: #1f7f4a; /* тёмный вариант зелёного из логотипа фонда */
   --p-accent-text: #ffffff;
-  --p-pop: #ffb84d;
-  --p-pop-2: #ff8f70;
+  --p-pop: #ffb800;
+  --p-pop-2: #ff6218;
+  /* цвета букв логотипа «Дети Марии» — для акцентов и иллюстраций */
+  --logo-blue: #0f3da7;
+  --logo-cyan: #00aeef;
+  --logo-green: #28a15d;
+  --logo-orange: #ff6218;
+  --logo-yellow: #ffb800;
+  --logo-red: #e2160c;
+  --logo-berry: #b51e68;
+  /* главная кнопка — фирменный оранжевый фонда, чуть глубже для читаемости белого текста */
+  --p-cta: #e8530f;
 }
 
 /* Токены Tailwind: классы bg-page, bg-surface, bg-soft, text-ink, text-hint, text-link, bg-accent,
@@ -28,6 +38,10 @@
   --color-accent-text: var(--p-accent-text);
   --color-pop: var(--p-pop);
   --color-pop-2: var(--p-pop-2);
+  --color-cta: var(--p-cta);
+  --color-logo-blue: var(--logo-blue);
+  --color-logo-cyan: var(--logo-cyan);
+  --color-logo-berry: var(--logo-berry);
   --color-line: color-mix(in srgb, var(--p-ink) 14%, transparent);
 
   --font-sans: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

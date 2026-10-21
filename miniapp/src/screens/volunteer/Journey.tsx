@@ -44,7 +44,7 @@ function MeetArt() {
   return (
     <Art label="Волонтёрка знакомится с координатором и проходит обучение">
       <Person x={58} y={70} {...HERO} />
-      <Person x={144} y={66} skin={SKIN.mid} shirt="var(--p-pop-2)" hair={HAIR.grey} style="bun" glasses />
+      <Person x={144} y={66} skin={SKIN.mid} shirt="var(--logo-blue)" hair={HAIR.grey} style="bun" glasses />
       <rect x="28" y="114" width="144" height="9" rx="4" fill={FURNITURE_DARK} />
       <rect x="40" y="123" width="6" height="20" rx="2" fill={FURNITURE} />
       <rect x="154" y="123" width="6" height="20" rx="2" fill={FURNITURE} />
@@ -110,11 +110,14 @@ function CurvedArrow(props: { up?: boolean; index: number; vertical?: boolean })
   );
 }
 
+/** Номера шагов — цветами букв логотипа фонда (синий, малиновый, зелёный). */
+const STEP_COLORS = ["bg-logo-blue", "bg-logo-berry", "bg-accent"];
+
 function Step(props: { i: number; title: string; text: string; art: ReactNode; raised?: boolean }) {
   return (
     <li className={`flex flex-col gap-3 ${props.raised ? "md:-mt-8" : "md:mt-6"}`}>
       <div className="flex items-center gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent font-display text-lg font-semibold text-accent-text">
+        <span className={`flex size-10 shrink-0 items-center justify-center rounded-full font-display text-lg font-semibold text-white ${STEP_COLORS[props.i]}`}>
           {props.i + 1}
         </span>
         <span className="font-display text-xl font-semibold leading-tight">{props.title}</span>

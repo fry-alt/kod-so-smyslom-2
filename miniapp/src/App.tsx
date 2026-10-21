@@ -71,7 +71,7 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
     <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 pb-24 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl pb-10"}`}>
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Link to="/" className="flex items-center gap-2.5 font-display text-lg font-semibold whitespace-nowrap">
-          <img src="/logo.svg" alt="Дети Марии" className="h-7 w-auto md:h-8" />
+          <img src="/logo.svg" alt="Дети Марии" className="h-9 w-auto md:h-11" />
         </Link>
         <nav className="flex gap-4 whitespace-nowrap">
           <NavLink to="/opportunities" path={props.path}>
@@ -95,7 +95,7 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
           <Link to="/admin" className="flex items-center gap-3 font-semibold">
-            <img src="/logo.svg" alt="Дети Марии" className="h-7 w-auto" />
+            <img src="/logo.svg" alt="Дети Марии" className="h-9 w-auto" />
             <span className="text-hint">кабинет фонда</span>
           </Link>
           <nav className="flex flex-wrap gap-4">

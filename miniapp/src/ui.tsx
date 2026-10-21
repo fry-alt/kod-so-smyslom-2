@@ -33,6 +33,8 @@ export function Button(props: {
 
 /** Цвет заливки при наведении (класс btn-flair в index.css): главная — жёлтым, второстепенная — зелёным. */
 export const FLAIR = {
+  /** главная кнопка страницы (оранжевая): заливка жёлтым из логотипа */
+  cta: "[--flair:var(--logo-yellow)] [--flair-text:var(--p-ink)]",
   primary: "[--flair:var(--p-pop)] [--flair-text:var(--p-ink)]",
   secondary: "[--flair:var(--p-accent)] [--flair-text:var(--p-accent-text)] hover:border-accent",
 };
