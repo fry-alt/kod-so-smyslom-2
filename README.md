@@ -120,8 +120,10 @@ miniapp/             Vite + React + TS + Tailwind, Telegram WebApp SDK
 - https://deti.201-34-157-90.sslip.io/demo — Streamlit.
 
 Ход выкладки — во вкладке Actions → Deploy. Перевыложить `main` вручную: `make deploy`.
-Ключи LLM и токен бота для прода — секрет `APP_ENV` (строки как в `.env`):
-`gh secret set APP_ENV --env production < prod.env`, затем `make deploy`.
+Ключи LLM и токен бота для прода — **отдельные секреты репозитория** (Settings → Secrets → Actions):
+`gh secret set TELEGRAM_BOT_TOKEN` (значение `gh` спросит сам), так же `YANDEX_API_KEY`, `YANDEX_FOLDER_ID`,
+`GIGACHAT_CREDENTIALS` и т.п. Провайдер — переменная репозитория: `gh variable set LLM_PROVIDER --body yandex`.
+Полный список — в начале `.github/workflows/deploy.yml`. После изменения — `make deploy`.
 Как устроено и почему на одном сервере с Yapp — в `deploy/docker-compose.prod.yml`.
 
 ### Свой сервер
