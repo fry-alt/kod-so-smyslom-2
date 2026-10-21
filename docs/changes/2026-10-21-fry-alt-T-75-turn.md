@@ -2,7 +2,7 @@
 date: 2026-10-21
 author: fry-alt
 task: T-75 (#75)
-pr: (появится после создания PR)
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/76
 areas: [деплой]
 ---
 
