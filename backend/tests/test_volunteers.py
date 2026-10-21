@@ -105,7 +105,11 @@ def test_training_score_is_average_of_best_attempts(client):
     assert client.get(f"/volunteers/{v['id']}").json()["training_score"] == 80
 
 
-def test_roles_empty_without_file(client):
+def test_roles_empty_without_file(client, tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    from app.config import get_settings
+
+    get_settings.cache_clear()
     assert client.get("/roles").json() == []
 
 

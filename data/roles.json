@@ -1,0 +1,92 @@
+[
+  {
+    "code": "workshop_assistant",
+    "title": "Помощник педагога инклюзивной мастерской",
+    "description": "Регулярно помогает педагогу на занятиях арт-терапии (живопись, валяние, шитьё): готовит материалы, помогает участникам с ментальными особенностями и ребятам из интернатов, поддерживает и подбадривает.",
+    "skills": ["педагогика", "работа с детьми", "рисование", "валяние", "шитьё", "рукоделие"],
+    "availability": ["weekday_morning", "weekday_day", "weekend"],
+    "kind": "regular",
+    "format": "offline",
+    "regions": []
+  },
+  {
+    "code": "group_companion",
+    "title": "Сопровождающий группы из интерната",
+    "description": "Встречает группу ребят из интерната, сопровождает на занятии и в дороге, становится для них знакомым «значимым взрослым». Нужны терпение и опыт общения с детьми или людьми с ОВЗ.",
+    "skills": ["работа с детьми", "педагогика", "психология", "дефектология"],
+    "availability": ["weekday_morning", "weekday_day"],
+    "kind": "regular",
+    "format": "offline",
+    "regions": []
+  },
+  {
+    "code": "ceramics_assistant",
+    "title": "Ассистент керамической мастерской",
+    "description": "Помогает на субботних мастерских по керамике: готовит глину и инструменты, показывает приёмы лепки, помогает с глазурью и обжигом.",
+    "skills": ["керамика", "лепка", "гончарный круг"],
+    "availability": ["weekend"],
+    "kind": "regular",
+    "format": "offline",
+    "regions": []
+  },
+  {
+    "code": "cooking_assistant",
+    "title": "Помощник на кулинарном мастер-классе",
+    "description": "Помогает вести кулинарный мастер-класс: готовит продукты и рабочие места, показывает простые рецепты, следит за безопасностью у плиты.",
+    "skills": ["кулинария", "выпечка"],
+    "availability": ["weekend"],
+    "kind": "episodic",
+    "format": "offline",
+    "regions": []
+  },
+  {
+    "code": "photographer",
+    "title": "Фотограф",
+    "description": "Разово снимает мероприятие или изделия мастерских для каталога, сайта и соцсетей. Нужна своя камера.",
+    "skills": ["фото", "предметная съёмка"],
+    "availability": ["weekday_morning", "weekday_day", "weekend"],
+    "kind": "episodic",
+    "format": "offline",
+    "regions": []
+  },
+  {
+    "code": "video_smm",
+    "title": "Видеомонтаж и соцсети",
+    "description": "Монтирует ролики о мастерских и мероприятиях, помогает вести соцсети фонда: посты, сторис, короткие видео. Можно из дома.",
+    "skills": ["видеомонтаж", "SMM", "тексты"],
+    "availability": ["weekday_morning", "weekday_day", "weekday_evening", "weekend"],
+    "kind": "episodic",
+    "format": "online",
+    "regions": []
+  },
+  {
+    "code": "driver",
+    "title": "Водитель со своей машиной",
+    "description": "Разово отвозит людей, изделия или материалы: на ярмарку, на мастерскую, со склада. Нужна своя машина.",
+    "skills": ["вождение", "своя машина"],
+    "availability": ["weekday_morning", "weekday_day", "weekend"],
+    "kind": "episodic",
+    "format": "offline",
+    "regions": ["moscow", "moscow_region"]
+  },
+  {
+    "code": "fair_helper",
+    "title": "Помощник на благотворительной ярмарке",
+    "description": "Помогает на выходных ярмарках: расставить столы, разложить изделия мастерских, рассказать гостям о фонде, принять пожертвования.",
+    "skills": ["общение", "организация мероприятий", "продажи"],
+    "availability": ["weekend"],
+    "kind": "episodic",
+    "format": "offline",
+    "regions": []
+  },
+  {
+    "code": "online_volunteer",
+    "title": "Онлайн-волонтёр: дизайн, тексты, переводы",
+    "description": "Удалённо помогает с дизайном открыток и отчётов, текстами для сайта и писем, переводом писем партнёрам.",
+    "skills": ["дизайн", "иллюстрация", "тексты", "английский", "перевод"],
+    "availability": ["weekday_morning", "weekday_day", "weekday_evening", "weekend"],
+    "kind": "episodic",
+    "format": "online",
+    "regions": []
+  }
+]
