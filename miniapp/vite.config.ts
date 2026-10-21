@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: process.env.BACKEND_URL ?? "http://localhost:8000",
           changeOrigin: true,
+          ws: true, // сигнальный сервер видеособеседования (/api/calls/<token>/ws)
           rewrite: (path) => path.replace(/^\/api/, ""),
         },
       },

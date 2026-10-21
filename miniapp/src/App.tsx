@@ -5,6 +5,7 @@
 import type { ReactNode } from "react";
 
 import { getVolunteerId, USE_MOCK } from "./backend";
+import CallScreen from "./call/CallScreen";
 import { match, usePath } from "./router";
 import { Link } from "./ui";
 import AdminOpportunities from "./screens/admin/Opportunities";
@@ -53,6 +54,9 @@ function render(routes: Route[], path: string): ReactNode {
 
 export default function App() {
   const path = usePath();
+  // видеособеседование — на весь экран, без меню (ссылку открывают и волонтёр, и координатор)
+  const call = match("/call/:token", path);
+  if (call) return <CallScreen token={call.token} />;
   if (path === "/admin" || path.startsWith("/admin/")) {
     return <AdminLayout path={path}>{render(ADMIN_ROUTES, path) ?? <NotFound home="/admin" />}</AdminLayout>;
   }

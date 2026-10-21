@@ -1,4 +1,4 @@
-"""Сообщение волонтёру в Telegram, когда он прошёл обучение или его допустили (T-15).
+"""Сообщение волонтёру в Telegram: прошёл обучение, допустили (T-15), позвали на собеседование (T-59).
 
 Пишем только тем, у кого есть telegram_id (анкета из Mini App), и только если задан
 TELEGRAM_BOT_TOKEN. Telegram недоступен — запрос координатора всё равно успешен.
@@ -31,11 +31,17 @@ MESSAGES = {
 def status_changed(volunteer: Volunteer, old_status: str) -> None:
     """Вызывать после сохранения нового статуса."""
     text = MESSAGES.get(volunteer.status)
-    if volunteer.status == old_status or text is None or not volunteer.telegram_id:
+    if volunteer.status == old_status or text is None:
         return
+    send(volunteer, text, volunteer.status)
+
+
+def send(volunteer: Volunteer, text: str, what: str) -> bool:
+    """Отправить волонтёру сообщение. False — не ушло (нет Telegram, токена или Telegram недоступен).
+    what — короткое название сообщения для лога вместо его текста."""
     token = get_settings().telegram_bot_token
-    if not token:
-        return
+    if not token or not volunteer.telegram_id:
+        return False
     try:
         response = httpx.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
@@ -48,11 +54,12 @@ def status_changed(volunteer: Volunteer, old_status: str) -> None:
         log.warning(
             "Telegram не принял сообщение волонтёру %s: %s", volunteer.id, e.response.status_code
         )
-        return
+        return False
     except httpx.HTTPError as e:
         # текст исключения httpx может содержать адрес с токеном — пишем только тип
         log.warning(
             "Telegram недоступен, волонтёр %s без уведомления: %s", volunteer.id, type(e).__name__
         )
-        return
-    log.info("Волонтёру %s отправлено уведомление «%s»", volunteer.id, volunteer.status)
+        return False
+    log.info("Волонтёру %s отправлено уведомление «%s»", volunteer.id, what)
+    return True

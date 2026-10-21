@@ -6,7 +6,9 @@ import type {
   AskResponse,
   Availability,
   Candidate,
+  CallInfo,
   ChatResponse,
+  Interview,
   Note,
   Opportunity,
   OpportunityIn,
@@ -257,6 +259,7 @@ const quizScores: Record<number, Record<string, number>> = {};
 // localStorage.removeItem("mock_participations").
 const OPP_KEY = "mock_opportunities";
 const PART_KEY = "mock_participations";
+const INTERVIEW_KEY = "mock_interviews";
 
 const opportunities: Omit<Opportunity, "taken" | "recommended" | "my_status">[] = [
   { id: 1, title: "Керамика с группой из интерната", description: "Помочь ведущему на занятии по керамике.",
@@ -275,6 +278,12 @@ const participations: Participation[] = [
   { id: 2, opportunity_id: 2, opportunity_title: "", volunteer_id: 2, volunteer_name: "", status: "invited", hours: 0, created_at: "2026-10-20T11:00:00" },
 ];
 
+// Видеособеседования. Сам звонок на моках не работает — ему нужен сигнальный сервер бэкенда.
+const interviews: Interview[] = [
+  { id: 1, volunteer_id: 1, starts_at: "2026-10-22T15:00:00", status: "scheduled", token: "demo-call-token",
+    notified: true, created_at: "2026-10-21T12:00:00" },
+];
+
 /** Перечитать сохранённое: другая вкладка могла пригласить, подтвердить или отправить анкету. */
 function refresh() {
   try {
@@ -284,6 +293,7 @@ function refresh() {
     };
     replace(opportunities, OPP_KEY);
     replace(participations, PART_KEY);
+    replace(interviews, INTERVIEW_KEY);
     replace(volunteers, SAVE_KEY);
   } catch {
     /* приватный режим — живём в памяти */
@@ -294,6 +304,7 @@ function saveOpportunities() {
   try {
     localStorage.setItem(OPP_KEY, JSON.stringify(opportunities));
     localStorage.setItem(PART_KEY, JSON.stringify(participations));
+    localStorage.setItem(INTERVIEW_KEY, JSON.stringify(interviews));
   } catch {
     /* приватный режим — живём в памяти */
   }
@@ -480,6 +491,18 @@ export const mockApi: typeof volunteersApi = {
     refresh();
     return wait(participations.filter((p) => p.volunteer_id === volunteerId).map(withNames));
   },
+  interviews: (volunteerId) => {
+    refresh();
+    const list = interviews.filter((i) => i.volunteer_id === volunteerId);
+    return wait(list.sort((a, b) => b.starts_at.localeCompare(a.starts_at)));
+  },
+  callInfo: (token) => {
+    refresh();
+    const i = interviews.find((x) => x.token === token);
+    if (!i) return notFound("Звонок");
+    const info: CallInfo = { starts_at: i.starts_at, status: i.status, ice_servers: [] };
+    return wait(info);
+  },
   createOpportunity: (data: OpportunityIn) => {
     refresh();
     const o = { ...data, role_code: data.role_code ?? null, id: nextId(opportunities) };
@@ -529,6 +552,27 @@ export const mockApi: typeof volunteersApi = {
     };
     notes.push(n);
     return wait(n);
+  },
+  scheduleInterview: (volunteerId, startsAt) => {
+    refresh();
+    const v = findVolunteer(volunteerId);
+    if (!v) return notFound("Волонтёр");
+    const i: Interview = {
+      id: nextId(interviews), volunteer_id: volunteerId, starts_at: startsAt, status: "scheduled",
+      token: `demo-${Math.random().toString(36).slice(2, 12)}`, notified: v.telegram_id != null,
+      created_at: new Date().toISOString(),
+    };
+    interviews.push(i);
+    saveOpportunities();
+    return wait(i);
+  },
+  updateInterview: (id, status) => {
+    refresh();
+    const i = interviews.find((x) => x.id === id);
+    if (!i) return notFound("Собеседование");
+    i.status = status;
+    saveOpportunities();
+    return wait(i);
   },
 };
 

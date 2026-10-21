@@ -94,3 +94,15 @@ class Participation(SQLModel, table=True):
     volunteer_id: int = Field(foreign_key="volunteer.id", index=True)
     status: str = "responded"  # schemas.ParticipationStatus
     hours: float = 0  # начислено после attended
+
+
+class Interview(SQLModel, table=True):
+    """Видеособеседование координатора с волонтёром. Комната звонка — /call/<token>."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=_now)
+    volunteer_id: int = Field(foreign_key="volunteer.id", index=True)
+    starts_at: NaiveDatetime  # местное время, как его указал координатор
+    status: str = "scheduled"  # schemas.InterviewStatus
+    token: str = Field(index=True, unique=True)  # случайная строка: знает ссылку — может войти
+    notified: bool = False  # ссылка ушла волонтёру в Telegram

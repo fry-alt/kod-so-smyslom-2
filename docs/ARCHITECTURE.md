@@ -19,6 +19,8 @@ flowchart LR
         API --> SRCH[services/search.py<br/>умный поиск]
         API --> TRN[services/training.py<br/>материалы, тест]
         API --> OPP[services/opportunities.py<br/>каталог, отклики, участие, часы]
+        API --> INT[services/interviews.py<br/>видеособеседование]
+        INT --> DB
         OPP --> DB
         OPP --> SRCH
         API --> RAG[rag/ — вопросы о фонде]
@@ -39,7 +41,10 @@ flowchart LR
 | `backend/app/services/search.py` | разбор запроса → фильтр → векторный поиск → переранжирование | A |
 | `backend/app/services/training.py` | модули обучения из `data/training/*.md`, генерация и проверка теста | A |
 | `backend/app/services/opportunities.py` | каталог возможностей, отклики и приглашения, участие и часы | A |
+| `backend/app/services/interviews.py` | видеособеседование: назначение, ссылка в Telegram, логины TURN | A |
 | `backend/app/api/volunteers.py`, `search.py`, `training.py`, `roles.py`, `opportunities.py` | HTTP-обёртки, без логики | A |
+| `backend/app/api/calls.py` | сигнальный WebSocket звонка (перенесён из Yapp) | A |
+| `miniapp/src/call/` | страница звонка `/call/<token>` и WebRTC-комната | A |
 | `backend/app/llm/prompts/` | `profile.md`, `search_query.md`, `rerank.md`, `quiz.md` | A |
 | `data/roles.json`, `data/training/`, `data/demo/volunteers.json` | роли фонда, учебные тексты, 40 вымышленных анкет | A |
 | `miniapp/src/` | экраны волонтёра и `/admin`, клиент `api.ts` | B |
@@ -105,6 +110,22 @@ sequenceDiagram
 - `GET /opportunities?volunteer_id=` — лента для волонтёра, `recommended` = совпадение навыков/роли, времени и региона (без LLM).
 - В `/admin` у возможности кнопка «Подобрать» → `POST /search` с `opportunity_id` → «Пригласить» выбранных.
 - `attended` начисляет часы и (если успеем) шлёт благодарность и уведомление в Telegram.
+
+## Видеособеседование
+
+После анкеты координатор знакомится с волонтёром по видео прямо на сайте — без Zoom и аккаунтов.
+Перенесено из Yapp: сигнальный сервер (`server/signaling.js` → `api/calls.py`) и комната (`public/room.js` → `miniapp/src/call/room.ts`).
+
+```
+карточка в /admin: «Назначить» → POST /volunteers/{id}/interviews → token + ссылка /call/<token> в Telegram
+волонтёр: /call/<token>            координатор: /call/<token>?as=coordinator
+  GET /calls/{token} → время, ice_servers (STUN, TURN с временным логином)
+  WS  /calls/{token}/ws → обмен SDP и ICE; видео и звук идут напрямую между браузерами (или через TURN)
+после звонка: PATCH /interviews/{id} {done | canceled}, заметка, статус — как обычно
+```
+- Статусы волонтёра собеседование не меняет. Через бэкенд видео не проходит и нигде не записывается.
+- В комнате два места — координатор и волонтёр; повторный вход того же участника вытесняет старое подключение.
+- TURN — coturn Yapp на том же сервере (`TURN_URLS`, `TURN_SECRET`); без него только STUN.
 
 ## Статусы волонтёра
 
