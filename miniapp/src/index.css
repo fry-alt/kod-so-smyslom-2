@@ -778,3 +778,152 @@ body {
     transform: translateZ(60px);
   }
 }
+
+/* 3D-бегущая лента сцен (VolunteerScenes.tsx): плоскость наклонена, колонки едут вверх и вниз по очереди. */
+.marquee3d {
+  -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, #000 70%, transparent 100%);
+  mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, #000 70%, transparent 100%);
+}
+.marquee3d-plane {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 135%;
+  transform: translate(-50%, -44%) rotateX(50deg) rotateZ(-36deg);
+  transform-origin: center;
+}
+.marquee3d-col {
+  animation: marquee-up 40s linear infinite;
+  will-change: transform;
+}
+.marquee3d-down {
+  animation-name: marquee-down;
+}
+.marquee3d:hover .marquee3d-col {
+  animation-play-state: paused;
+}
+@keyframes marquee-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-50% - 0.5rem));
+  }
+}
+@keyframes marquee-down {
+  from {
+    transform: translateY(calc(-50% - 0.5rem));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Движения новых сцен. */
+.anim-draw {
+  stroke-dasharray: 100;
+  animation: draw-loop 4.5s ease-in-out infinite;
+}
+@keyframes draw-loop {
+  0%,
+  8% {
+    stroke-dashoffset: 100;
+  }
+  50%,
+  85% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -100;
+  }
+}
+.anim-yarn,
+.anim-needles,
+.anim-stir,
+.anim-steam,
+.anim-wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.anim-yarn {
+  animation: yarn 3s ease-in-out infinite;
+}
+@keyframes yarn {
+  50% {
+    transform: rotate(-25deg) translateX(-2px);
+  }
+}
+.anim-needles {
+  animation: needles 0.9s ease-in-out infinite;
+}
+@keyframes needles {
+  50% {
+    transform: rotate(8deg);
+  }
+}
+.anim-stir {
+  transform-origin: 80% 0%;
+  animation: stir 1.2s ease-in-out infinite;
+}
+@keyframes stir {
+  25% {
+    transform: rotate(-14deg);
+  }
+  75% {
+    transform: rotate(14deg);
+  }
+}
+.anim-steam {
+  animation: steam 2.4s ease-out infinite;
+}
+.anim-steam-2 {
+  animation-delay: 0.8s;
+}
+.anim-steam-3 {
+  animation-delay: 1.6s;
+}
+@keyframes steam {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+.anim-wheel {
+  animation: wheel 1s linear infinite;
+}
+@keyframes wheel {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.anim-road {
+  animation: road 1s linear infinite;
+}
+@keyframes road {
+  to {
+    transform: translateX(-40px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee3d-col,
+  .anim-draw,
+  .anim-yarn,
+  .anim-needles,
+  .anim-stir,
+  .anim-steam,
+  .anim-wheel,
+  .anim-road {
+    animation: none;
+  }
+  .anim-draw {
+    stroke-dashoffset: 0;
+  }
+}
