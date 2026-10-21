@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { getVolunteerId, USE_MOCK } from "./backend";
 import Footer from "./Footer";
 import CallScreen from "./call/CallScreen";
+import CoordinatorPanel from "./call/CoordinatorPanel";
 import { match, usePath } from "./router";
 import { Link } from "./ui";
 import Analytics from "./screens/admin/Analytics";
@@ -62,7 +63,17 @@ export default function App() {
   const path = usePath();
   // видеособеседование — на весь экран, без меню (ссылку открывают и волонтёр, и координатор)
   const call = match("/call/:token", path);
-  if (call) return <CallScreen token={call.token} />;
+  if (call) {
+    // ссылка из кабинета несёт id собеседования и волонтёра — тогда у координатора есть панель «План / Итог»
+    const q = new URLSearchParams(location.search);
+    const interviewId = Number(q.get("interview"));
+    const volunteerId = Number(q.get("volunteer"));
+    const panel =
+      interviewId > 0 && volunteerId > 0
+        ? (ended: boolean) => <CoordinatorPanel interviewId={interviewId} volunteerId={volunteerId} ended={ended} />
+        : undefined;
+    return <CallScreen token={call.token} sidePanel={panel} />;
+  }
   if (path === "/admin" || path.startsWith("/admin/")) {
     return <AdminLayout path={path}>{render(ADMIN_ROUTES, path) ?? <NotFound home="/admin" />}</AdminLayout>;
   }
