@@ -11,6 +11,7 @@ from app.api import (
     calls,
     case,
     chat,
+    dashboard,
     documents,
     health,
     interviews,
@@ -66,6 +67,7 @@ for module in (
     training,
     opportunities,
     interviews,
+    dashboard,
     calls,
 ):
     app.include_router(module.router)

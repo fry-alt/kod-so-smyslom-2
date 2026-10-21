@@ -4,8 +4,9 @@ import json
 import re
 from collections import Counter
 from pathlib import Path
+from typing import get_args
 
-from app.schemas import OpportunityIn, VolunteerIn
+from app.schemas import InterviewResultIn, OpportunityIn, VolunteerIn, VolunteerStatus
 
 DEMO_DIR = Path(__file__).resolve().parents[2] / "data" / "demo"
 
@@ -84,3 +85,43 @@ def test_demo_opportunities_valid_and_seed_through_api(client):
 
 def load_roles_file():
     return json.loads((DEMO_DIR.parent / "roles.json").read_text(encoding="utf-8"))
+
+
+def test_history_is_consistent():
+    """history.json: статусы, прошлые занятия, отклики и собеседования для дашбордов (T-66)."""
+    history = load("history.json")
+    forms = volunteers()
+    roles_file = DEMO_DIR.parent / "roles.json"
+    roles = {r["code"] for r in json.loads(roles_file.read_text(encoding="utf-8"))}
+
+    def in_range(number: int) -> bool:
+        return 1 <= number <= len(forms)
+
+    for number, status in history["statuses"].items():
+        assert in_range(int(number)) and status in get_args(VolunteerStatus)
+
+    for past in history["past_opportunities"]:
+        assert past["days_ago"] > 0
+        OpportunityIn.model_validate(
+            {**past["opportunity"], "starts_at": f"2026-01-01T{past['time']}:00"}
+        )
+        assert past["opportunity"]["role_code"] in roles
+        assert len(past["attended"]) <= past["opportunity"]["slots"]
+        assert all(in_range(n) for n in past["attended"])
+
+    titles = {o["title"] for o in load("opportunities.json")}
+    for response in history["responses"]:
+        assert response["opportunity"] in titles and in_range(response["volunteer"])
+
+    for interview in history["interviews"]:
+        assert in_range(interview["volunteer"])
+        if interview.get("result"):
+            result = InterviewResultIn.model_validate(interview["result"])
+            assert set(result.roles) <= roles
+            assert interview["days"] < 0  # итог бывает только у прошедших
+
+    # школьники отваливаются: никто из них не дошёл до допуска — это видно на воронке
+    schoolkids = {str(i) for i, f in enumerate(forms, 1) if f.answers.occupation == "schoolkid"}
+    assert (
+        not {n for n, s in history["statuses"].items() if s in ("approved", "active")} & schoolkids
+    )

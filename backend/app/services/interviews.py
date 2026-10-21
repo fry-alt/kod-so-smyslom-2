@@ -13,13 +13,15 @@ import hashlib
 import hmac
 import secrets
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlmodel import Session, col, select
 
 from app.config import Settings, get_settings
-from app.models import Interview, Volunteer
-from app.schemas import IceServer, InterviewStatus
+from app.models import Interview, InterviewResult, Volunteer
+from app.schemas import IceServer, InterviewResultIn, InterviewStatus
+from app.schemas import Interview as InterviewOut
+from app.schemas import InterviewResult as InterviewResultOut
 from app.services import notify
 
 TURN_TTL = 6 * 3600  # секунд действуют логин и пароль TURN — с запасом на долгий звонок
@@ -71,6 +73,33 @@ def update_status(session: Session, interview: Interview, status: InterviewStatu
     session.commit()
     session.refresh(interview)
     return interview
+
+
+def save_result(session: Session, interview: Interview, data: InterviewResultIn) -> Interview:
+    """Итог перезаписывается — координатор может поправить. Собеседование становится «прошло»,
+    статус волонтёра не трогаем: что дальше, решает человек."""
+    result = session.get(InterviewResult, interview.id)
+    if result is None:
+        result = InterviewResult(interview_id=interview.id, **data.model_dump())
+    else:
+        for field, value in data.model_dump().items():
+            setattr(result, field, value)
+        result.created_at = datetime.now(UTC)
+    interview.status = "done"
+    session.add(result)
+    session.add(interview)
+    session.commit()
+    session.refresh(interview)
+    return interview
+
+
+def to_out(session: Session, interview: Interview) -> InterviewOut:
+    """Собеседование для ответа API — вместе с итогом, если он есть."""
+    result = session.get(InterviewResult, interview.id)
+    return InterviewOut(
+        **interview.model_dump(),
+        result=InterviewResultOut.model_validate(result, from_attributes=True) if result else None,
+    )
 
 
 def call_link(token: str) -> str:

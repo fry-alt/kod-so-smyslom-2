@@ -1,0 +1,50 @@
+{
+  "statuses": {
+    "16": "active", "21": "active", "22": "active", "26": "active", "29": "active",
+    "7": "approved", "11": "approved", "18": "approved", "19": "approved", "24": "approved",
+    "28": "approved", "32": "approved", "33": "approved",
+    "4": "trained", "5": "trained", "23": "trained", "34": "trained",
+    "2": "training", "13": "training", "39": "training"
+  },
+  "past_opportunities": [
+    {"days_ago": 3, "time": "10:00", "attended": [16, 21, 26],
+     "opportunity": {"title": "Керамика с группой из интерната", "description": "Помочь педагогу на занятии по керамике.", "role_code": "ceramics_assistant", "region": "moscow", "format": "offline", "place": "Керамическая мастерская фонда, Москва", "slots": 3, "hours": 3}},
+    {"days_ago": 9, "time": "11:00", "attended": [22, 29, 16],
+     "opportunity": {"title": "Инклюзивная мастерская живописи", "description": "Помочь участникам с красками и кистями.", "role_code": "workshop_assistant", "region": "moscow", "format": "offline", "place": "Мастерские фонда, Москва", "slots": 4, "hours": 3}},
+    {"days_ago": 16, "time": "10:00", "attended": [21, 26],
+     "opportunity": {"title": "Сопровождение группы на арт-терапию", "description": "Встретить группу у интерната и проводить до мастерской.", "role_code": "group_companion", "region": "moscow", "format": "offline", "place": "Москва", "slots": 2, "hours": 4}},
+    {"days_ago": 24, "time": "12:00", "attended": [19, 32],
+     "opportunity": {"title": "Ярмарка изделий в Ярославле", "description": "Помочь на стенде мастерских.", "role_code": "fair_helper", "region": "yaroslavl", "format": "offline", "place": "Ярославль", "slots": 3, "hours": 5}},
+    {"days_ago": 30, "time": "10:00", "attended": [16, 22],
+     "opportunity": {"title": "Кулинарный мастер-класс с группой", "description": "Помочь повару-педагогу.", "role_code": "cooking_assistant", "region": "moscow", "format": "offline", "place": "Кухня-студия фонда, Москва", "slots": 3, "hours": 3}},
+    {"days_ago": 38, "time": "19:00", "attended": [26],
+     "opportunity": {"title": "Монтаж ролика о мастерской", "description": "Смонтировать короткий ролик для соцсетей.", "role_code": "video_smm", "region": "other", "format": "online", "place": "Онлайн", "slots": 1, "hours": 4}},
+    {"days_ago": 50, "time": "11:00", "attended": [28],
+     "opportunity": {"title": "Фотосъёмка осенней ярмарки", "description": "Снять стенд и изделия.", "role_code": "photographer", "region": "moscow", "format": "offline", "place": "Москва", "slots": 1, "hours": 4}},
+    {"days_ago": 58, "time": "10:00", "attended": [21, 29],
+     "opportunity": {"title": "Керамика с группой из интерната", "description": "Помочь педагогу на занятии по керамике.", "role_code": "ceramics_assistant", "region": "moscow", "format": "offline", "place": "Керамическая мастерская фонда, Москва", "slots": 3, "hours": 3}},
+    {"days_ago": 70, "time": "11:00", "attended": [18, 16],
+     "opportunity": {"title": "Летняя ярмарка в Подмосковье", "description": "Помочь на стенде мастерских.", "role_code": "fair_helper", "region": "moscow_region", "format": "offline", "place": "Подмосковье", "slots": 3, "hours": 5}},
+    {"days_ago": 79, "time": "10:00", "attended": [22],
+     "opportunity": {"title": "Валяние с группой", "description": "Помочь участникам с шерстью и иглами.", "role_code": "workshop_assistant", "region": "moscow", "format": "offline", "place": "Мастерские фонда, Москва", "slots": 2, "hours": 3}}
+  ],
+  "responses": [
+    {"opportunity": "Фотосъёмка изделий для каталога", "volunteer": 8},
+    {"opportunity": "Субботняя мастерская по керамике", "volunteer": 11}
+  ],
+  "interviews": [
+    {"volunteer": 1, "days": 0, "time": "15:00"},
+    {"volunteer": 3, "days": 0, "time": "17:00"},
+    {"volunteer": 38, "days": -1, "time": "16:00"},
+    {"volunteer": 16, "days": -40, "time": "12:00",
+     "result": {"motivation": 5, "readiness": 5, "regularity": 5, "decision": "next", "roles": ["workshop_assistant"], "comment": "Много лет шила, хочет постоянную группу."}},
+    {"volunteer": 21, "days": -35, "time": "12:00",
+     "result": {"motivation": 5, "readiness": 4, "regularity": 5, "decision": "next", "roles": ["group_companion"], "comment": "Спокойный, по будням свободен с утра."}},
+    {"volunteer": 26, "days": -45, "time": "18:00",
+     "result": {"motivation": 4, "readiness": 4, "regularity": 4, "decision": "next", "roles": ["video_smm"], "comment": "Монтирует видео, может и очно по утрам."}},
+    {"volunteer": 39, "days": -6, "time": "17:00",
+     "result": {"motivation": 2, "readiness": 3, "regularity": 2, "decision": "think", "roles": [], "comment": "Нужны часы для школы. Предложить одну ярмарку и посмотреть."}},
+    {"volunteer": 12, "days": -9, "time": "19:00",
+     "result": {"motivation": 3, "readiness": 3, "regularity": 2, "decision": "reject", "roles": [], "comment": "Свободен только по вечерам, групп в это время нет."}}
+  ]
+}

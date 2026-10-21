@@ -6,6 +6,7 @@
 --force — загрузить, даже если в базе уже есть волонтёры (номера в бенчмарке разъедутся).
 --resume — дозагрузить после обрыва связи: анкеты, чьи имена уже есть в базе, пропускаем.
 Возможности грузим, если каталог пуст, — независимо от анкет.
+Вместе с ними — история для дашбордов из history.json: статусы, прошедшие занятия, собеседования.
 """
 
 import json
@@ -15,12 +16,14 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import date, timedelta
 from pathlib import Path
 
 BASE_URL = os.environ.get("BACKEND_URL", "http://localhost:8000").rstrip("/")
 DEMO = Path(__file__).resolve().parents[1] / "data" / "demo"
 FORMS = DEMO / "volunteers.json"
 OPPORTUNITIES = DEMO / "opportunities.json"
+HISTORY = DEMO / "history.json"
 TIMEOUT = 60  # секунд на анкету: с реальной LLM профиль строится несколько секунд
 RETRIES = 10  # обрыв соединения до ответа (бывает по пути до сервера) — пробуем ещё раз
 
@@ -85,6 +88,55 @@ def main() -> int:
             print(f"❌ Возможность «{item['title']}»: {e.code} {e.read().decode()}")
             return 1
     print(f"✅ Загружено возможностей: {len(items)}")
+    return seed_history(forms)
+
+
+def seed_history(forms: list[dict]) -> int:
+    """Прошлое для дашбордов (T-66): статусы, прошедшие занятия с участием, отклики, собеседования.
+    Даты считаем от сегодняшнего дня — сводка «что сегодня» живая в любой день демо."""
+    history = json.loads(HISTORY.read_text(encoding="utf-8"))
+    ids = {v["name"]: v["id"] for v in call("GET", "/volunteers")}
+
+    def vid(number: int) -> int:
+        return ids[forms[number - 1]["name"]]
+
+    def when(days: int, hhmm: str) -> str:
+        return f"{date.today() + timedelta(days=days)}T{hhmm}:00"
+
+    try:
+        for number, status in history["statuses"].items():
+            call("PATCH", f"/volunteers/{vid(int(number))}", {"status": status})
+        for past in history["past_opportunities"]:
+            item = {**past["opportunity"], "starts_at": when(-past["days_ago"], past["time"])}
+            opportunity = call("POST", "/opportunities", item)
+            invited = call(
+                "POST",
+                f"/opportunities/{opportunity['id']}/invite",
+                {"volunteer_ids": [vid(n) for n in past["attended"]]},
+            )
+            for participation in invited:
+                call("PATCH", f"/participations/{participation['id']}", {"status": "attended"})
+        catalog = {o["title"]: o["id"] for o in call("GET", "/opportunities")}
+        for response in history["responses"]:
+            call(
+                "POST",
+                f"/opportunities/{catalog[response['opportunity']]}/respond",
+                {"volunteer_id": vid(response["volunteer"])},
+            )
+        for item in history["interviews"]:
+            starts_at = when(item["days"], item["time"])
+            interview = call(
+                "POST", f"/volunteers/{vid(item['volunteer'])}/interviews", {"starts_at": starts_at}
+            )
+            if item.get("result"):
+                call("PUT", f"/interviews/{interview['id']}/result", item["result"])
+    except urllib.error.HTTPError as e:
+        print(f"❌ История для дашбордов: {e.code} {e.read().decode()}")
+        return 1
+    print(
+        f"✅ История: {len(history['past_opportunities'])} прошедших занятий, "
+        f"{len(history['interviews'])} собеседований"
+    )
     return 0
 
 

@@ -8,13 +8,17 @@ import type {
   Candidate,
   CallInfo,
   ChatResponse,
+  DashboardAnalytics,
+  DashboardToday,
   Interview,
+  InterviewPlan,
   Note,
   Opportunity,
   OpportunityIn,
   Participation,
   ParticipationStatus,
   ParsedQuery,
+  PlanQuestion,
   Quiz,
   QuizResult,
   Region,
@@ -278,10 +282,25 @@ const participations: Participation[] = [
   { id: 2, opportunity_id: 2, opportunity_title: "", volunteer_id: 2, volunteer_name: "", status: "invited", hours: 0, created_at: "2026-10-20T11:00:00" },
 ];
 
+/** Местное время без часового пояса, как у бэкенда: сегодня + days, в hour:00. */
+function dayAt(days: number, hour: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  d.setHours(hour, 0, 0, 0);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(hour)}:00:00`;
+}
+
 // Видеособеседования. Сам звонок на моках не работает — ему нужен сигнальный сервер бэкенда.
 const interviews: Interview[] = [
-  { id: 1, volunteer_id: 1, starts_at: "2026-10-22T15:00:00", status: "scheduled", token: "demo-call-token",
-    notified: true, created_at: "2026-10-21T12:00:00" },
+  { id: 1, volunteer_id: 1, starts_at: dayAt(0, 15), status: "scheduled", token: "demo-call-token",
+    notified: true, created_at: dayAt(-1, 12), result: null },
+  { id: 2, volunteer_id: 7, starts_at: dayAt(-1, 16), status: "scheduled", token: "demo-call-late",
+    notified: false, created_at: dayAt(-3, 12), result: null },
+  { id: 3, volunteer_id: 3, starts_at: dayAt(-20, 12), status: "done", token: "demo-call-done",
+    notified: true, created_at: dayAt(-22, 12),
+    result: { motivation: 5, readiness: 5, regularity: 4, decision: "next", roles: ["workshop_assistant"],
+      comment: "Сама ведёт керамику, готова к постоянной группе.", created_at: dayAt(-20, 13) } },
 ];
 
 /** Перечитать сохранённое: другая вкладка могла пригласить, подтвердить или отправить анкету. */
@@ -432,6 +451,127 @@ function search(req: SearchRequest): SearchResponse {
 
 // ===== То же API, что volunteersApi в api.ts =====
 
+// ===== План собеседования: те же правила, что фолбэк на бэкенде (services/interview_plan.py) =====
+
+const BASE_PLAN: PlanQuestion[] = [
+  { question: "Почему вы хотите помогать именно нашему фонду?", why: "Понять мотивацию" },
+  { question: "Был ли у вас опыт общения с детьми или взрослыми с особенностями развития?",
+    why: "Готовность к работе с подопечными" },
+  { question: "Что вы сделаете, если на занятии станет тяжело или непонятно, как себя вести?",
+    why: "Как человек справляется с трудными ситуациями" },
+  { question: "Как часто у вас реально получится приходить?", why: "Сверить ожидания по регулярности" },
+];
+
+function interviewPlan(v: Volunteer): InterviewPlan {
+  const questions = [...BASE_PLAN];
+  const focus: string[] = [];
+  if (v.answers.occupation === "schoolkid") {
+    questions.push({ question: "Нужны ли вам часы или баллы для школы? Сколько занятий планируете?",
+      why: "Школьники часто приходят ради баллов и пропадают" });
+    focus.push("Школьник — проверить, готов ли прийти больше одного раза");
+  }
+  if (!v.answers.experience.trim()) {
+    questions.push({ question: "Как вы представляете занятие с особыми ребятами?", why: "Опыта в анкете нет" });
+    focus.push("Нет опыта — рассказать, как проходят занятия");
+  }
+  if (v.answers.occupation === "pensioner") {
+    questions.push({ question: "Удобно ли вам добираться? Сколько времени комфортно провести на занятии?",
+      why: "Силы и дорога — частые причины пропусков" });
+  }
+  return { volunteer_id: v.id, questions, focus, ai: true, created_at: new Date().toISOString() };
+}
+
+// ===== Дашборды. «Сегодня» считаем из моков, аналитику — заготовкой (у моков слишком мало истории) =====
+
+const DAY = 86_400_000;
+
+function dashboardToday(): DashboardToday {
+  const now = new Date();
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+  const ref = (id: number) => ({ id, name: findVolunteer(id)?.name ?? "" });
+  const days = (iso: string) => Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / DAY));
+  const booked = new Set(interviews.filter((i) => i.status !== "canceled").map((i) => i.volunteer_id));
+  const upcoming = opportunities
+    .filter((o) => new Date(o.starts_at) >= now)
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  return {
+    interviews: interviews
+      .filter((i) => i.status === "scheduled" && new Date(i.starts_at) <= endOfDay)
+      .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+      .map((i) => ({ interview_id: i.id, volunteer: ref(i.volunteer_id), starts_at: i.starts_at, token: i.token,
+        overdue: new Date(i.starts_at) < now })),
+    new_without_interview: volunteers
+      .filter((v) => v.status === "new" && !booked.has(v.id))
+      .map((v) => ({ volunteer: ref(v.id), since: v.created_at, days: days(v.created_at), training_score: null })),
+    awaiting_approval: volunteers
+      .filter((v) => v.status === "trained")
+      .map((v) => ({ volunteer: ref(v.id), since: v.created_at, days: days(v.created_at),
+        training_score: v.training_score })),
+    pending_responses: upcoming.flatMap((o) =>
+      participations
+        .filter((p) => p.opportunity_id === o.id && p.status === "responded")
+        .map((p) => ({ participation_id: p.id, opportunity_id: o.id, opportunity_title: o.title,
+          starts_at: o.starts_at, volunteer: ref(p.volunteer_id) })),
+    ),
+    understaffed: upcoming
+      .filter((o) => new Date(o.starts_at).getTime() <= now.getTime() + 7 * DAY)
+      .map((o) => opportunityOut(o))
+      .filter((o) => o.taken < o.slots)
+      .map((o) => ({ opportunity_id: o.id, title: o.title, starts_at: o.starts_at, slots: o.slots, taken: o.taken,
+        missing: o.slots - o.taken })),
+    counters: {
+      volunteers: volunteers.length,
+      active: volunteers.filter((v) => v.status === "active").length,
+      hours_total: volunteers.reduce((sum, v) => sum + v.hours, 0),
+      hours_month: 14,
+    },
+  };
+}
+
+/** Аналитика-заготовка: отвал школьников, дефицит «будни утром», неровная активность. */
+function dashboardAnalytics(): DashboardAnalytics {
+  const occ = (student: number, pensioner: number, remote: number, employed: number, schoolkid: number, other = 0) =>
+    ({ student, pensioner, remote, employed, schoolkid, other });
+  const monday = new Date();
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const hours = [6, 9, 3, 12, 8, 0, 10, 15, 7, 11, 18, 9];
+  return {
+    funnel: [
+      { step: "applied", count: 40, by_occupation: occ(15, 10, 8, 4, 3) },
+      { step: "interviewed", count: 27, by_occupation: occ(10, 9, 6, 1, 1) },
+      { step: "trained", count: 21, by_occupation: occ(7, 8, 5, 1, 0) },
+      { step: "approved", count: 17, by_occupation: occ(5, 7, 4, 1, 0) },
+      { step: "participated", count: 13, by_occupation: occ(3, 6, 3, 1, 0) },
+      { step: "active", count: 9, by_occupation: occ(2, 5, 2, 0, 0) },
+    ],
+    by_time: [
+      { key: "weekday_morning", demand: 9, supply: 4 },
+      { key: "weekday_day", demand: 6, supply: 5 },
+      { key: "weekday_evening", demand: 2, supply: 7 },
+      { key: "weekend", demand: 7, supply: 11 },
+    ],
+    by_region: [
+      { key: "moscow", demand: 14, supply: 12 },
+      { key: "moscow_region", demand: 3, supply: 3 },
+      { key: "yaroslavl", demand: 4, supply: 2 },
+      { key: "north_ossetia", demand: 2, supply: 1 },
+      { key: "online", demand: 3, supply: 6 },
+    ],
+    weeks: hours.map((h, i) => {
+      const d = new Date(monday);
+      d.setDate(d.getDate() - 7 * (hours.length - 1 - i));
+      return { week_start: d.toISOString().slice(0, 10), hours: h, participations: Math.round(h / 3) };
+    }),
+    top: [3, 10, 9, 1, 2].map((id) => ({ volunteer: { id, name: findVolunteer(id)?.name ?? "" },
+      hours: findVolunteer(id)?.hours ?? 0, participations: Math.round((findVolunteer(id)?.hours ?? 0) / 3) })),
+    dormant: [
+      { volunteer: { id: 8, name: findVolunteer(8)?.name ?? "" }, last_attended: null, days: null },
+      { volunteer: { id: 9, name: findVolunteer(9)?.name ?? "" }, last_attended: dayAt(-63, 10).slice(0, 10), days: 63 },
+    ],
+  };
+}
+
 export const mockApi: typeof volunteersApi = {
   submit: (data: VolunteerIn) => {
     const parsed = parseQuery(`${data.answers.skills} ${data.answers.about} ${data.answers.wishes}`);
@@ -560,7 +700,7 @@ export const mockApi: typeof volunteersApi = {
     const i: Interview = {
       id: nextId(interviews), volunteer_id: volunteerId, starts_at: startsAt, status: "scheduled",
       token: `demo-${Math.random().toString(36).slice(2, 12)}`, notified: v.telegram_id != null,
-      created_at: new Date().toISOString(),
+      created_at: new Date().toISOString(), result: null,
     };
     interviews.push(i);
     saveOpportunities();
@@ -573,7 +713,26 @@ export const mockApi: typeof volunteersApi = {
     i.status = status;
     saveOpportunities();
     return wait(i);
+  },  interviewPlan: (volunteerId) => {
+    const v = findVolunteer(volunteerId);
+    return v ? wait(interviewPlan(v), 1200) : notFound("Волонтёр"); // задержка — как у LLM
   },
+  saveInterviewResult: (id, data) => {
+    refresh();
+    const i = interviews.find((x) => x.id === id);
+    if (!i) return notFound("Собеседование");
+    if (i.status === "canceled") return Promise.reject(new Error("Собеседование отменено — итог не сохраняем"));
+    i.result = { ...data, created_at: new Date().toISOString() };
+    i.status = "done";
+    saveOpportunities();
+    return wait(i);
+  },
+  dashboardToday: () => {
+    refresh();
+    return wait(dashboardToday());
+  },
+  dashboardAnalytics: () => wait(dashboardAnalytics()),
+
 };
 
 /** Моки для «Спросить о фонде» (api.chat / api.ask из шаблона). */
