@@ -12,8 +12,14 @@ export function usePath(): string {
   return useSyncExternalStore(subscribe, () => location.pathname.replace(/(.)\/+$/, "$1"));
 }
 
+/** Параметры адреса: /admin?opportunity=3 → useSearchParam("opportunity") === "3". */
+export function useSearchParam(name: string): string | null {
+  const search = useSyncExternalStore(subscribe, () => location.search);
+  return new URLSearchParams(search).get(name);
+}
+
 export function navigate(path: string) {
-  if (path === location.pathname) return;
+  if (path === location.pathname + location.search) return;
   history.pushState(null, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
   window.scrollTo(0, 0);

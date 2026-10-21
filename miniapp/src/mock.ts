@@ -18,6 +18,7 @@ import type {
   Region,
   Regularity,
   Role,
+  SearchRequest,
   SearchResponse,
   TrainingModule,
   Volunteer,
@@ -267,9 +268,22 @@ function parseQuery(query: string): ParsedQuery {
   };
 }
 
-function search(query: string, statuses?: Volunteer["status"][], limit = 5, roleCode?: string | null): SearchResponse {
+function search(req: SearchRequest): SearchResponse {
+  const { statuses, limit = 10 } = req;
+  let query = req.query;
+  let roleCode = req.role_code;
+  // подбор под возможность: запрос строим из её полей, как бэкенд
+  const opp = opportunities.find((o) => o.id === req.opportunity_id);
+  if (opp) {
+    query = `${opp.title} ${opp.description} ${query}`;
+    roleCode = roleCode ?? opp.role_code;
+  }
   const role = roles.find((r) => r.code === roleCode);
   const parsed = parseQuery(query + (role ? " " + role.skills.join(" ") : ""));
+  if (opp) {
+    parsed.region = opp.format === "online" ? null : opp.region;
+    parsed.format = opp.format;
+  }
   const pool = volunteers.filter(
     (v) => v.status !== "paused" && (!statuses?.length || statuses.includes(v.status)),
   );
@@ -376,7 +390,7 @@ export const mockApi: typeof volunteersApi = {
     p.status = status;
     return wait(withNames(p));
   },
-  search: (data) => wait(search(data.query, data.statuses, data.limit, data.role_code), 1200),
+  search: (data) => wait(search(data), 1200),
   list: (status) => wait(volunteers.filter((v) => !status || v.status === status)),
   update: (id, data) => {
     const v = findVolunteer(id);
