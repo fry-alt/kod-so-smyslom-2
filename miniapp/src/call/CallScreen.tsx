@@ -418,11 +418,8 @@ function InCall(props: {
         </p>
 
         <div className="relative flex flex-wrap items-start justify-between gap-2 p-3 md:p-5">
-          <span className="rounded-full bg-white px-3 py-1.5">
-            <img src="/logo.svg" alt="Дети Марии" className="h-6 w-auto md:h-7" />
-          </span>
           {peer && (
-            <span className="inline-flex items-center gap-2 rounded-full bg-ink/70 px-3 py-1.5 text-sm font-medium backdrop-blur md:text-base">
+            <span className="ml-auto inline-flex items-center gap-2 rounded-full bg-ink/70 px-3 py-1.5 text-sm font-medium backdrop-blur md:text-base">
               {!peer.mic && <Icon name="mic-off" className="size-4 text-[var(--logo-red)]" />}
               {who}
               {!peer.mic && " без звука"}
