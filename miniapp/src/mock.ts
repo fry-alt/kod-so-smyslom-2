@@ -187,7 +187,12 @@ const quizzes: Record<string, { questions: Quiz["questions"]; right: number[] }>
   }]),
 );
 
-let nextOpportunityId = 4;
+// Возможности и участия тоже сохраняются в localStorage: путь «пригласить в /admin → подтвердить у волонтёра»
+// проходит через перезагрузку страницы или две вкладки. Сбросить: localStorage.removeItem("mock_opportunities"),
+// localStorage.removeItem("mock_participations").
+const OPP_KEY = "mock_opportunities";
+const PART_KEY = "mock_participations";
+
 const opportunities: Omit<Opportunity, "taken" | "recommended" | "my_status">[] = [
   { id: 1, title: "Керамика с группой из интерната", description: "Помочь ведущему на занятии по керамике.",
     role_code: "workshop_assistant", starts_at: "2026-10-23T10:00:00", region: "moscow", format: "offline",
@@ -200,11 +205,53 @@ const opportunities: Omit<Opportunity, "taken" | "recommended" | "my_status">[] 
     place: "Онлайн", slots: 2, hours: 2 },
 ];
 
-let nextParticipationId = 3;
 const participations: Participation[] = [
   { id: 1, opportunity_id: 1, opportunity_title: "", volunteer_id: 3, volunteer_name: "", status: "confirmed", hours: 0, created_at: "2026-10-20T10:00:00" },
   { id: 2, opportunity_id: 2, opportunity_title: "", volunteer_id: 2, volunteer_name: "", status: "invited", hours: 0, created_at: "2026-10-20T11:00:00" },
 ];
+
+/** Перечитать сохранённое: другая вкладка могла пригласить, подтвердить или отправить анкету. */
+function refresh() {
+  try {
+    const replace = <T>(list: T[], key: string) => {
+      const saved = JSON.parse(localStorage.getItem(key) ?? "null") as T[] | null;
+      if (saved) list.splice(0, list.length, ...saved);
+    };
+    replace(opportunities, OPP_KEY);
+    replace(participations, PART_KEY);
+    replace(volunteers, SAVE_KEY);
+  } catch {
+    /* приватный режим — живём в памяти */
+  }
+}
+
+function saveOpportunities() {
+  try {
+    localStorage.setItem(OPP_KEY, JSON.stringify(opportunities));
+    localStorage.setItem(PART_KEY, JSON.stringify(participations));
+  } catch {
+    /* приватный режим — живём в памяти */
+  }
+}
+
+refresh();
+
+const nextId = (list: { id: number }[]) => Math.max(0, ...list.map((x) => x.id)) + 1;
+
+/** Отклик или приглашение: повторно запись не создаём, отказ можно «оживить». */
+function participate(opportunityId: number, volunteerId: number, status: "responded" | "invited"): Participation {
+  let p = participations.find((x) => x.opportunity_id === opportunityId && x.volunteer_id === volunteerId);
+  if (p) {
+    if (p.status === "declined") p.status = status;
+  } else {
+    p = {
+      id: nextId(participations), opportunity_id: opportunityId, opportunity_title: "", volunteer_id: volunteerId,
+      volunteer_name: "", status, hours: 0, created_at: new Date().toISOString(),
+    };
+    participations.push(p);
+  }
+  return withNames(p);
+}
 
 const findVolunteer = (id: number) => volunteers.find((v) => v.id === id);
 
@@ -349,36 +396,41 @@ export const mockApi: typeof volunteersApi = {
     const result: QuizResult = { score, passed: score >= 70, correct, status: v.status };
     return wait(result);
   },
-  opportunities: (volunteerId) => wait(opportunities.map((o) => opportunityOut(o, volunteerId))),
-  respond: (opportunityId, volunteerId) => {
-    const p: Participation = {
-      id: nextParticipationId++, opportunity_id: opportunityId, opportunity_title: "", volunteer_id: volunteerId,
-      volunteer_name: "", status: "responded", hours: 0, created_at: new Date().toISOString(),
-    };
-    participations.push(p);
-    return wait(withNames(p));
+  opportunities: (volunteerId) => {
+    refresh();
+    return wait(opportunities.map((o) => opportunityOut(o, volunteerId)));
   },
-  myParticipations: (volunteerId) =>
-    wait(participations.filter((p) => p.volunteer_id === volunteerId).map(withNames)),
+  respond: (opportunityId, volunteerId) => {
+    refresh();
+    if (!opportunities.some((o) => o.id === opportunityId)) return notFound("Возможность");
+    const p = participate(opportunityId, volunteerId, "responded");
+    saveOpportunities();
+    return wait(p);
+  },
+  myParticipations: (volunteerId) => {
+    refresh();
+    return wait(participations.filter((p) => p.volunteer_id === volunteerId).map(withNames));
+  },
   createOpportunity: (data: OpportunityIn) => {
-    const o = { ...data, role_code: data.role_code ?? null, id: nextOpportunityId++ };
+    refresh();
+    const o = { ...data, role_code: data.role_code ?? null, id: nextId(opportunities) };
     opportunities.push(o);
+    saveOpportunities();
     return wait(opportunityOut(o));
   },
-  participants: (opportunityId) =>
-    wait(participations.filter((p) => p.opportunity_id === opportunityId).map(withNames)),
+  participants: (opportunityId) => {
+    refresh();
+    return wait(participations.filter((p) => p.opportunity_id === opportunityId).map(withNames));
+  },
   invite: (opportunityId, volunteerIds) => {
-    const created = volunteerIds.map((volunteer_id) => {
-      const p: Participation = {
-        id: nextParticipationId++, opportunity_id: opportunityId, opportunity_title: "", volunteer_id,
-        volunteer_name: "", status: "invited", hours: 0, created_at: new Date().toISOString(),
-      };
-      participations.push(p);
-      return withNames(p);
-    });
+    refresh();
+    if (!opportunities.some((o) => o.id === opportunityId)) return notFound("Возможность");
+    const created = volunteerIds.map((id) => participate(opportunityId, id, "invited"));
+    saveOpportunities();
     return wait(created);
   },
   updateParticipation: (id, status: ParticipationStatus) => {
+    refresh();
     const p = participations.find((x) => x.id === id);
     if (!p) return notFound("Участие");
     if (status === "attended" && p.status !== "attended") {
@@ -388,6 +440,7 @@ export const mockApi: typeof volunteersApi = {
       save();
     }
     p.status = status;
+    saveOpportunities();
     return wait(withNames(p));
   },
   search: (data) => wait(search(data), 1200),

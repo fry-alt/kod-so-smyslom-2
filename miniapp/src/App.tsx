@@ -8,11 +8,14 @@ import { getVolunteerId, USE_MOCK } from "./backend";
 import { match, usePath } from "./router";
 import { Link } from "./ui";
 import AdminOpportunities from "./screens/admin/Opportunities";
+import OpportunityCard from "./screens/admin/OpportunityCard";
+import OpportunityForm from "./screens/admin/OpportunityForm";
 import Search from "./screens/admin/Search";
 import VolunteerCard from "./screens/admin/VolunteerCard";
 import Volunteers from "./screens/admin/Volunteers";
 import Ask from "./screens/volunteer/Ask";
 import Form from "./screens/volunteer/Form";
+import History from "./screens/volunteer/History";
 import Me from "./screens/volunteer/Me";
 import Opportunities from "./screens/volunteer/Opportunities";
 import Training from "./screens/volunteer/Training";
@@ -27,6 +30,7 @@ const VOLUNTEER_ROUTES: Route[] = [
   ["/training", () => <Training />],
   ["/me", () => <Me />],
   ["/opportunities", () => <Opportunities />],
+  ["/history", () => <History />],
   ["/ask", () => <Ask />],
 ];
 
@@ -35,6 +39,8 @@ const ADMIN_ROUTES: Route[] = [
   ["/admin/volunteers", () => <Volunteers />],
   ["/admin/volunteers/:id", (p) => <VolunteerCard id={Number(p.id)} />],
   ["/admin/opportunities", () => <AdminOpportunities />],
+  ["/admin/opportunities/new", () => <OpportunityForm />],
+  ["/admin/opportunities/:id", (p) => <OpportunityCard id={Number(p.id)} />],
 ];
 
 function render(routes: Route[], path: string): ReactNode {
@@ -56,11 +62,14 @@ export default function App() {
 function VolunteerLayout(props: { path: string; children: ReactNode }) {
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-4 pt-4 pb-10">
-      <header className="flex items-center justify-between gap-3">
-        <Link to="/" className="font-bold">
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <Link to="/" className="font-bold whitespace-nowrap">
           🧡 Дети Марии
         </Link>
-        <nav className="flex gap-4">
+        <nav className="flex gap-4 whitespace-nowrap">
+          <NavLink to="/opportunities" path={props.path}>
+            Куда пойти
+          </NavLink>
           <NavLink to="/me" path={props.path}>
             Мой статус
           </NavLink>
