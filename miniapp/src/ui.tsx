@@ -218,3 +218,15 @@ export function errorText(e: unknown): string {
   if (/^not found$/i.test(msg)) return "Эта функция на сервере ещё не готова.";
   return msg || "Что-то пошло не так.";
 }
+
+/** Дата и время возможности по-русски: «23 октября, 10:00». */
+export function formatWhen(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("ru", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+}
+
+/** Часы без лишних нулей: 3 → «3», 2.5 → «2,5». */
+export function formatHours(hours: number): string {
+  return hours.toLocaleString("ru", { maximumFractionDigits: 1 });
+}

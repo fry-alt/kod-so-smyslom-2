@@ -10,6 +10,12 @@ export default function Me() {
     () => (id ? backend.get(id) : Promise.resolve(null)),
     [id],
   );
+  // приглашения координатора — показываем сверху, чтобы не пропустить
+  const { data: mine } = useLoad(
+    () => (id ? backend.myParticipations(id) : Promise.resolve([])),
+    [id],
+  );
+  const invites = mine?.filter((p) => p.status === "invited") ?? [];
 
   if (!id) {
     return (
@@ -45,6 +51,16 @@ export default function Me() {
   return (
     <div className="flex flex-col gap-5">
       <h1 className="text-3xl font-bold">{v.name}</h1>
+      {invites.length > 0 && (
+        <Card className="flex flex-col gap-3 ring-2 ring-accent">
+          <p className="text-lg font-semibold">
+            📩 Вас пригласили: {invites.map((p) => `«${p.opportunity_title}»`).join(", ")}
+          </p>
+          <Button wide onClick={() => navigate("/opportunities")}>
+            Посмотреть и подтвердить
+          </Button>
+        </Card>
+      )}
       <Card className="flex flex-col gap-3">
         <div>
           <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge>
@@ -73,6 +89,9 @@ export default function Me() {
       </Button>
       <Button wide variant="secondary" onClick={() => navigate("/opportunities")}>
         Куда можно пойти
+      </Button>
+      <Button wide variant="secondary" onClick={() => navigate("/history")}>
+        Моя история и часы
       </Button>
       <Button wide variant="secondary" onClick={() => navigate("/ask")}>
         Спросить о фонде

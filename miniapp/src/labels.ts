@@ -70,3 +70,12 @@ export const PARTICIPATION: Record<ParticipationStatus, string> = {
   attended: "Участвовал",
   declined: "Отказ",
 };
+
+/** Цвет метки статуса участия (классы Tailwind). */
+export const PARTICIPATION_COLOR: Record<ParticipationStatus, string> = {
+  responded: "bg-sky-100 text-sky-900",
+  invited: "bg-amber-100 text-amber-900",
+  confirmed: "bg-green-100 text-green-900",
+  attended: "bg-emerald-200 text-emerald-950",
+  declined: "bg-gray-200 text-gray-700",
+};
