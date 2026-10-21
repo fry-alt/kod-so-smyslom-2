@@ -31,18 +31,21 @@ const HOME: Record<CallRole, { to: string; text: string }> = {
   volunteer: { to: "/", text: "На главную" },
 };
 
+/** Боковая панель координатора: получает ended — «звонок завершён», чтобы сразу открыть итог. */
+type SidePanel = (ended: boolean) => ReactNode;
+
 /**
- * sidePanel — боковая панель координатора (T-69: «План / Итог»). Показывается только с ?as=coordinator:
- * на ноутбуке справа, на телефоне под звонком.
+ * sidePanel — боковая панель координатора (T-69: «План / Итог», call/CoordinatorPanel.tsx). Показывается только
+ * с ?as=coordinator: на ноутбуке справа, на телефоне под звонком.
  */
-export default function CallScreen(props: { token: string; sidePanel?: ReactNode }) {
+export default function CallScreen(props: { token: string; sidePanel?: SidePanel }) {
   const role: CallRole = useSearchParam("as") === "coordinator" ? "coordinator" : "volunteer";
   const info = useLoad(() => backend.callInfo(props.token), [props.token]);
   const sidePanel = role === "coordinator" ? props.sidePanel : undefined;
 
   if (info.data) return <Call token={props.token} role={role} info={info.data} sidePanel={sidePanel} />;
   return (
-    <CallPage sidePanel={sidePanel}>
+    <CallPage sidePanel={sidePanel?.(false)}>
       {info.loading && <Loading text="Открываем звонок…" />}
       {/* неверная ссылка — текст с бэкенда: «Ссылка на звонок недействительна…» */}
       {info.error && (
@@ -55,8 +58,8 @@ export default function CallScreen(props: { token: string; sidePanel?: ReactNode
   );
 }
 
-function Call(props: { token: string; role: CallRole; info: CallInfo; sidePanel?: ReactNode }) {
-  const { info, role, sidePanel } = props;
+function Call(props: { token: string; role: CallRole; info: CallInfo; sidePanel?: SidePanel }) {
+  const { info, role } = props;
   const [local, setLocal] = useState<MediaStream | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [mediaReady, setMediaReady] = useState(false);
@@ -66,6 +69,7 @@ function Call(props: { token: string; role: CallRole; info: CallInfo; sidePanel?
   const [ended, setEnded] = useState(false);
   const [attempt, setAttempt] = useState(0); // «Попробовать ещё раз» — снова спросить камеру
   const [round, setRound] = useState(0); // «Переподключиться» — заново войти в комнату
+  const sidePanel = props.sidePanel?.(ended);
 
   // камера включается сразу в «прихожей» — человек видит себя и понимает, что всё работает;
   // при уходе со страницы камера и микрофон выключаются
@@ -118,7 +122,9 @@ function Call(props: { token: string; role: CallRole; info: CallInfo; sidePanel?
         text={
           role === "volunteer"
             ? "Спасибо, что пришли на собеседование! Координатор напишет вам о следующих шагах."
-            : "Не забудьте отметить собеседование в карточке волонтёра и оставить заметку."
+            : sidePanel
+              ? "Запишите итог в панели «Итог», пока всё свежо в памяти. Он сохранится в карточке волонтёра."
+              : "Не забудьте отметить собеседование в карточке волонтёра и оставить заметку."
         }
       >
         {role === "volunteer" ? (

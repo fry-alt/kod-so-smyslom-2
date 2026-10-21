@@ -68,7 +68,7 @@ export default function OpportunityCard(props: { id: number }) {
             {o.place && ` · ${o.place}`} · {formatHours(o.hours)} ч за участие
           </p>
         </div>
-        <Button onClick={() => navigate(`/admin?opportunity=${o.id}`)}>
+        <Button onClick={() => navigate(`/admin/search?opportunity=${o.id}`)}>
           {full ? "Подобрать ещё" : "Подобрать волонтёров"}
         </Button>
       </div>

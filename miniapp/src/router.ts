@@ -12,7 +12,7 @@ export function usePath(): string {
   return useSyncExternalStore(subscribe, () => location.pathname.replace(/(.)\/+$/, "$1"));
 }
 
-/** Параметры адреса: /admin?opportunity=3 → useSearchParam("opportunity") === "3". */
+/** Параметры адреса: /admin/search?opportunity=3 → useSearchParam("opportunity") === "3". */
 export function useSearchParam(name: string): string | null {
   const search = useSyncExternalStore(subscribe, () => location.search);
   return new URLSearchParams(search).get(name);
