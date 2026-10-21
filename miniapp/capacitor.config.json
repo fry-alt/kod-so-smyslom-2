@@ -1,0 +1,8 @@
+{
+  "appId": "ru.detimarii.volunteers",
+  "appName": "Дети Марии",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#fffaf5"
+  }
+}
