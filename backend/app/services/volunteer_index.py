@@ -19,6 +19,22 @@ def upsert(volunteer_id: int, document: str, metadata: dict[str, Any]) -> None:
     )
 
 
+def nearest(embedding: list[float], volunteer_ids: list[int], limit: int) -> dict[int, float]:
+    """Ближайшие по смыслу среди заданных id → {id: сходство 0..1}. Кого нет в индексе — пропускаем."""
+    if not volunteer_ids:
+        return {}
+    found = get_collection("volunteers").query(
+        query_embeddings=[embedding],
+        ids=[str(i) for i in volunteer_ids],
+        n_results=limit,
+        include=["distances"],
+    )
+    return {
+        int(i): max(0.0, 1.0 - distance)  # коллекция с косинусной дистанцией
+        for i, distance in zip(found["ids"][0], found["distances"][0], strict=True)
+    }
+
+
 def update_metadata(volunteer_id: int, metadata: dict[str, Any]) -> None:
     """Обновить статус и т.п. без пересчёта эмбеддинга. Если волонтёра нет в индексе — ничего."""
     get_collection("volunteers").update(ids=[str(volunteer_id)], metadatas=[metadata])
