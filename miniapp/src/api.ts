@@ -153,6 +153,16 @@ export type Participation = {
   created_at: string;
 };
 
+export type Decision = "next" | "think" | "reject"; // дальше / подумать / не подходит
+export type InterviewResultIn = {
+  motivation: number; // 1–5
+  readiness: number; // 1–5, готовность к работе с подопечными
+  regularity: number; // 1–5, насколько надёжно будет приходить
+  decision: Decision;
+  roles: string[]; // коды ролей
+  comment: string;
+};
+export type InterviewResult = InterviewResultIn & { created_at: string };
 export type Interview = {
   id: number;
   volunteer_id: number;
@@ -161,6 +171,68 @@ export type Interview = {
   token: string; // ссылка на звонок — /call/<token>
   notified: boolean; // ссылка ушла волонтёру в Telegram; false — координатор отправляет её сам
   created_at: string;
+  result: InterviewResult | null; // итог после звонка — только для фонда, волонтёру не показываем
+};
+export type PlanQuestion = { question: string; why: string };
+export type InterviewPlan = {
+  volunteer_id: number;
+  questions: PlanQuestion[];
+  focus: string[]; // на что обратить внимание
+  ai: boolean; // false — базовый план, LLM недоступен
+  created_at: string;
+};
+
+// ===== Дашборды кабинета координатора (T-66) =====
+export type VolunteerRef = { id: number; name: string };
+export type TodayInterview = {
+  interview_id: number;
+  volunteer: VolunteerRef;
+  starts_at: string;
+  token: string;
+  overdue: boolean; // время прошло, а итога нет
+};
+export type WaitingVolunteer = {
+  volunteer: VolunteerRef;
+  since: string;
+  days: number;
+  training_score: number | null;
+};
+export type PendingResponse = {
+  participation_id: number;
+  opportunity_id: number;
+  opportunity_title: string;
+  starts_at: string;
+  volunteer: VolunteerRef;
+};
+export type Understaffed = {
+  opportunity_id: number;
+  title: string;
+  starts_at: string;
+  slots: number;
+  taken: number;
+  missing: number;
+};
+export type DashboardToday = {
+  interviews: TodayInterview[];
+  new_without_interview: WaitingVolunteer[];
+  awaiting_approval: WaitingVolunteer[];
+  pending_responses: PendingResponse[];
+  understaffed: Understaffed[];
+  counters: { volunteers: number; active: number; hours_total: number; hours_month: number };
+};
+export type FunnelStep = "applied" | "interviewed" | "trained" | "approved" | "participated" | "active";
+export type FunnelRow = { step: FunnelStep; count: number; by_occupation: Record<Occupation, number> };
+export type SupplyRow = { key: Availability | Region | "online"; demand: number; supply: number };
+export type WeekRow = { week_start: string; hours: number; participations: number };
+export type TopVolunteer = { volunteer: VolunteerRef; hours: number; participations: number };
+export type Dormant = { volunteer: VolunteerRef; last_attended: string | null; days: number | null };
+export type DashboardAnalytics = {
+  funnel: FunnelRow[];
+  by_time: SupplyRow[];
+  by_region: SupplyRow[];
+  weeks: WeekRow[];
+  top: TopVolunteer[];
+  dormant: Dormant[];
 };
 export type IceServer = { urls: string[]; username?: string | null; credential?: string | null };
 export type CallInfo = { starts_at: string; status: InterviewStatus; ice_servers: IceServer[] };
@@ -172,7 +244,7 @@ export function callSocketUrl(token: string): string {
   return url.toString();
 }
 
-async function request<T>(method: "GET" | "PATCH", path: string, body?: unknown): Promise<T> {
+async function request<T>(method: "GET" | "PATCH" | "PUT", path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (initData) headers["X-Telegram-Init-Data"] = initData;
   const r = await fetch(BASE + path, {
@@ -220,4 +292,13 @@ export const volunteersApi = {
     post<Interview>(`/volunteers/${volunteerId}/interviews`, { starts_at: startsAt }),
   updateInterview: (id: number, status: InterviewStatus) =>
     request<Interview>("PATCH", `/interviews/${id}`, { status }),
+  interviewPlan: (volunteerId: number, refresh = false) =>
+    request<InterviewPlan>(
+      "GET",
+      `/volunteers/${volunteerId}/interview-plan` + (refresh ? "?refresh=true" : ""),
+    ),
+  saveInterviewResult: (interviewId: number, data: InterviewResultIn) =>
+    request<Interview>("PUT", `/interviews/${interviewId}/result`, data),
+  dashboardToday: () => request<DashboardToday>("GET", "/dashboard/today"),
+  dashboardAnalytics: () => request<DashboardAnalytics>("GET", "/dashboard/analytics"),
 };
