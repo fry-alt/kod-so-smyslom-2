@@ -280,6 +280,9 @@ export type Account = { id: number; email: string; role: AccountRole; volunteer_
 export type AuthOut = { token: string; account: Account };
 export type RegisterIn = { email: string; password: string; role: AccountRole; code?: string };
 export type LoginIn = { email: string; password: string };
+/** На почту ушёл код — аккаунта ещё нет, код вводят в authApi.verify. Если почта на сервере не настроена,
+ * register сразу отвечает AuthOut. resend_after — через сколько секунд можно отправить код ещё раз. */
+export type CodeSent = { pending: true; email: string; resend_after: number };
 /** Код фонда, без которого нельзя зарегистрироваться координатором. Меняет координатор в «Настройках». */
 export type FundCode = { code: string };
 
@@ -289,7 +292,9 @@ export type LookCover = "sky" | "sunset" | "meadow" | "sea" | "berry" | "night";
 export type Look = { avatar: string; color: LookColor; cover: LookCover; stickers: string[]; nickname: string };
 
 export const authApi = {
-  register: (data: RegisterIn) => post<AuthOut>("/auth/register", data),
+  register: (data: RegisterIn) => post<AuthOut | CodeSent>("/auth/register", data),
+  resend: (email: string) => post<CodeSent>("/auth/register/resend", { email }),
+  verify: (email: string, code: string) => post<AuthOut>("/auth/register/verify", { email, code }),
   login: (data: LoginIn) => post<AuthOut>("/auth/login", data),
   me: () => request<Account>("GET", "/auth/me"),
   look: () => request<Look>("GET", "/auth/look"),

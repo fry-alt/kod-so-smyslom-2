@@ -59,3 +59,18 @@ def telegram(monkeypatch) -> list[dict]:
 
     monkeypatch.setattr("app.services.notify.httpx.post", post)
     return sent
+
+
+@pytest.fixture(autouse=True)
+def mailbox() -> list[dict]:
+    """Вместо Postbox — список отправленных писем. Тесты никогда не шлют настоящую почту."""
+    from app.api import auth
+    from app.services import mail
+
+    sent: list[dict] = []
+    mail.set_mailer(
+        lambda to, subject, text, html: sent.append({"to": to, "subject": subject, "text": text})
+    )
+    auth._letters.clear()
+    yield sent
+    mail.set_mailer(None)

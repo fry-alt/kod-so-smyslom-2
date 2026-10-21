@@ -1,14 +1,25 @@
 """Вход на сайт: регистрация, вход и «кто я». Сайт присылает ключ в заголовке Authorization: Bearer <token>."""
 
+import time
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlmodel import Session
 
 from app.db import get_session
 from app.models import Account
-from app.schemas import AccountOut, AuthOut, FundCode, LoginIn, Look, RegisterIn
-from app.services import accounts
+from app.schemas import (
+    AccountOut,
+    AuthOut,
+    CodeSent,
+    EmailIn,
+    FundCode,
+    LoginIn,
+    Look,
+    RegisterIn,
+    VerifyIn,
+)
+from app.services import accounts, email_codes, mail
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -22,12 +33,60 @@ def current_account(
     return accounts.by_token(session, token)
 
 
-@router.post("/register", response_model=AuthOut)
-def register(data: RegisterIn, session: Session = Depends(get_session)) -> AuthOut:
+LETTERS_PER_HOUR = 10  # писем с кодом с одного адреса — чтобы сайтом не рассылали спам
+_letters: dict[str, list[float]] = {}
+
+
+def _limit_letters(request: Request) -> None:
+    """Не больше LETTERS_PER_HOUR писем в час с одного IP (за Caddy — первый адрес из X-Forwarded-For)."""
+    forwarded = request.headers.get("x-forwarded-for", "")
+    ip = forwarded.split(",")[0].strip() or (request.client.host if request.client else "")
+    now = time.time()
+    recent = [t for t in _letters.get(ip, []) if now - t < 3600]
+    if len(recent) >= LETTERS_PER_HOUR:
+        raise HTTPException(429, "Слишком много писем с кодом. Попробуйте через час")
+    _letters[ip] = [*recent, now]
+
+
+def _code_error(e: accounts.AuthError) -> HTTPException:
+    return HTTPException(getattr(e, "status", 400), str(e))
+
+
+@router.post("/register", response_model=AuthOut | CodeSent)
+def register(
+    data: RegisterIn, request: Request, session: Session = Depends(get_session)
+) -> AuthOut | CodeSent:
+    """Шаг 1: на почту уходит код (CodeSent). Почта на сервере не настроена — сразу AuthOut, как раньше."""
     try:
-        return accounts.register(session, data)
+        if not mail.enabled():
+            return accounts.register(session, data)
+        payload = accounts.prepare(
+            session, data
+        )  # сначала понятные ошибки формы, потом лимит писем
+        _limit_letters(request)
+        return email_codes.start_signup(session, payload)
     except accounts.AuthError as e:
-        raise HTTPException(400, str(e)) from e
+        raise _code_error(e) from e
+
+
+@router.post("/register/resend", response_model=CodeSent)
+def register_resend(
+    data: EmailIn, request: Request, session: Session = Depends(get_session)
+) -> CodeSent:
+    _limit_letters(request)
+    try:
+        return email_codes.resend_signup(session, data.email)
+    except accounts.AuthError as e:
+        raise _code_error(e) from e
+
+
+@router.post("/register/verify", response_model=AuthOut)
+def register_verify(data: VerifyIn, session: Session = Depends(get_session)) -> AuthOut:
+    """Шаг 2: верный код из письма — аккаунт создан, можно входить."""
+    try:
+        return email_codes.finish_signup(session, data.email, data.code)
+    except accounts.AuthError as e:
+        raise _code_error(e) from e
 
 
 @router.post("/login", response_model=AuthOut)

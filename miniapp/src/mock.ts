@@ -992,23 +992,41 @@ function coordinatorOnly(): Promise<never> | null {
   return null;
 }
 
+/** Заявки на регистрацию, пока не введён код из «письма». */
+const mockSignups = new Map<string, MockAccount>();
+const MOCK_CODE = "123456";
+
 export const mockAuthApi: typeof authApi = {
+  // как на бэкенде: сначала код на почту, аккаунт — после верного кода. В моках код всегда 123456.
   register: (data) => {
     const list = loadAccounts();
     const email = data.email.trim().toLowerCase();
     if (list.some((a) => a.email === email)) return Promise.reject(new Error("Эта почта уже зарегистрирована — войдите"));
     if (data.role === "coordinator" && (data.code ?? "").trim() !== loadFundCode())
       return Promise.reject(new Error("Неверный код фонда. Его выдаёт руководитель фонда"));
-    const a: MockAccount = {
+    mockSignups.set(email, {
       id: list.length + 1,
       email,
       role: data.role,
       volunteer_id: null,
       password: data.password,
       token: `mock-${Date.now()}`,
-    };
-    saveAccounts([...list, a]);
-    return wait(authOut(a), 600);
+    });
+    console.info(`Моки: код подтверждения для ${email} — ${MOCK_CODE}`);
+    return wait({ pending: true as const, email, resend_after: 60 }, 600);
+  },
+  resend: (email) => {
+    const e = email.trim().toLowerCase();
+    if (!mockSignups.has(e)) return Promise.reject(new Error("Заявка устарела — заполните форму ещё раз"));
+    return wait({ pending: true as const, email: e, resend_after: 60 }, 400);
+  },
+  verify: (email, code) => {
+    const a = mockSignups.get(email.trim().toLowerCase());
+    if (!a) return Promise.reject(new Error("Код устарел — запросите новый"));
+    if (code.replace(/\D/g, "") !== MOCK_CODE) return Promise.reject(new Error("Неверный код. В моках код — 123456"));
+    mockSignups.delete(a.email);
+    saveAccounts([...loadAccounts(), a]);
+    return wait(authOut(a), 400);
   },
   login: (data) => {
     const a = loadAccounts().find((x) => x.email === data.email.trim().toLowerCase());

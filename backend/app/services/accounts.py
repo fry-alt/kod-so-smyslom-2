@@ -73,23 +73,40 @@ def set_coordinator_code(session: Session, code: str) -> str:
     return stored.value
 
 
-def register(session: Session, data: RegisterIn) -> AuthOut:
+def prepare(session: Session, data: RegisterIn) -> dict:
+    """Проверить данные регистрации. Возвращает заявку (с хэшем пароля, не самим паролем) для create()."""
     if by_email(session, data.email):
         raise AuthError("Эта почта уже зарегистрирована — войдите")
     if data.role == "coordinator" and not hmac.compare_digest(
         data.code.strip().encode(), coordinator_code(session).encode()
     ):
         raise AuthError("Неверный код фонда. Его выдаёт руководитель фонда")
+    return {
+        "email": data.email.strip().lower(),
+        "password_hash": hash_password(data.password),
+        "role": data.role,
+    }
+
+
+def create(session: Session, payload: dict) -> AuthOut:
+    """Создать аккаунт по заявке из prepare() — сразу или после кода из письма (email_codes.py)."""
+    if by_email(session, payload["email"]):
+        raise AuthError("Эта почта уже зарегистрирована — войдите")
     account = Account(
-        email=data.email.strip().lower(),
-        password_hash=hash_password(data.password),
-        role=data.role,
+        email=payload["email"],
+        password_hash=payload["password_hash"],
+        role=payload["role"],
         token=secrets.token_urlsafe(32),
     )
     session.add(account)
     session.commit()
     session.refresh(account)
     return _auth(account)
+
+
+def register(session: Session, data: RegisterIn) -> AuthOut:
+    """Регистрация без кода на почту — когда почта не настроена (mail.enabled())."""
+    return create(session, prepare(session, data))
 
 
 def login(session: Session, data: LoginIn) -> AuthOut:
