@@ -13,7 +13,7 @@ export PYTHONUTF8 := 1
 
 COMPOSE := docker compose
 
-.PHONY: help setup dev dev-bot dev-web dev-miniapp up down logs ingest test lint fmt smoke tunnel deploy
+.PHONY: help setup dev dev-bot dev-web dev-miniapp up down logs ingest seed test lint fmt smoke tunnel deploy
 
 help: ## показать команды
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
@@ -50,6 +50,9 @@ logs: ## логи всех сервисов
 
 ingest: ## загрузить data/demo в базу знаний (бэкенд должен работать)
 	bash scripts/ingest.sh data/demo
+
+seed: ## загрузить 40 демо-анкет волонтёров в пустую базу (бэкенд должен работать)
+	uv run python scripts/seed.py
 
 test: ## тесты (провайдер fake, без сети)
 	uv run pytest
