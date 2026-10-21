@@ -57,6 +57,19 @@ def test_seed_through_api(client):
     assert ids == list(range(1, 41))  # номер анкеты в файле = id на пустой базе
 
 
+def test_benchmark_hit_at_3_without_llm(client):
+    """Поиск на fake (тот же, что при недоступной LLM) находит эталонных людей. Цифры — docs/METRICS.md."""
+    for v in load("volunteers.json"):
+        client.post("/volunteers", json=v)
+    hits = 0
+    for q in load("search_benchmark.json")["queries"]:
+        candidates = client.post("/search", json={"query": q["query"]}).json()["candidates"]
+        top = {c["volunteer"]["id"] for c in candidates[:3]}
+        hits += bool(top & set(q["expected"]))
+        assert not any(c["ai"] for c in candidates)
+    assert hits >= 9
+
+
 def test_demo_opportunities_valid_and_seed_through_api(client):
     items = [OpportunityIn.model_validate(o) for o in load("opportunities.json")]
     assert 6 <= len(items) <= 8

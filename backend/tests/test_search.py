@@ -51,6 +51,8 @@ PEOPLE = {
 class SearchProvider(FakeProvider):
     """Отвечает на разбор запроса заданным ParsedQuery, на переранжирование — по id из промпта."""
 
+    name = "test"  # не fake: с заглушкой fake поиск в LLM не ходит
+
     def __init__(self):
         self.parsed: dict | None = None
         self.rerank_ids: list[int] | None = None  # None — оценить всех из промпта

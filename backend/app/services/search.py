@@ -6,6 +6,8 @@
 3. Векторы: TOP_K ближайших по смыслу среди отфильтрованных.
 4. LLM одним вызовом ставит оценку 0–100 и пишет причину.
    Не вышло — фолбэк: сходство × 70 + доля совпавших навыков × 30, ai=False.
+На заглушке fake шаги 1 и 4 пропускаем: она не понимает текст, и её «разбор» отсекал бы
+нужных людей случайными фильтрами. Поиск на fake — тот же фолбэк (hit@3 10/10, docs/METRICS.md).
 В LLM уходят только текст запроса и обезличенные анкеты с id. Имена подставляем после.
 """
 
@@ -153,7 +155,7 @@ def parse_query(
         else ParsedQuery(skills=[], availability=[], kind="any", notes="")
     )
     parsed = from_role
-    if query.strip():
+    if query.strip() and llm_understands():
         try:
             parsed = get_llm().chat_json(
                 load_prompt("search_query", request=request_text(query, role, opportunity)),
@@ -171,6 +173,10 @@ def parse_query(
             }
         )
     return parsed
+
+
+def llm_understands() -> bool:
+    return get_llm().provider.name != "fake"
 
 
 def passes_filter(
@@ -215,7 +221,7 @@ def query_words(query: str) -> list[str]:
 
 def rerank(request: str, parsed: ParsedQuery, documents: dict[int, str]) -> dict[int, RerankItem]:
     """Оценки LLM по id. Пустой словарь — LLM недоступна или вернула чужие id (тогда фолбэк)."""
-    if not documents:
+    if not documents or not llm_understands():
         return {}
     wanted = [
         ("Навыки", ", ".join(parsed.skills)),
