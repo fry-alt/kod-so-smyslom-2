@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Answers, Availability, Format, Occupation, Region, Regularity, Role, Volunteer } from "../../api";
 import { backend, setVolunteerId } from "../../backend";
 import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY } from "../../labels";
+import { FUND_DOCS } from "../../Footer";
 import { navigate } from "../../router";
 import { tg, tgUser } from "../../telegram";
 import { Badge, Button, Card, Chips, ErrorBox, errorText, Field, inputClass } from "../../ui";
@@ -240,7 +241,11 @@ export default function Form() {
             className="mt-1 size-6 shrink-0 accent-[var(--color-accent)]"
           />
           <span>
-            Согласен(на) на обработку персональных данных фондом «Дети Марии». Имя и контакт видит только координатор
+            Согласен(на) на{" "}
+            <a href={FUND_DOCS.privacy} target="_blank" rel="noreferrer" className="text-link underline underline-offset-4">
+              обработку персональных данных
+            </a>{" "}
+            фондом «Дети Марии». Имя и контакт видит только координатор
             фонда, в AI-сервисы они не передаются.
           </span>
         </label>
