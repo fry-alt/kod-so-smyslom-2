@@ -4,12 +4,15 @@
 #
 # Repo variables:  DEPLOY_HOST — IP сервера (без него деплой пропускается)
 #                  DOMAIN      — свой домен (необязательно; по умолчанию deti.<ip>.sslip.io)
+#                  LLM_PROVIDER — fake (по умолчанию) | yandex | gigachat | openai_compatible | anthropic
+#                  LLM_MODEL, LLM_BASE_URL, YANDEX_MODEL, GIGACHAT_MODEL — необязательно, как в .env.example
 # Окружение production (Settings → Environments, только ветка main):
 #   SSH_KEY          — приватный ключ пользователя deploy на сервере
 #   SSH_KNOWN_HOSTS  — отпечаток сервера
-#   APP_ENV          — строки .env для прода: LLM_PROVIDER, ключи LLM, TELEGRAM_BOT_TOKEN и т.п.
-#                      (необязательно; без него всё работает на LLM_PROVIDER=fake)
-#                      Задать: gh secret set APP_ENV --env production < prod.env
+# Секреты репозитория (Settings → Secrets → Actions), каждый отдельно, все необязательные:
+#   TELEGRAM_BOT_TOKEN, YANDEX_API_KEY, YANDEX_FOLDER_ID, GIGACHAT_CREDENTIALS, GPT2GIGA_API_KEY,
+#   LLM_API_KEY, ANTHROPIC_API_KEY.  Задать: gh secret set TELEGRAM_BOT_TOKEN  (значение спросит сам)
+# Пустые секреты и переменные в .env не попадают.
 name: Deploy
 
 on:
@@ -50,18 +53,36 @@ jobs:
       - name: Конфиг сервера
         env:
           DOMAIN: ${{ vars.DOMAIN }}
-          APP_ENV: ${{ secrets.APP_ENV }}
+          # настройки — переменные репозитория
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          YANDEX_MODEL: ${{ vars.YANDEX_MODEL }}
+          GIGACHAT_MODEL: ${{ vars.GIGACHAT_MODEL }}
+          # ключи — секреты репозитория
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
+          YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
+          GIGACHAT_CREDENTIALS: ${{ secrets.GIGACHAT_CREDENTIALS }}
+          GPT2GIGA_API_KEY: ${{ secrets.GPT2GIGA_API_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           umask 077
           domain="${DOMAIN:-deti.${HOST//./-}.sslip.io}"
           echo "DOMAIN=$domain" >> "$GITHUB_ENV"
-          # Сначала значения по умолчанию, потом APP_ENV — он их перекрывает.
           {
-            echo "LLM_PROVIDER=fake"
+            echo "LLM_PROVIDER=${LLM_PROVIDER:-fake}"
             echo "WEBAPP_URL=https://$domain"
             echo "CORS_ORIGINS=https://$domain"
-            printf '%s\n' "$APP_ENV"
+            for name in LLM_MODEL LLM_BASE_URL YANDEX_MODEL GIGACHAT_MODEL \
+                        TELEGRAM_BOT_TOKEN YANDEX_API_KEY YANDEX_FOLDER_ID GIGACHAT_CREDENTIALS \
+                        GPT2GIGA_API_KEY LLM_API_KEY ANTHROPIC_API_KEY; do
+              if [ -n "${!name}" ]; then printf '%s=%s\n' "$name" "${!name}"; fi
+            done
           } > deploy/.env
+          # имена (не значения!) — чтобы в логе было видно, что подхватилось
+          echo "В .env на сервере: $(cut -d= -f1 deploy/.env | tr '\n' ' ')"
           sed "s/__DOMAIN__/$domain/" deploy/deti.caddy > deploy/deti.caddy.out
 
       - name: Сборка на сервере
