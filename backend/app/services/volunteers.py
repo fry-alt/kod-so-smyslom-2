@@ -24,7 +24,7 @@ from app.schemas import (
     VolunteerUpdate,
 )
 from app.schemas import Note as NoteOut
-from app.services import volunteer_index
+from app.services import notify, volunteer_index
 from app.services.roles import load_roles
 
 log = logging.getLogger(__name__)
@@ -152,13 +152,15 @@ def list_all(session: Session, status: VolunteerStatus | None = None) -> list[Vo
 
 
 def update(session: Session, volunteer: Volunteer, data: VolunteerUpdate) -> Volunteer:
-    """Меняет только переданные поля."""
+    """Меняет только переданные поля. Допустили — пишем волонтёру в Telegram."""
+    old_status = volunteer.status
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(volunteer, field, value)
     session.add(volunteer)
     session.commit()
     session.refresh(volunteer)
     volunteer_index.update_metadata(volunteer.id, index_metadata(volunteer))
+    notify.status_changed(volunteer, old_status)
     return volunteer
 
 

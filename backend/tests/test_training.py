@@ -193,3 +193,11 @@ def test_repo_quiz_files_are_valid(monkeypatch):
     for path in files:
         assert path.name.removesuffix(".quiz.json") in module_ids, path.name
         GeneratedQuiz.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def test_trained_volunteer_gets_telegram_message(client, llm, telegram):
+    volunteer_id = client.post("/volunteers", json={**FORM, "telegram_id": 800800}).json()["id"]
+    submit(client, volunteer_id, "01-about", CORRECT)
+    assert telegram == []  # new → training — не пишем
+    assert submit(client, volunteer_id, "02-safety", CORRECT)["status"] == "trained"
+    assert [(m["chat_id"], "обучение" in m["text"]) for m in telegram] == [(800800, True)]

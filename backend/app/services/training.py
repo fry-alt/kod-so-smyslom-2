@@ -26,7 +26,7 @@ from app.llm.prompts import load_prompt
 from app.llm.providers import LLMError
 from app.models import QuizAttempt, QuizCache, Volunteer
 from app.schemas import Quiz, QuizQuestion, QuizResult, TrainingModule
-from app.services import volunteer_index, volunteers
+from app.services import notify, volunteer_index, volunteers
 
 log = logging.getLogger(__name__)
 
@@ -152,6 +152,7 @@ def update_status(session: Session, volunteer: Volunteer) -> None:
     session.commit()
     session.refresh(volunteer)
     volunteer_index.update_metadata(volunteer.id, volunteers.index_metadata(volunteer))
+    notify.status_changed(volunteer, old)
 
 
 def passed_modules(session: Session, volunteer_id: int) -> set[str]:
