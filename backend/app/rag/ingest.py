@@ -3,7 +3,7 @@
 Поддерживаются PDF, DOCX, XLSX, CSV, TXT, MD.
 
 CLI (бэкенд при этом должен быть остановлен — Chroma не любит два процесса):
-    uv run python -m app.rag.ingest data/demo
+    uv run python -m app.rag.ingest data/demo data/training
 Когда бэкенд запущен, загружайте через API: make ingest
 """
 
@@ -52,8 +52,13 @@ def read_text(path: Path) -> str:
             raw = path.read_text(encoding="utf-8-sig", errors="replace")
             dialect = csv.Sniffer().sniff(raw[:2000], delimiters=",;\t")
             return rows_to_text(list(csv.reader(raw.splitlines(), dialect)))
-        case ".txt" | ".md":
+        case ".txt":
             return path.read_text(encoding="utf-8", errors="replace")
+        case ".md":
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if text.startswith("---\n"):  # шапка учебного модуля (title, required) — не текст
+                text = text.removeprefix("---\n").partition("\n---\n")[2]
+            return text
     raise ValueError(f"Формат {path.suffix} не поддерживается. Можно: {sorted(SUPPORTED_SUFFIXES)}")
 
 

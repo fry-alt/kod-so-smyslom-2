@@ -47,8 +47,8 @@ down: ## остановить Docker
 logs: ## логи всех сервисов
 	$(COMPOSE) logs -f --tail=100
 
-ingest: ## загрузить data/demo в базу знаний (бэкенд должен работать)
-	bash scripts/ingest.sh data/demo
+ingest: ## загрузить документы фонда и учебные тексты в базу знаний (бэкенд должен работать)
+	bash scripts/ingest.sh data/demo data/training
 
 seed: ## загрузить 40 демо-анкет волонтёров в пустую базу (бэкенд должен работать)
 	uv run python scripts/seed.py

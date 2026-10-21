@@ -1,15 +1,21 @@
 """Ответ на вопрос по документам с цитатами. Если в данных ответа нет — честное «не знаю»."""
 
+import logging
+
 from pydantic import BaseModel, Field
 
 from app.llm.client import get_llm
 from app.llm.prompts import load_prompt
+from app.llm.providers import LLMError
 from app.rag.retrieve import retrieve
 from app.schemas import AskResponse
 
-NOT_FOUND = (
-    "В загруженных документах нет ответа на этот вопрос. "
-    "Попробуйте переформулировать или обратитесь к сотруднику организации."
+log = logging.getLogger(__name__)
+
+NOT_FOUND = "Не знаю: в документах фонда этого нет. Спросите координатора."
+LLM_FAILED = (
+    "Не получилось составить ответ. Ниже — подходящие места из документов фонда. "
+    "Если там нет ответа, спросите координатора."
 )
 
 
@@ -25,13 +31,18 @@ def answer_question(question: str, top_k: int | None = None) -> AskResponse:
         return AskResponse(answer=NOT_FOUND, found=False, sources=[])
 
     context = "\n\n".join(f"[{i}] источник: {c.source}\n{c.text}" for i, c in enumerate(chunks, 1))
-    result = get_llm().chat_json(
-        load_prompt("rag_answer", context=context, question=question),
-        RagAnswer,
-        system=load_prompt("system"),
-    )
+    try:
+        result = get_llm().chat_json(
+            load_prompt("rag_answer", context=context, question=question),
+            RagAnswer,
+            system=load_prompt("system"),
+        )
+    except LLMError as e:
+        # модель недоступна — отдаём найденные фрагменты, пусть человек прочитает сам
+        log.warning("RAG: LLM не ответила, показываем фрагменты. %s", e)
+        return AskResponse(answer=LLM_FAILED, found=False, sources=chunks[:2])
     if not result.found:
-        return AskResponse(answer=result.answer or NOT_FOUND, found=False, sources=[])
+        return AskResponse(answer=NOT_FOUND, found=False, sources=[])
 
     cited = [chunks[i - 1] for i in result.sources if 1 <= i <= len(chunks)]
     # модель ответила, но номера не указала — показываем самый релевантный фрагмент

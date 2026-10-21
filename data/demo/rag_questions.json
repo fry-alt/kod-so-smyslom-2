@@ -1,0 +1,45 @@
+{
+  "about": "10 типовых вопросов нового волонтёра для «Спроси о фонде» (T-18). expected — файлы, где есть ответ (достаточно одного из них в sources); пустой список — ответа в документах нет, правильный ответ — «не знаю». Прогон: uv run python scripts/rag_check.py",
+  "questions": [
+    {
+      "question": "Как стать волонтёром фонда?",
+      "expected": ["volunteer_rules.md", "01-about.md"]
+    },
+    {
+      "question": "В каких регионах работает фонд?",
+      "expected": ["about_fund.md", "01-about.md"]
+    },
+    {
+      "question": "Нужна ли справка о несудимости?",
+      "expected": ["volunteer_rules.md"]
+    },
+    {
+      "question": "Можно ли помогать фонду онлайн, из дома?",
+      "expected": ["faq.md"]
+    },
+    {
+      "question": "Как записаться на мастерскую или мероприятие?",
+      "expected": ["faq.md", "events.csv"]
+    },
+    {
+      "question": "Я заболел и не смогу прийти на занятие. Что делать?",
+      "expected": ["volunteer_rules.md", "03-safety.md"]
+    },
+    {
+      "question": "Когда мне начислят волонтёрские часы?",
+      "expected": ["faq.md"]
+    },
+    {
+      "question": "За сколько минут до начала приходить на мастерскую?",
+      "expected": ["workshop_guide.docx", "03-safety.md"]
+    },
+    {
+      "question": "Компенсирует ли фонд поездку на такси до мастерской?",
+      "expected": []
+    },
+    {
+      "question": "Можно ли прийти на занятие со своей собакой?",
+      "expected": []
+    }
+  ]
+}
