@@ -105,21 +105,26 @@ export default function App() {
 }
 
 function VolunteerLayout(props: { path: string; children: ReactNode }) {
-  // лендинг, вход, кабинет, занятия, собеседование, анкета и «Спросить о фонде» — широкие (колонки на компьютере), остальные — узкие, как в телефоне
-  const wide = ["/", "/login", "/me", "/opportunities", "/form", "/interview", "/ask"].includes(props.path);
+  // лендинг, вход, кабинет, занятия, собеседование, анкета, сообщения и «Спросить о фонде» — широкие (колонки на компьютере),
+  // остальные — узкие, как в телефоне
+  const wide = ["/", "/login", "/me", "/opportunities", "/form", "/interview", "/messages", "/ask"].includes(props.path);
   // анкета — на весь экран и без подвала: ничего не отвлекает от заполнения
   const focus = props.path === "/form";
   const auth = props.path === "/login" || needsAccount() && ["/me", "/form", "/interview", "/messages"].includes(props.path);
+  // сообщения — как мессенджер: ровно на высоту экрана, прокручиваются только чаты внутри, подвала нет
+  const chat = props.path === "/messages" && !auth;
   return (
-    <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : wide ? "pb-24" : "pb-10"}`}>
+    <div
+      className={`mx-auto flex flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : chat ? "pb-4 md:pb-6" : wide ? "pb-24" : "pb-10"}`}
+    >
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Logo />
         {!auth && <AccountNav path={props.path} />}
       </header>
       <MockBanner />
-      <main className={focus ? "flex flex-1 flex-col" : undefined}>{props.children}</main>
+      <main className={focus ? "flex flex-1 flex-col" : chat ? "flex min-h-0 flex-1 flex-col" : undefined}>{props.children}</main>
       {/* на странице входа подвала нет — ничего не отвлекает от формы */}
-      {!auth && !focus && <Footer />}
+      {!auth && !focus && !chat && <Footer />}
     </div>
   );
 }

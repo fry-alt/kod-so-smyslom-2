@@ -1,16 +1,17 @@
-// Переписка фонда с волонтёром (T-100) — одна и та же для волонтёра («Сообщения» в кабинете)
-// и для координатора (/admin/messages). Упрощённый чат из Yapp: новые сообщения сайт спрашивает
-// раз в несколько секунд, без WebSocket. Enter — отправить, Shift+Enter — новая строка.
+// Переписка фонда с волонтёром (T-100) глазами координатора (/admin/messages). У волонтёра та же переписка
+// разложена по чатам — screens/volunteer/Messages.tsx, оттуда же берёт пузырь сообщения и время.
+// Упрощённый чат из Yapp: новые сообщения сайт спрашивает раз в несколько секунд, без WebSocket.
+// Enter — отправить, Shift+Enter — новая строка.
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import type { Dialog, Message, Sender } from "../api";
 import { backend } from "../backend";
 import { Button, ErrorBox, errorText, inputClass, Loading } from "../ui";
 
-const POLL_MS = 5000;
-const MAX_LENGTH = 1000;
+export const POLL_MS = 5000;
+export const MAX_LENGTH = 1000;
 /** Событие «переписку прочитали» — значки непрочитанных в меню обновляются сразу, не дожидаясь опроса. */
-const READ_EVENT = "messages-read";
+export const READ_EVENT = "messages-read";
 
 /** Сообщение «о занятии …»: волонтёр нажал «Написать координатору» на карточке занятия (или координатор — у участника). */
 export type About = { id: number; title: string };
@@ -26,7 +27,9 @@ export default function Thread(props: {
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [error, setError] = useState("");
   const [text, setText] = useState("");
-  const [about, setAbout] = useState<About | null>(props.about ?? null);
+  // о каком занятии ответ: undefined — как в последнем сообщении (у волонтёра ответ попадёт в тот же чат),
+  // null — координатор убрал тему крестиком
+  const [topic, setTopic] = useState<About | null | undefined>(props.about ?? undefined);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
@@ -56,7 +59,11 @@ export default function Thread(props: {
     return () => clearInterval(timer);
   }, [volunteerId, reader]);
 
-  useEffect(() => setAbout(props.about ?? null), [props.about?.id]);
+  useEffect(() => setTopic(props.about ?? undefined), [props.about?.id]);
+
+  const last = dialog?.messages.at(-1);
+  const about =
+    topic !== undefined ? topic : last?.opportunity_id ? { id: last.opportunity_id, title: last.opportunity_title ?? "…" } : null;
 
   // новое сообщение — прокручиваем вниз
   const count = dialog?.messages.length ?? 0;
@@ -74,7 +81,7 @@ export default function Thread(props: {
       const m = await backend.sendMessage(volunteerId, { sender: reader, text, opportunity_id: about?.id ?? null });
       setDialog((d) => d && { ...d, messages: [...d.messages, m] });
       setText("");
-      setAbout(null);
+      setTopic(undefined);
       onChange.current?.();
     } catch (err) {
       setSendError(`Не отправилось: ${errorText(err)}`);
@@ -132,7 +139,7 @@ export default function Thread(props: {
             О занятии «{about.title}»
             <button
               type="button"
-              onClick={() => setAbout(null)}
+              onClick={() => setTopic(null)}
               aria-label="Не привязывать сообщение к занятию"
               className="flex size-8 items-center justify-center rounded-full hover:bg-page"
             >
@@ -165,17 +172,19 @@ export default function Thread(props: {
   );
 }
 
-function Bubble(props: { m: Message; mine: boolean; name: string; showName: boolean; read: boolean }) {
+/** Пузырь сообщения. inChat — в чате одного занятия у волонтёра: подпись «О занятии …» не нужна,
+ *  а день написан над сообщениями, поэтому под пузырём — только время. */
+export function Bubble(props: { m: Message; mine: boolean; name: string; showName: boolean; read: boolean; inChat?: boolean }) {
   const { m, mine } = props;
   return (
-    <div className={`flex max-w-[85%] flex-col gap-1 ${mine ? "items-end self-end" : "items-start self-start"}`}>
+    <div className={`bubble-in flex max-w-[85%] flex-col gap-1 ${mine ? "items-end self-end" : "items-start self-start"}`}>
       {props.showName && <span className="px-2 text-sm font-semibold text-hint">{props.name}</span>}
       <div
         className={`rounded-3xl px-4 py-2.5 text-lg leading-snug break-words whitespace-pre-wrap ${
-          mine ? "rounded-br-lg bg-accent text-accent-text" : "rounded-bl-lg bg-page"
+          mine ? "rounded-br-lg bg-accent text-accent-text" : "rounded-bl-lg bg-page shadow-sm"
         }`}
       >
-        {m.opportunity_title && (
+        {m.opportunity_title && !props.inChat && (
           <span className={`mb-1 block text-sm font-semibold ${mine ? "text-accent-text/85" : "text-hint"}`}>
             О занятии «{m.opportunity_title}»
           </span>
@@ -183,7 +192,7 @@ function Bubble(props: { m: Message; mine: boolean; name: string; showName: bool
         {m.text}
       </div>
       <span className="px-2 text-sm text-hint">
-        {when(m.created_at)}
+        {props.inChat ? timeOf(m.created_at) : when(m.created_at)}
         {props.read && " · ✓ прочитано"}
       </span>
     </div>
@@ -191,12 +200,18 @@ function Bubble(props: { m: Message; mine: boolean; name: string; showName: bool
 }
 
 /** «18:05» — сегодня, «21 окт., 18:05» — раньше. */
-function when(iso: string): string {
+export function when(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const time = d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
+  const time = timeOf(iso);
   if (d.toDateString() === new Date().toDateString()) return time;
   return `${d.toLocaleDateString("ru", { day: "numeric", month: "short" })}, ${time}`;
+}
+
+/** «18:05». */
+export function timeOf(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" });
 }
 
 /** Сколько новых сообщений: у волонтёра — от координатора, у фонда — во всех переписках. Для значков в меню. */
