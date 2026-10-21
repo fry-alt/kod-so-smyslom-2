@@ -42,9 +42,11 @@ flowchart LR
 | `backend/app/services/training.py` | модули обучения из `data/training/*.md`, генерация и проверка теста | A |
 | `backend/app/services/opportunities.py` | каталог возможностей, отклики и приглашения, участие и часы | A |
 | `backend/app/services/interviews.py` | видеособеседование: назначение, ссылка в Telegram, логины TURN | A |
+| `backend/app/services/chat.py`, `api/messages.py` | переписка фонда с волонтёром (упрощённый чат из Yapp) | A |
 | `backend/app/api/volunteers.py`, `search.py`, `training.py`, `roles.py`, `opportunities.py` | HTTP-обёртки, без логики | A |
 | `backend/app/api/calls.py` | сигнальный WebSocket звонка (перенесён из Yapp) | A |
 | `miniapp/src/call/` | страница звонка `/call/<token>` и WebRTC-комната | A |
+| `miniapp/src/messages/Thread.tsx` | переписка — общая для «Сообщений» волонтёра и `/admin/messages` | A |
 | `backend/app/llm/prompts/` | `profile.md`, `search_query.md`, `rerank.md`, `quiz.md` | A |
 | `data/roles.json`, `data/training/`, `data/demo/volunteers.json` | роли фонда, учебные тексты, 40 вымышленных анкет | A |
 | `miniapp/src/` | экраны волонтёра и `/admin`, клиент `api.ts` | B |
@@ -127,6 +129,23 @@ sequenceDiagram
 - В комнате два места — координатор и волонтёр; повторный вход того же участника вытесняет старое подключение.
 - TURN — coturn Yapp на том же сервере (`TURN_URLS`, `TURN_SECRET`); без него только STUN.
 
+## Сообщения: переписка фонда с волонтёром
+
+Как на hh.ru: координатор видит отклик или кандидата и пишет ему, волонтёр отвечает из личного кабинета.
+Упрощено из Yapp (`server/messages.js`): одна переписка на волонтёра, со стороны фонда пишет любой координатор.
+
+```
+/admin: «Написать» в карточке волонтёра, у участника занятия, у отклика в «Сводке» → /admin/messages/<id>
+волонтёр: «Сообщения» в /me, «Написать координатору» на карточке занятия → /messages
+  GET  /dialogs                                  — переписки фонда, свежие сверху, unread от волонтёров
+  GET  /volunteers/{id}/dialog?reader=…          — сообщения; unread и «прочитано» глазами reader
+  POST /volunteers/{id}/dialog/messages          — {sender, text, opportunity_id?} — «о занятии …»
+  POST /volunteers/{id}/dialog/read              — {reader} → сколько непрочитанных осталось
+```
+- Новые сообщения сайт спрашивает раз в 5 секунд, пока переписка открыта (значки в меню — раз в 20 секунд).
+- Координатор написал — волонтёру с Telegram уходит уведомление **без текста**, одно на «пачку» непрочитанных.
+- Права, как и во всём API кабинета, не проверяются: `/admin` сайт показывает только координатору.
+
 ## Статусы волонтёра
 
 ```
@@ -142,6 +161,7 @@ new (анкета) → training (начал обучение) → trained (те�
 | Имя, контакт, `telegram_id` | SQLite | **нет** |
 | Ответы анкеты, время, род занятий | SQLite | да (фонд разрешил, обезличено) |
 | Заметки координатора | SQLite | **нет** (могут содержать истории о подопечных) |
+| Переписка фонда с волонтёром | SQLite | **нет** (в Telegram — только «вам написали», без текста) |
 
 ## Почему этот стек (фонд просит обосновать)
 

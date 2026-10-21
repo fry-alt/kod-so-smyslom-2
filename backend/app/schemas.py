@@ -558,3 +558,53 @@ class Look(BaseModel):
     nickname: str = Field(
         default="", max_length=40, description="как обращаться; пусто — имя из анкеты"
     )
+
+
+# ---------- Переписка фонда с волонтёром (T-100) ----------
+# Текст сообщений в LLM и в индекс не уходит.
+
+Sender = Literal["coordinator", "volunteer"]
+
+
+class MessageIn(BaseModel):
+    """POST /volunteers/{id}/dialog/messages — написать в переписку."""
+
+    sender: Sender
+    text: str = Field(min_length=1, max_length=1000)
+    opportunity_id: int | None = None  # «о занятии …» — если пишут с карточки занятия
+
+
+class Message(BaseModel):
+    id: int
+    sender: Sender
+    text: str
+    opportunity_id: int | None = None
+    opportunity_title: str | None = None
+    created_at: datetime
+
+
+class DialogOut(BaseModel):
+    """Переписка глазами того, кто смотрит (reader в запросе)."""
+
+    volunteer: VolunteerRef
+    messages: list[Message]  # старые сверху, не больше 200 последних
+    unread: int  # сколько новых от собеседника
+    their_read_id: int  # до какого сообщения дочитал собеседник — для отметки «прочитано»
+
+
+class DialogSummary(BaseModel):
+    """Строка списка переписок у координатора."""
+
+    volunteer: VolunteerRef
+    last: Message | None
+    unread: int  # новых от волонтёра
+
+
+class ReadIn(BaseModel):
+    """POST /volunteers/{id}/dialog/read — отметить переписку прочитанной."""
+
+    reader: Sender
+
+
+class UnreadOut(BaseModel):
+    unread: int  # сколько непрочитанных осталось: у волонтёра — в его переписке, у фонда — во всех
