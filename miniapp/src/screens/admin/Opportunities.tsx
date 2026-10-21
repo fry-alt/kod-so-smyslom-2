@@ -1,6 +1,6 @@
 import { backend } from "../../backend";
 import { FORMAT } from "../../labels";
-import { Card, Empty, ErrorBox, Loading, Todo, useLoad } from "../../ui";
+import { Card, Empty, ErrorBox, Link, Loading, Todo, useLoad } from "../../ui";
 
 export default function AdminOpportunities() {
   const { data, error, loading, reload } = useLoad(() => backend.opportunities());
@@ -19,6 +19,7 @@ export default function AdminOpportunities() {
               {new Date(o.starts_at).toLocaleDateString("ru", { day: "numeric", month: "long" })} ·{" "}
               {FORMAT[o.format]} · занято {o.taken} из {o.slots}
             </p>
+            <Link to={`/admin?opportunity=${o.id}`}>Подобрать волонтёров →</Link>
           </Card>
         ))}
       </div>
