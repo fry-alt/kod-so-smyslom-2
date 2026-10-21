@@ -7,7 +7,17 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import case, chat, documents, health, roles, search, telegram_auth, volunteers
+from app.api import (
+    case,
+    chat,
+    documents,
+    health,
+    roles,
+    search,
+    telegram_auth,
+    training,
+    volunteers,
+)
 from app.config import get_settings
 from app.db import init_db
 from app.llm.providers import LLMError
@@ -41,5 +51,5 @@ async def llm_error_handler(_: Request, exc: LLMError) -> JSONResponse:
     return JSONResponse(status_code=502, content={"detail": str(exc)})
 
 
-for module in (health, chat, documents, telegram_auth, case, volunteers, roles, search):
+for module in (health, chat, documents, telegram_auth, case, volunteers, roles, search, training):
     app.include_router(module.router)
