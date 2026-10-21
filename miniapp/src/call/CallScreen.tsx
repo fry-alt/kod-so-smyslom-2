@@ -1,32 +1,62 @@
 // Видеособеседование: /call/<token> — волонтёр, /call/<token>?as=coordinator — координатор.
 // Сначала «прихожая»: проверить камеру и микрофон, потом «Войти в звонок».
-import { useEffect, useRef, useState } from "react";
+// Оформление (видео, кнопки, индикатор микрофона, раскладка) — в parts.tsx, WebRTC — в room.ts.
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { CallInfo, CallRole } from "../api";
 import { backend, USE_MOCK } from "../backend";
 import { useSearchParam } from "../router";
 import { initData, tg } from "../telegram";
-import { Button, ErrorBox, Link, Loading, formatWhen, useLoad } from "../ui";
+import { Button, Link, Loading, formatWhen, useLoad } from "../ui";
 import { getLocalMedia, Room, type CallStatus, type PeerState } from "./room";
+import {
+  CallMessage,
+  CallPage,
+  Controls,
+  CtaButton,
+  Icon,
+  MicLevel,
+  PanelLayout,
+  Video,
+  VideoPlaceholder,
+} from "./parts";
 
+/** Собеседник в родительном падеже: «Ждём координатора…» */
 const OTHER: Record<CallRole, string> = { coordinator: "волонтёра", volunteer: "координатора" };
+/** …и в творительном: «Соединяемся с координатором…» */
+const WITH_OTHER: Record<CallRole, string> = { coordinator: "волонтёром", volunteer: "координатором" };
+/** Куда уйти со страницы звонка. */
+const HOME: Record<CallRole, { to: string; text: string }> = {
+  coordinator: { to: "/admin", text: "В кабинет фонда" },
+  volunteer: { to: "/", text: "На главную" },
+};
 
-export default function CallScreen(props: { token: string }) {
+/**
+ * sidePanel — боковая панель координатора (T-69: «План / Итог»). Показывается только с ?as=coordinator:
+ * на ноутбуке справа, на телефоне под звонком.
+ */
+export default function CallScreen(props: { token: string; sidePanel?: ReactNode }) {
   const role: CallRole = useSearchParam("as") === "coordinator" ? "coordinator" : "volunteer";
   const info = useLoad(() => backend.callInfo(props.token), [props.token]);
+  const sidePanel = role === "coordinator" ? props.sidePanel : undefined;
 
+  if (info.data) return <Call token={props.token} role={role} info={info.data} sidePanel={sidePanel} />;
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-5 px-4 pt-4 pb-10">
-      <header className="font-bold">🧡 Дети Марии · видеособеседование</header>
-      {info.loading && <Loading />}
-      {info.error && <ErrorBox text={info.error} onRetry={info.reload} />}
-      {info.data && <Call token={props.token} role={role} info={info.data} />}
-    </div>
+    <CallPage sidePanel={sidePanel}>
+      {info.loading && <Loading text="Открываем звонок…" />}
+      {/* неверная ссылка — текст с бэкенда: «Ссылка на звонок недействительна…» */}
+      {info.error && (
+        <CallMessage title="Не получается открыть звонок" text={info.error} tone="error">
+          <Button onClick={info.reload}>Попробовать ещё раз</Button>
+          <HomeLink role={role} />
+        </CallMessage>
+      )}
+    </CallPage>
   );
 }
 
-function Call(props: { token: string; role: CallRole; info: CallInfo }) {
-  const { info, role } = props;
+function Call(props: { token: string; role: CallRole; info: CallInfo; sidePanel?: ReactNode }) {
+  const { info, role, sidePanel } = props;
   const [local, setLocal] = useState<MediaStream | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [mediaReady, setMediaReady] = useState(false);
@@ -34,12 +64,16 @@ function Call(props: { token: string; role: CallRole; info: CallInfo }) {
   const [cam, setCam] = useState(true);
   const [joined, setJoined] = useState(false);
   const [ended, setEnded] = useState(false);
+  const [attempt, setAttempt] = useState(0); // «Попробовать ещё раз» — снова спросить камеру
+  const [round, setRound] = useState(0); // «Переподключиться» — заново войти в комнату
 
-  // камера включается сразу в «прихожей» — человек видит себя и понимает, что всё работает
+  // камера включается сразу в «прихожей» — человек видит себя и понимает, что всё работает;
+  // при уходе со страницы камера и микрофон выключаются
   useEffect(() => {
     if (info.status !== "scheduled") return;
     let stream: MediaStream | null = null;
     let cancelled = false;
+    setMediaReady(false);
     getLocalMedia().then((r) => {
       stream = r.stream;
       if (cancelled) return stream?.getTracks().forEach((t) => t.stop());
@@ -53,15 +87,64 @@ function Call(props: { token: string; role: CallRole; info: CallInfo }) {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [info.status]);
+  }, [info.status, attempt]);
 
-  if (info.status === "canceled") return <Notice>Это собеседование отменено. Координатор свяжется с вами.</Notice>;
-  if (info.status === "done") return <Notice>Это собеседование уже прошло. Спасибо!</Notice>;
-  if (ended) return <Ended role={role} />;
+  const page = (children: ReactNode) => <CallPage sidePanel={sidePanel}>{children}</CallPage>;
+
+  if (info.status === "canceled")
+    return page(
+      <CallMessage
+        title="Собеседование отменено"
+        text={
+          role === "volunteer"
+            ? "Координатор свяжется с вами и предложит другое время."
+            : "Назначьте новое время в карточке волонтёра."
+        }
+      >
+        <HomeLink role={role} />
+      </CallMessage>,
+    );
+  if (info.status === "done")
+    return page(
+      <CallMessage title="Это собеседование уже прошло" text={role === "volunteer" ? "Спасибо!" : undefined}>
+        <HomeLink role={role} />
+      </CallMessage>,
+    );
+
+  if (ended)
+    return page(
+      <CallMessage
+        title="Звонок завершён"
+        text={
+          role === "volunteer"
+            ? "Спасибо, что пришли на собеседование! Координатор напишет вам о следующих шагах."
+            : "Не забудьте отметить собеседование в карточке волонтёра и оставить заметку."
+        }
+      >
+        {role === "volunteer" ? (
+          <Link to="/me" className={LINK_BUTTON}>
+            Мой статус
+          </Link>
+        ) : (
+          <HomeLink role={role} />
+        )}
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setEnded(false);
+            setJoined(false);
+            setAttempt((a) => a + 1);
+          }}
+        >
+          Вернуться в звонок
+        </Button>
+      </CallMessage>,
+    );
 
   if (joined)
     return (
       <InCall
+        key={round}
         token={props.token}
         role={role}
         info={info}
@@ -71,33 +154,143 @@ function Call(props: { token: string; role: CallRole; info: CallInfo }) {
         setMic={setMic}
         setCam={setCam}
         onEnd={() => setEnded(true)}
+        onRejoin={() => setRound((r) => r + 1)}
+        sidePanel={sidePanel}
       />
     );
 
+  return page(
+    <Lobby
+      role={role}
+      info={info}
+      local={local}
+      mediaReady={mediaReady}
+      mediaError={mediaError}
+      mic={mic}
+      cam={cam}
+      setMic={setMic}
+      setCam={setCam}
+      onRetryMedia={() => setAttempt((a) => a + 1)}
+      onJoin={() => setJoined(true)}
+    />,
+  );
+}
+
+const LINK_BUTTON =
+  "inline-flex min-h-12 items-center justify-center rounded-full border-2 border-line bg-page px-6 py-3 font-semibold text-ink hover:border-accent";
+
+function HomeLink(props: { role: CallRole }) {
+  const home = HOME[props.role];
+  return (
+    <Link to={home.to} className={LINK_BUTTON}>
+      {home.text}
+    </Link>
+  );
+}
+
+/** «Прихожая»: своё видео, индикатор микрофона, «Войти в звонок». */
+function Lobby(props: {
+  role: CallRole;
+  info: CallInfo;
+  local: MediaStream | null;
+  mediaReady: boolean;
+  mediaError: string | null;
+  mic: boolean;
+  cam: boolean;
+  setMic: (on: boolean) => void;
+  setCam: (on: boolean) => void;
+  onRetryMedia: () => void;
+  onJoin: () => void;
+}) {
+  const { local, role } = props;
+  const hasAudio = !!local?.getAudioTracks().length;
+  const hasVideo = !!local?.getVideoTracks().length;
   const toggle = (kind: "audio" | "video", on: boolean) =>
     local?.getTracks().filter((t) => t.kind === kind).forEach((t) => (t.enabled = on));
 
+  const join = !props.mediaReady
+    ? "Включаем камеру…"
+    : hasVideo
+      ? "Войти в звонок"
+      : hasAudio
+        ? "Войти только со звуком"
+        : "Войти без камеры и микрофона";
+
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-3xl font-bold">Собеседование {formatWhen(info.starts_at)}</h1>
-      <p className="text-hint">
-        Проверьте, что вас видно и слышно, и нажмите «Войти в звонок». Если {OTHER[role]} ещё нет — подождите
-        немного на этой странице.
+    <main className="grid gap-6 md:grid-cols-[1.35fr_1fr] md:grid-rows-[auto_1fr] md:gap-x-10 md:gap-y-6">
+      <div className="flex flex-col gap-3 md:col-start-2 md:self-end">
+        <p className="font-medium text-accent">{role === "coordinator" ? "Вы — координатор" : "Фонд «Дети Марии»"}</p>
+        <h1 className="font-display text-[1.6rem] leading-[1.15] font-semibold tracking-tight text-balance md:text-[2rem] xl:text-[2.4rem]">
+          Собеседование с {role === "coordinator" ? "волонтёром" : "координатором"}
+        </h1>
+        <p className="text-xl font-semibold">{formatWhen(props.info.starts_at)}</p>
+      </div>
+
+      <div className="flex flex-col gap-3 md:col-start-1 md:row-span-2 md:row-start-1 md:self-center">
+        <Video
+          stream={local}
+          muted
+          mirrored
+          hidden={!props.cam}
+          className="relative aspect-[4/3] w-full rounded-[2rem] md:aspect-video"
+        >
+          <VideoPlaceholder
+            text={!props.mediaReady ? "Включаем камеру…" : hasVideo ? "Камера выключена" : "Камера недоступна"}
+          />
+        </Video>
+        <div className="call-stage flex flex-wrap items-center justify-center gap-3 rounded-[2rem] bg-ink p-3 sm:justify-between">
+          <MicLevel stream={local} on={props.mic} />
+          <Controls
+            mic={props.mic}
+            cam={props.cam}
+            hasAudio={hasAudio}
+            hasVideo={hasVideo}
+            onMic={() => (toggle("audio", !props.mic), props.setMic(!props.mic))}
+            onCam={() => (toggle("video", !props.cam), props.setCam(!props.cam))}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 md:col-start-2 md:self-start">
+        <p className="text-lg text-hint">
+          Проверьте, что вас видно и слышно: скажите что-нибудь — полоски у микрофона должны двигаться.
+        </p>
+        {props.mediaError && <MediaProblem text={props.mediaError} hasAudio={hasAudio} onRetry={props.onRetryMedia} />}
+        {USE_MOCK && <p className="text-hint">Демо-режим: сам звонок работает только с настоящим бэкендом.</p>}
+        <CtaButton disabled={!props.mediaReady} onClick={props.onJoin}>
+          {join}
+        </CtaButton>
+        <p className="text-hint">
+          Если {OTHER[role]} ещё нет — подождите на этой странице, звонок начнётся сам.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+/** Нет камеры или микрофона: что сделать, и всё равно можно войти. В Telegram на iPhone — «Открыть в браузере». */
+function MediaProblem(props: { text: string; hasAudio: boolean; onRetry: () => void }) {
+  return (
+    <div role="alert" className="flex flex-col gap-3 rounded-3xl bg-pop/20 p-4">
+      <p className="flex gap-2 font-semibold">
+        <Icon name="alert" className="mt-0.5 size-6 text-pop-2" />
+        {props.text}
       </p>
-      <Video stream={local} muted mirrored placeholder={mediaReady ? "Камера выключена" : "Включаем камеру…"} />
-      {mediaError && <MediaProblem text={mediaError} />}
-      {USE_MOCK && <p className="text-hint">Демо-режим: сам звонок работает только с настоящим бэкендом.</p>}
-      <Controls
-        mic={mic}
-        cam={cam}
-        hasAudio={!!local?.getAudioTracks().length}
-        hasVideo={!!local?.getVideoTracks().length}
-        onMic={() => (toggle("audio", !mic), setMic(!mic))}
-        onCam={() => (toggle("video", !cam), setCam(!cam))}
-      />
-      <Button wide disabled={!mediaReady} onClick={() => setJoined(true)}>
-        Войти в звонок
-      </Button>
+      <p>
+        Разрешите {props.hasAudio ? "камеру" : "камеру и микрофон"} в настройках браузера (значок замка или камеры
+        рядом с адресом страницы) и нажмите «Попробовать ещё раз». Можно войти и так —{" "}
+        {props.hasAudio ? "только со звуком" : "вы будете видеть и слышать собеседника"}.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" onClick={props.onRetry}>
+          Попробовать ещё раз
+        </Button>
+        {initData && tg?.openLink && (
+          <Button variant="secondary" onClick={() => tg?.openLink?.(location.href)}>
+            Открыть в браузере
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -112,6 +305,8 @@ function InCall(props: {
   setMic: (on: boolean) => void;
   setCam: (on: boolean) => void;
   onEnd: () => void;
+  onRejoin: () => void;
+  sidePanel?: ReactNode;
 }) {
   const roomRef = useRef<Room | null>(null);
   const [status, setStatus] = useState<CallStatus>("connecting");
@@ -119,7 +314,7 @@ function InCall(props: {
   const [remote, setRemote] = useState<MediaStream | null>(null);
   const [link, setLink] = useState<RTCPeerConnectionState | null>(null);
   const [fatal, setFatal] = useState("");
-  const { onEnd } = props;
+  const { onEnd, role, sidePanel } = props;
 
   useEffect(() => {
     const room = new Room({
@@ -147,158 +342,117 @@ function InCall(props: {
     return () => room.stop({ keepMedia: true }); // камеру выключает «Завершить» или уход со страницы
   }, []); // комната создаётся один раз на вход
 
-  // ушли со страницы — выключаем камеру и микрофон
-  useEffect(() => () => props.local?.getTracks().forEach((t) => t.stop()), [props.local]);
+  // соединение может «зависнуть» без ошибки (строгая сеть) — через 20 секунд предлагаем переподключиться
+  const [slow, setSlow] = useState(false);
+  const present = !!peer;
+  useEffect(() => {
+    setSlow(false);
+    if (!present || link === "connected") return;
+    const timer = setTimeout(() => setSlow(true), 20_000);
+    return () => clearTimeout(timer);
+  }, [present, link]);
 
   function end() {
     roomRef.current?.stop();
     onEnd();
   }
 
-  if (fatal) return <Notice>{fatal}</Notice>;
+  if (fatal)
+    return (
+      <CallPage sidePanel={sidePanel}>
+        {/* текст с бэкенда: звонок отменён, открыт в другой вкладке и т. п. */}
+        <CallMessage title="Звонок остановлен" text={fatal} tone="error">
+          <Button onClick={props.onRejoin}>Войти снова</Button>
+          <HomeLink role={role} />
+        </CallMessage>
+      </CallPage>
+    );
 
-  const waiting = `Ждём ${OTHER[props.role]}…`;
+  const failed = !!peer && (link === "failed" || slow);
   const hint =
-    status === "reconnecting"
+    status === "reconnecting" || link === "disconnected"
       ? "Связь прервалась — переподключаемся…"
       : status === "connecting"
         ? "Подключаемся…"
         : !peer
-          ? waiting
-          : link === "failed"
-            ? "Не получается соединиться. Попробуйте другую сеть (например, мобильный интернет)."
+          ? `Ждём ${OTHER[role]}…`
+          : failed
+            ? "Не получается соединиться. Попробуйте другую сеть — например, мобильный интернет."
             : link !== "connected"
-              ? "Соединяемся с собеседником…"
+              ? `Соединяемся с ${WITH_OTHER[role]}…`
               : null;
+  const who = role === "coordinator" ? "Волонтёр" : "Координатор";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="relative">
-        <Video stream={peer ? remote : null} placeholder={hint ?? "Камера собеседника выключена"} hidden={!peer?.cam} />
-        {peer && !peer.mic && (
-          <span className="absolute top-3 left-3 rounded-full bg-black/60 px-3 py-1 text-sm text-white">🔇 без звука</span>
-        )}
-        <div className="absolute right-3 bottom-3 w-1/4 min-w-24 overflow-hidden rounded-xl shadow-lg ring-2 ring-white/50">
-          <Video stream={props.local} muted mirrored small placeholder="Вы" hidden={!props.cam} />
-        </div>
-      </div>
-      {hint && peer && <p className="text-center text-hint">{hint}</p>}
-      <Controls
-        mic={props.mic}
-        cam={props.cam}
-        hasAudio={!!props.local?.getAudioTracks().length}
-        hasVideo={!!props.local?.getVideoTracks().length}
-        onMic={() => {
-          roomRef.current?.setMic(!props.mic);
-          props.setMic(!props.mic);
-        }}
-        onCam={() => {
-          roomRef.current?.setCam(!props.cam);
-          props.setCam(!props.cam);
-        }}
-      />
-      <button
-        type="button"
-        onClick={end}
-        className="min-h-12 w-full rounded-2xl bg-red-600 px-5 py-3 font-semibold text-white active:scale-[.98]"
+    <PanelLayout sidePanel={sidePanel}>
+      <section
+        aria-label="Видеозвонок"
+        className={`call-stage relative flex flex-col overflow-hidden bg-ink text-white ${sidePanel ? "h-[78dvh] lg:h-dvh" : "h-dvh"}`}
       >
-        Завершить звонок
-      </button>
-    </div>
-  );
-}
-
-function Video(props: {
-  stream: MediaStream | null;
-  muted?: boolean;
-  mirrored?: boolean;
-  small?: boolean;
-  hidden?: boolean;
-  placeholder: string;
-}) {
-  const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    if (ref.current && ref.current.srcObject !== props.stream) ref.current.srcObject = props.stream;
-  }, [props.stream]);
-  const show = props.stream && !props.hidden;
-  return (
-    <div className={`relative aspect-video w-full overflow-hidden bg-neutral-800 ${props.small ? "" : "rounded-2xl"}`}>
-      {/* видео не убираем из DOM, даже когда камера выключена: в нём идёт и звук собеседника */}
-      <video
-        ref={ref}
-        autoPlay
-        playsInline
-        muted={props.muted}
-        className={`h-full w-full object-cover ${props.mirrored ? "-scale-x-100" : ""} ${show ? "" : "invisible"}`}
-      />
-      {!show && (
-        <p
-          className={`absolute inset-0 flex items-center justify-center p-2 text-center text-white/80 ${props.small ? "text-sm" : "text-lg"}`}
-        >
-          {props.placeholder}
+        {/* собеседник — на весь экран; пока его нет — понятный текст на месте видео */}
+        <Video stream={peer ? remote : null} hidden={!peer?.cam || !!hint} fit="object-cover md:object-contain" className="absolute inset-0">
+          <VideoPlaceholder text={hint ?? `Камера ${OTHER[role]} выключена`} pulse={!peer && status === "connected"}>
+            {!peer && status === "connected" && (
+              <p className="max-w-[32ch] text-balance text-white/75">Не закрывайте страницу — звонок начнётся сам.</p>
+            )}
+            {failed && (
+              <button
+                type="button"
+                onClick={props.onRejoin}
+                className="mt-1 min-h-12 rounded-full bg-white px-6 font-semibold text-ink"
+              >
+                Переподключиться
+              </button>
+            )}
+          </VideoPlaceholder>
+        </Video>
+        {/* для экранных дикторов: состояние звонка читается вслух при изменении */}
+        <p role="status" className="sr-only">
+          {hint ?? `${who} в звонке`}
         </p>
-      )}
-    </div>
-  );
-}
 
-function Controls(props: {
-  mic: boolean;
-  cam: boolean;
-  hasAudio: boolean;
-  hasVideo: boolean;
-  onMic: () => void;
-  onCam: () => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      <Button variant="secondary" disabled={!props.hasAudio} onClick={props.onMic}>
-        {props.mic ? "🎙 Микрофон включён" : "🔇 Микрофон выключен"}
-      </Button>
-      <Button variant="secondary" disabled={!props.hasVideo} onClick={props.onCam}>
-        {props.cam ? "📷 Камера включена" : "🚫 Камера выключена"}
-      </Button>
-    </div>
-  );
-}
-
-/** Нет камеры или микрофона. В Telegram на iPhone камеры часто нет — предлагаем открыть в браузере. */
-function MediaProblem(props: { text: string }) {
-  return (
-    <div role="alert" className="flex flex-col gap-3 rounded-2xl bg-amber-100 p-4 text-amber-900">
-      <p>⚠️ {props.text}</p>
-      {initData && tg?.openLink && (
-        <div>
-          <Button variant="secondary" onClick={() => tg?.openLink?.(location.href)}>
-            Открыть в браузере
-          </Button>
+        <div className="relative flex flex-wrap items-start justify-between gap-2 p-3 md:p-5">
+          <span className="rounded-full bg-white px-3 py-1.5">
+            <img src="/logo.svg" alt="Дети Марии" className="h-6 w-auto md:h-7" />
+          </span>
+          {peer && (
+            <span className="inline-flex items-center gap-2 rounded-full bg-ink/70 px-3 py-1.5 text-sm font-medium backdrop-blur md:text-base">
+              {!peer.mic && <Icon name="mic-off" className="size-4 text-[var(--logo-red)]" />}
+              {who}
+              {!peer.mic && " без звука"}
+            </span>
+          )}
         </div>
-      )}
-    </div>
-  );
-}
 
-function Notice(props: { children: string }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="text-xl">{props.children}</p>
-      <Link to="/">На главную</Link>
-    </div>
-  );
-}
+        {/* своё видео — маленьким окном в углу */}
+        <Video
+          stream={props.local}
+          muted
+          mirrored
+          hidden={!props.cam}
+          className="absolute top-16 right-3 aspect-[3/4] w-[28%] max-w-40 rounded-2xl shadow-lg ring-2 ring-white/40 md:top-auto md:right-5 md:bottom-32 md:aspect-video md:w-56 md:max-w-none"
+        >
+          <VideoPlaceholder small text="Вы" />
+        </Video>
 
-function Ended(props: { role: CallRole }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <h1 className="text-3xl font-bold">Звонок завершён</h1>
-      {props.role === "volunteer" ? (
-        <>
-          <p>Спасибо, что пришли на собеседование! Координатор напишет вам о следующих шагах.</p>
-          <Link to="/me">Мой статус</Link>
-        </>
-      ) : (
-        <p>Не забудьте отметить собеседование в карточке волонтёра и оставить заметку. Эту вкладку можно закрыть.</p>
-      )}
-    </div>
+        <div className="relative mt-auto bg-gradient-to-t from-ink/90 to-transparent px-3 pt-10 pb-4 md:pb-6">
+          <Controls
+            mic={props.mic}
+            cam={props.cam}
+            hasAudio={!!props.local?.getAudioTracks().length}
+            hasVideo={!!props.local?.getVideoTracks().length}
+            onMic={() => {
+              roomRef.current?.setMic(!props.mic);
+              props.setMic(!props.mic);
+            }}
+            onCam={() => {
+              roomRef.current?.setCam(!props.cam);
+              props.setCam(!props.cam);
+            }}
+            onEnd={end}
+          />
+        </div>
+      </section>
+    </PanelLayout>
   );
 }
