@@ -1,4 +1,4 @@
-// Новая возможность: выбрать роль фонда — подставим название, описание и формат, остаётся дата и место.
+// Новое занятие: выбрать роль фонда — подставим название, описание и формат, остаётся дата и место.
 import { useState, type FormEvent } from "react";
 
 import type { Format, OpportunityIn, Region, Role } from "../../api";
@@ -103,8 +103,8 @@ export default function OpportunityForm() {
 
   return (
     <form onSubmit={submit} className="flex max-w-3xl flex-col gap-5" noValidate>
-      <Link to="/admin/opportunities">← Возможности</Link>
-      <h1 className="text-3xl font-bold">Новая возможность</h1>
+      <Link to="/admin/opportunities">← Занятия</Link>
+      <h1 className="text-3xl font-bold">Новое занятие</h1>
 
       <Card className="flex flex-col gap-3">
         <Field label="Роль фонда" hint="Выберите роль — подставим название, описание и формат. Можно без роли." group>
@@ -202,7 +202,7 @@ export default function OpportunityForm() {
       {saveError && <ErrorBox text={saveError} />}
       <div className="flex flex-wrap gap-3">
         <Button type="submit" loading={saving}>
-          Создать возможность
+          Создать занятие
         </Button>
         <Button variant="secondary" onClick={() => navigate("/admin/opportunities")}>
           Отмена

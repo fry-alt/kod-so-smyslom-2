@@ -18,6 +18,16 @@ export const AVAILABILITY: Record<Availability, string> = {
   weekend: "Выходные",
 };
 
+/** Сжимает одинаковые дни, чтобы координатор быстрее прочитал расписание. */
+export function formatAvailability(values: Availability[]): string {
+  const weekdays = values.filter((value) => value.startsWith("weekday_"));
+  const parts: string[] = [];
+  if (weekdays.length === 3) parts.push("Будни: утро, день, вечер");
+  else parts.push(...weekdays.map((value) => AVAILABILITY[value]));
+  if (values.includes("weekend")) parts.push(AVAILABILITY.weekend);
+  return parts.join(", ");
+}
+
 export const OCCUPATION: Record<Occupation, string> = {
   student: "Студент",
   pensioner: "Пенсионер",

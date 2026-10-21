@@ -133,6 +133,7 @@ function InterviewItem(props: { i: Interview; v: Volunteer; roles: Role[]; onCha
   const past = new Date(i.starts_at).getTime() < Date.now();
 
   async function setStatus(status: InterviewStatus) {
+    if (status === "canceled" && !window.confirm("Отменить собеседование? Волонтёр больше не сможет войти по этой ссылке.")) return;
     setSaving(status);
     setError("");
     try {
@@ -159,10 +160,10 @@ function InterviewItem(props: { i: Interview; v: Volunteer; roles: Role[]; onCha
               Открыть звонок
             </LinkButton>
             <Button variant="secondary" onClick={() => setStatus("done")} loading={saving === "done"} disabled={saving !== null}>
-              Прошло
+              Отметить: состоялось
             </Button>
             <Button variant="secondary" onClick={() => setStatus("canceled")} loading={saving === "canceled"} disabled={saving !== null}>
-              Отменить
+              Отменить собеседование
             </Button>
           </div>
           <p className="text-sm text-hint">
