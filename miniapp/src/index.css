@@ -516,3 +516,58 @@ body {
     transform: none;
   }
 }
+
+/* 3D-карточки «Ближайшие занятия» (Welcome.tsx → Cards3D): наведённая наклоняется за мышью и выходит вперёд,
+   соседние уменьшаются и уходят вглубь. Наклон — переменные --rx/--ry. Только устройства с мышью. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .card3d-grid {
+    perspective: 1200px;
+  }
+  .card3d-item {
+    position: relative;
+    transform-style: preserve-3d;
+    transition:
+      transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 0.5s ease,
+      filter 0.5s ease;
+  }
+  .card3d-item.is-active {
+    z-index: 10;
+    transform: translateZ(50px) scale(1.07);
+  }
+  .card3d-grid.has-active .card3d-item:not(.is-active) {
+    transform: translateZ(-70px) scale(0.93);
+    opacity: 0.7;
+    filter: saturate(0.8);
+  }
+  .card3d {
+    transform-style: preserve-3d;
+    transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition:
+      transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 0.5s ease,
+      border-color 0.3s ease;
+  }
+  .card3d-item.is-active .card3d {
+    border-color: var(--p-accent);
+    box-shadow: 0 30px 50px -24px color-mix(in srgb, var(--p-ink) 45%, transparent);
+    transition:
+      transform 0.25s ease-out,
+      box-shadow 0.5s ease,
+      border-color 0.3s ease;
+  }
+  .card3d-pop-1,
+  .card3d-pop-2,
+  .card3d-pop-3 {
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .card3d-item.is-active .card3d-pop-1 {
+    transform: translateZ(30px);
+  }
+  .card3d-item.is-active .card3d-pop-2 {
+    transform: translateZ(45px);
+  }
+  .card3d-item.is-active .card3d-pop-3 {
+    transform: translateZ(60px);
+  }
+}

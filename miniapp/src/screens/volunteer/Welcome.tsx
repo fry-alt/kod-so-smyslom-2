@@ -1,7 +1,7 @@
 // Стартовый экран волонтёра.
 // Справа — сцены «что делают волонтёры» (VolunteerScenes.tsx).
 // Ниже — ближайшие занятия, где нужны люди; если их нет — неделя «когда нужна помощь».
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 
 import type { Opportunity } from "../../api";
 import { backend } from "../../backend";
@@ -96,38 +96,81 @@ function Upcoming() {
   return (
     <section className="flex flex-col gap-6">
       <h2 className="font-display text-2xl font-semibold">Ближайшие занятия, где нужна помощь</h2>
-      <ul className="grid gap-4 md:grid-cols-3">
-        {list.map((o) => {
-          const d = new Date(o.starts_at);
-          const left = o.slots - o.taken;
-          return (
-            <li key={o.id}>
-              <button
-                type="button"
-                onClick={() => navigate("/form")}
-                className="flex h-full w-full gap-4 rounded-3xl border-2 border-line p-5 text-left transition hover:border-accent"
-              >
-                <span className="flex w-16 shrink-0 flex-col items-center rounded-2xl bg-soft py-2 text-ink">
-                  <span className="font-display text-2xl font-semibold leading-none">{d.getDate()}</span>
-                  <span className="text-sm">{d.toLocaleDateString("ru", { month: "short" }).replace(".", "")}</span>
-                  <span className="text-sm text-hint">{d.toLocaleDateString("ru", { weekday: "short" })}</span>
-                </span>
-                <span className="flex flex-col gap-1">
-                  <span className="text-lg leading-snug font-semibold">{o.title}</span>
-                  <span className="text-hint">
-                    {d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })},{" "}
-                    {o.format === "online" ? FORMAT.online.toLowerCase() : o.place || REGION[o.region]}
-                  </span>
-                  <span className="mt-1 self-start rounded-full bg-pop px-3 py-0.5 text-sm font-semibold text-ink">
-                    {left === 1 ? "Нужен ещё 1 человек" : `Нужно ещё ${left} человек${left < 5 ? "а" : ""}`}
-                  </span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <Cards3D list={list} />
     </section>
+  );
+}
+
+/** Карточки занятий с 3D-эффектом (как 3d-card-effect у Aceternity, без библиотеки):
+ *  карточка под курсором наклоняется за мышью и выходит вперёд, соседние уменьшаются и уходят вглубь.
+ *  Только для мыши; на телефоне и при «уменьшении движения» — обычные карточки (стили card3d-* в index.css). */
+function Cards3D({ list }: { list: Opportunity[] }) {
+  const [active, setActive] = useState<number | null>(null);
+
+  // Наклон считаем от неподвижной обёртки <li>, а не от самой карточки: иначе карточка поворачивается,
+  // её границы смещаются, наклон пересчитывается — и всё трясётся. Обновляем не чаще кадра.
+  const frame = useRef(0);
+  function tilt(e: PointerEvent<HTMLLIElement>) {
+    if (e.pointerType !== "mouse") return;
+    const li = e.currentTarget;
+    const card = li.firstElementChild as HTMLElement | null;
+    const { clientX, clientY } = e;
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      const r = li.getBoundingClientRect();
+      const x = Math.max(-0.5, Math.min(0.5, (clientX - r.left) / r.width - 0.5));
+      const y = Math.max(-0.5, Math.min(0.5, (clientY - r.top) / r.height - 0.5));
+      card?.style.setProperty("--ry", `${(x * 10).toFixed(2)}deg`);
+      card?.style.setProperty("--rx", `${(-y * 10).toFixed(2)}deg`);
+    });
+  }
+
+  function reset(li: HTMLLIElement) {
+    cancelAnimationFrame(frame.current);
+    const card = li.firstElementChild as HTMLElement | null;
+    card?.style.setProperty("--rx", "0deg");
+    card?.style.setProperty("--ry", "0deg");
+    setActive(null);
+  }
+
+  return (
+    <ul className={`card3d-grid grid gap-4 md:grid-cols-3 ${active !== null ? "has-active" : ""}`}>
+      {list.map((o, i) => {
+        const d = new Date(o.starts_at);
+        const left = o.slots - o.taken;
+        return (
+          <li
+            key={o.id}
+            className={`card3d-item ${active === i ? "is-active" : ""}`}
+            onPointerEnter={(e) => e.pointerType === "mouse" && setActive(i)}
+            onPointerMove={tilt}
+            onPointerLeave={(e) => reset(e.currentTarget)}
+          >
+            <button
+              type="button"
+              onClick={() => navigate("/form")}
+              className="card3d flex h-full w-full gap-4 rounded-3xl border-2 border-line bg-page p-5 text-left"
+            >
+              <span className="card3d-pop-2 flex w-16 shrink-0 flex-col items-center rounded-2xl bg-soft py-2 text-ink">
+                <span className="font-display text-2xl font-semibold leading-none">{d.getDate()}</span>
+                <span className="text-sm">{d.toLocaleDateString("ru", { month: "short" }).replace(".", "")}</span>
+                <span className="text-sm text-hint">{d.toLocaleDateString("ru", { weekday: "short" })}</span>
+              </span>
+              <span className="flex flex-col gap-1 [transform-style:preserve-3d]">
+                <span className="card3d-pop-1 text-lg leading-snug font-semibold">{o.title}</span>
+                <span className="card3d-pop-1 text-hint">
+                  {d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })},{" "}
+                  {o.format === "online" ? FORMAT.online.toLowerCase() : o.place || REGION[o.region]}
+                </span>
+                <span className="card3d-pop-3 mt-1 self-start rounded-full bg-pop px-3 py-0.5 text-sm font-semibold text-ink">
+                  {left === 1 ? "Нужен ещё 1 человек" : `Нужно ещё ${left} человек${left < 5 ? "а" : ""}`}
+                </span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
