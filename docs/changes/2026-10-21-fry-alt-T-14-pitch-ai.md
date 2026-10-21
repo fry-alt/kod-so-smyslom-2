@@ -2,7 +2,7 @@
 date: 2026-10-21
 author: fry-alt
 task: T-14 (#14)
-pr: будет после открытия
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/81
 areas: [документы, AI]
 ---
 
