@@ -151,8 +151,8 @@ def test_funnel(db):
     funnel = {row.step: row for row in dashboard.analytics(db, NOW).funnel}
     assert list(funnel) == [
         "applied",
-        "interviewed",
         "trained",
+        "interviewed",
         "approved",
         "participated",
         "active",

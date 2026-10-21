@@ -10,6 +10,7 @@ export function Button(props: {
   variant?: "primary" | "secondary" | "ghost";
   disabled?: boolean;
   loading?: boolean;
+  loadingLabel?: string;
   wide?: boolean;
 }) {
   const variant = props.variant ?? "primary";
@@ -26,7 +27,7 @@ export function Button(props: {
       {...(variant === "ghost" ? {} : flairHandlers)}
       className={`min-h-12 rounded-full px-6 py-3 font-semibold disabled:opacity-50 ${look} ${props.wide ? "w-full" : ""}`}
     >
-      {props.loading ? "Загрузка…" : props.children}
+      {props.loading ? (props.loadingLabel ?? "Загрузка…") : props.children}
     </button>
   );
 }
@@ -152,7 +153,7 @@ export function Chips<T extends string>(props: {
 }
 
 export const inputClass =
-  "min-h-12 w-full rounded-2xl border border-line bg-page px-4 py-3 outline-none placeholder:text-hint focus:border-accent";
+  "min-h-12 w-full rounded-2xl border-2 border-[color-mix(in_srgb,var(--p-ink)_55%,transparent)] bg-page px-4 py-3 outline-none placeholder:text-hint focus:border-accent";
 
 export function ErrorBox(props: { text: string; onRetry?: () => void }) {
   return (

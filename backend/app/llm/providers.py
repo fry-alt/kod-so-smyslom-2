@@ -116,8 +116,9 @@ class OpenAIEmbedder:
         vectors: list[list[float]] = []
         try:
             for i in range(0, len(texts), self.batch_size):
+                # SDK openai по умолчанию просит base64 — Yandex его не принимает (ошибка 400)
                 resp = self.client.embeddings.create(
-                    model=model, input=texts[i : i + self.batch_size]
+                    model=model, input=texts[i : i + self.batch_size], encoding_format="float"
                 )
                 vectors.extend(item.embedding for item in resp.data)
         except OpenAIError as e:

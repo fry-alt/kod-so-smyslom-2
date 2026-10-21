@@ -135,6 +135,7 @@ export type QuizResult = {
   score: number;
   passed: boolean;
   correct: boolean[];
+  correct_answers: number[];
   status: VolunteerStatus;
 };
 
@@ -278,7 +279,7 @@ export type AccountRole = "volunteer" | "coordinator";
 export type Account = { id: number; email: string; role: AccountRole; volunteer_id: number | null };
 export type AuthOut = { token: string; account: Account };
 export type RegisterIn = { email: string; password: string; role: AccountRole; code?: string };
-export type LoginIn = { email: string; password: string; role: AccountRole };
+export type LoginIn = { email: string; password: string };
 /** На почту ушёл код — аккаунта ещё нет, код вводят в authApi.verify. Если почта на сервере не настроена,
  * register сразу отвечает AuthOut. resend_after — через сколько секунд можно отправить код ещё раз. */
 export type CodeSent = { pending: true; email: string; resend_after: number };

@@ -9,7 +9,7 @@
   --p-soft: #d9ece4;
   --p-ink: #13231d;
   --p-hint: #55665f;
-  --p-accent: #1f7f4a; /* тёмный вариант зелёного из логотипа фонда */
+  --p-accent: #1b7543; /* зелёный с контрастом для ссылок и основного текста на кнопках */
   --p-accent-text: #ffffff;
   --p-pop: #ffb800;
   --p-pop-2: #ff6218;
@@ -22,7 +22,7 @@
   --logo-red: #e2160c;
   --logo-berry: #b51e68;
   /* главная кнопка — фирменный оранжевый фонда, чуть глубже для читаемости белого текста */
-  --p-cta: #e8530f;
+  --p-cta: #c4460c;
 }
 
 /* Токены Tailwind: классы bg-page, bg-surface, bg-soft, text-ink, text-hint, text-link, bg-accent,
@@ -65,6 +65,11 @@ body {
 :focus-visible {
   outline: 3px solid var(--p-accent);
   outline-offset: 3px;
+}
+
+/* Не прячем сфокусированное поле анкеты под закреплёнными кнопками шага. */
+html:has(form [data-step]) {
+  scroll-padding-bottom: 7rem;
 }
 
 /* Кабинет фонда открывают на ноутбуке — там шрифт чуть компактнее, но не меньше 16px. */
@@ -824,6 +829,9 @@ body {
 .marquee3d-col {
   animation: marquee-up 40s linear infinite;
   will-change: transform;
+}
+.marquee3d.is-paused * {
+  animation-play-state: paused !important;
 }
 .marquee3d-down {
   animation-name: marquee-down;

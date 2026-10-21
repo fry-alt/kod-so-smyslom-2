@@ -388,12 +388,13 @@ export default function Form() {
                     meter
                   />
                 </Question>
-                <Question label="Что вы умеете" hint="Нажмите на подходящее или допишите своё">
+                <Question group labelId="q-skills" label="Что вы умеете" hint="Нажмите на подходящее или допишите своё">
                   <Ideas ideas={SKILL_IDEAS} value={a.skills} onChange={(v) => setAnswers({ skills: v })} />
                   <TextBox
                     value={a.skills}
                     onChange={(v) => setAnswers({ skills: v })}
                     placeholder="Например: керамика, фотография, шитьё, монтаж видео, веду соцсети"
+                    aria-labelledby="q-skills"
                   />
                 </Question>
               </>
@@ -401,12 +402,13 @@ export default function Form() {
 
             {step === 3 && (
               <>
-                <Question label="Чем хотели бы помогать фонду" hint="Можно выбрать несколько или написать своими словами">
+                <Question group labelId="q-wishes" label="Чем хотели бы помогать фонду" hint="Можно выбрать несколько или написать своими словами">
                   <Ideas ideas={WISH_IDEAS} value={a.wishes} onChange={(v) => setAnswers({ wishes: v })} />
                   <TextBox
                     value={a.wishes}
                     onChange={(v) => setAnswers({ wishes: v })}
                     placeholder="Например: помогать на занятиях с детьми, снимать мероприятия"
+                    aria-labelledby="q-wishes"
                   />
                 </Question>
                 <Question
@@ -648,11 +650,19 @@ function Progress(props: { step: number; reached: number; saved: boolean; onJump
   );
 }
 
-function Question(props: { label: string; hint?: ReactNode; error?: string; required?: boolean; group?: boolean; children: ReactNode }) {
+function Question(props: {
+  label: string;
+  hint?: ReactNode;
+  error?: string;
+  required?: boolean;
+  group?: boolean;
+  labelId?: string;
+  children: ReactNode;
+}) {
   const Tag = props.group ? "div" : "label";
   return (
     <Tag className="flex flex-col gap-2" data-error={props.error ? "" : undefined}>
-      <span className="text-lg font-semibold">
+      <span id={props.labelId} className="text-lg font-semibold">
         {props.label}
         {props.required && <span className="text-cta"> *</span>}
       </span>
@@ -723,7 +733,13 @@ function Choices<T extends string>(props: {
 }
 
 /** Поле для текста. Растёт вместе с текстом; с meter — подбадривает, когда написано достаточно. */
-function TextBox(props: { value: string; onChange: (v: string) => void; placeholder: string; meter?: boolean }) {
+function TextBox(props: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  meter?: boolean;
+  "aria-labelledby"?: string;
+}) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -740,6 +756,7 @@ function TextBox(props: { value: string; onChange: (v: string) => void; placehol
     <div className="flex flex-col gap-2">
       <textarea
         ref={ref}
+        aria-labelledby={props["aria-labelledby"]}
         className={`${inputClass} min-h-28 resize-none transition-[border-color,box-shadow] focus:shadow-[0_0_0_4px_var(--p-soft)]`}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
@@ -971,12 +988,8 @@ function Thanks(props: { volunteer: Volunteer }) {
           <p className="text-hint">Мы ещё разбираем вашу анкету — подходящие задачи появятся в личном кабинете.</p>
         </Card>
       )}
-      <p>Обучение — несколько коротких текстов о наших подопечных и правилах фонда, в конце небольшой тест.</p>
       <Button wide onClick={() => navigate("/training")}>
         Пройти обучение
-      </Button>
-      <Button wide variant="secondary" onClick={() => navigate("/me")}>
-        В личный кабинет
       </Button>
     </div>
   );

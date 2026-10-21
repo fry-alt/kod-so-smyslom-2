@@ -255,6 +255,9 @@ class QuizResult(BaseModel):
     score: int = Field(ge=0, le=100, description="% правильных")
     passed: bool
     correct: list[bool]
+    correct_answers: list[int] = Field(
+        description="индексы правильных вариантов, только после сдачи теста"
+    )
     status: VolunteerStatus  # статус волонтёра после проверки
 
 
@@ -526,7 +529,6 @@ class LoginIn(BaseModel):
 
     email: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=1, max_length=200)
-    role: AccountRole = "volunteer"
 
 
 class AccountOut(BaseModel):

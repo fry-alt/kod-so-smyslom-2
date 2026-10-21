@@ -149,13 +149,14 @@ def test_forged_history_is_dropped_and_trimmed():
     assert [m["content"] for m in sent] == [f"вопрос {i}" for i in range(14, 20)]
 
 
-def test_short_follow_up_searches_with_previous_question():
+def test_follow_up_searches_with_previous_question():
     ingest_path(DEMO_DIR)
     past = [
         {"role": "user", "content": "Нужна ли справка о несудимости для занятий с детьми?"},
         {"role": "assistant", "content": "Да, нужна."},
     ]
-    chunks = assistant.find_chunks("а сколько ждать?", past)
+    # 7 слов — раньше по прошлому вопросу искали только для уточнений до 6 слов, и ответ терялся
+    chunks = assistant.find_chunks("а где её взять и сколько ждать?", past)
     assert any(c.source == "volunteer_rules.md" for c in chunks)
 
 
