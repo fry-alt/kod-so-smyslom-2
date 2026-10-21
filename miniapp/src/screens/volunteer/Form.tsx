@@ -286,238 +286,313 @@ export default function Form() {
   const a = draft.answers;
   const firstName = draft.name.trim().split(" ")[0];
 
-  return (
-    <form onSubmit={next} noValidate className="flex flex-col gap-5">
-      <Progress step={step} reached={fromCheck ? LAST : step} saved={saved} onJump={(n) => goTo(n, { fromCheck: fromCheck && n !== LAST })} />
+  const reached = fromCheck ? LAST : step;
+  const jump = (n: number) => goTo(n, { fromCheck: fromCheck && n !== LAST });
 
-      <div
-        key={step}
-        data-step
-        className={`flex flex-col gap-6 ${direction === "forward" ? "step-in-forward" : "step-in-back"}`}
-      >
-        <div className="flex items-start gap-4">
-          <span
-            className="step-icon grid size-14 shrink-0 place-items-center rounded-2xl bg-soft text-3xl"
-            aria-hidden="true"
-          >
-            {STEPS[step].icon}
-          </span>
-          <div className="flex flex-col gap-1">
-            <h1
-              ref={headingRef}
-              tabIndex={-1}
-              className="step-heading font-display text-[1.6rem] leading-tight font-semibold tracking-tight text-balance"
+  return (
+    <form
+      onSubmit={next}
+      noValidate
+      className="grid flex-1 gap-6 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-10 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-14"
+    >
+      <StepList step={step} reached={reached} saved={saved} onJump={jump} />
+
+      <div className="flex min-w-0 flex-col gap-5">
+        <div className="md:hidden">
+          <Progress step={step} reached={reached} saved={saved} onJump={jump} />
+        </div>
+
+        <div
+          key={step}
+          data-step
+          className={`flex flex-col gap-6 ${direction === "forward" ? "step-in-forward" : "step-in-back"}`}
+        >
+          <div className="flex items-start gap-4">
+            <span
+              className="step-icon grid size-14 shrink-0 place-items-center rounded-2xl bg-soft text-3xl"
+              aria-hidden="true"
             >
-              {step === 1 && firstName ? `${firstName}, немного о жизни` : STEPS[step].title}
-            </h1>
-            <p className="text-hint">{STEP_INTRO[step]}</p>
+              {STEPS[step].icon}
+            </span>
+            <div className="flex flex-col gap-1">
+              <h1
+                ref={headingRef}
+                tabIndex={-1}
+                className="step-heading font-display text-[1.6rem] leading-tight font-semibold tracking-tight text-balance md:text-[2rem]"
+              >
+                {step === 1 && firstName ? `${firstName}, немного о жизни` : STEPS[step].title}
+              </h1>
+              <p className="text-hint">{STEP_INTRO[step]}</p>
+            </div>
+          </div>
+
+          <div ref={questionsRef} className="flex flex-col gap-6">
+            {step === 0 && (
+              <>
+                <Question label="Как вас зовут" required error={errors.name}>
+                  <input
+                    className={inputClass}
+                    value={draft.name}
+                    onChange={(e) => set({ name: e.target.value })}
+                    autoComplete="name"
+                    enterKeyHint="next"
+                    maxLength={100}
+                    placeholder="Имя и фамилия"
+                  />
+                </Question>
+                <Question
+                  label="Как с вами связаться"
+                  required
+                  hint="Телефон, e-mail или ник в Telegram. Его увидит только координатор фонда."
+                  error={errors.contact}
+                >
+                  <input
+                    className={inputClass}
+                    value={draft.contact}
+                    onChange={(e) => set({ contact: e.target.value })}
+                    enterKeyHint="next"
+                    maxLength={200}
+                    placeholder="+7 900 000-00-00 или @nickname"
+                  />
+                </Question>
+              </>
+            )}
+
+            {step === 1 && (
+              <>
+                <Question label="Чем вы сейчас заняты" group>
+                  <Choices<Occupation>
+                    options={OCCUPATION}
+                    icons={OCCUPATION_ICON}
+                    value={[a.occupation]}
+                    onChange={([v]) => setAnswers({ occupation: v })}
+                  />
+                </Question>
+                <Question
+                  label="Где вы живёте"
+                  group
+                  hint="Фонд работает в Москве, Подмосковье, Ярославской области и Северной Осетии"
+                >
+                  <Choices<Region> options={REGION} value={[a.region]} onChange={([v]) => setAnswers({ region: v })} />
+                </Question>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <Question label="Пара слов о вас" required error={errors.about}>
+                  <TextBox
+                    value={a.about}
+                    onChange={(v) => setAnswers({ about: v })}
+                    placeholder="Например: я на пенсии, 20 лет работала учителем рисования, люблю возиться с детьми"
+                    meter
+                  />
+                </Question>
+                <Question label="Что вы умеете" hint="Нажмите на подходящее или допишите своё">
+                  <Ideas ideas={SKILL_IDEAS} value={a.skills} onChange={(v) => setAnswers({ skills: v })} />
+                  <TextBox
+                    value={a.skills}
+                    onChange={(v) => setAnswers({ skills: v })}
+                    placeholder="Например: керамика, фотография, шитьё, монтаж видео, веду соцсети"
+                  />
+                </Question>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <Question label="Чем хотели бы помогать фонду" hint="Можно выбрать несколько или написать своими словами">
+                  <Ideas ideas={WISH_IDEAS} value={a.wishes} onChange={(v) => setAnswers({ wishes: v })} />
+                  <TextBox
+                    value={a.wishes}
+                    onChange={(v) => setAnswers({ wishes: v })}
+                    placeholder="Например: помогать на занятиях с детьми, снимать мероприятия"
+                  />
+                </Question>
+                <Question
+                  label="Ваш опыт"
+                  hint="Волонтёрство, работа с детьми или людьми с особенностями развития. Если опыта нет — это нормально, всему научим."
+                >
+                  <TextBox
+                    value={a.experience}
+                    onChange={(v) => setAnswers({ experience: v })}
+                    placeholder="Например: год помогала в приюте для животных; с особыми детьми не работала, но готова учиться"
+                  />
+                </Question>
+              </>
+            )}
+
+            {step === 4 && (
+              <>
+                <Question
+                  label="Когда вы обычно свободны"
+                  required
+                  group
+                  error={errors.availability}
+                  hint={
+                    <>
+                      🧡 <b>Фонду особенно нужна помощь в будни днём</b> — группы из интернатов приезжают утром.
+                    </>
+                  }
+                >
+                  <Choices<Availability>
+                    multiple
+                    options={AVAILABILITY}
+                    icons={AVAILABILITY_ICON}
+                    subs={AVAILABILITY_SUB}
+                    value={a.availability}
+                    onChange={(v) => setAnswers({ availability: v })}
+                  />
+                </Question>
+                <Question label="Как удобнее помогать" required group error={errors.formats}>
+                  <Choices<Format>
+                    multiple
+                    options={FORMAT}
+                    icons={FORMAT_ICON}
+                    subs={FORMAT_SUB}
+                    value={a.formats}
+                    onChange={(v) => setAnswers({ formats: v })}
+                  />
+                </Question>
+                <Question label="Как часто" group>
+                  <Choices<Regularity>
+                    options={REGULARITY}
+                    icons={REGULARITY_ICON}
+                    subs={REGULARITY_SUB}
+                    value={[a.regularity]}
+                    onChange={([v]) => setAnswers({ regularity: v })}
+                  />
+                </Question>
+              </>
+            )}
+
+            {step === LAST && (
+              <>
+                <Review draft={draft} onEdit={(n) => goTo(n, { fromCheck: true })} />
+                <label
+                  data-error={errors.consent ? "" : undefined}
+                  className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-4 transition-colors ${
+                    draft.consent ? "border-accent bg-soft/60" : errors.consent ? "border-red-300 bg-red-50" : "border-line"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={draft.consent}
+                    onChange={(e) => {
+                      set({ consent: e.target.checked });
+                      setErrors({});
+                    }}
+                    className="mt-1 size-6 shrink-0 accent-[var(--color-accent)]"
+                  />
+                  <span>
+                    Согласен(на) на{" "}
+                    <a href={FUND_DOCS.privacy} target="_blank" rel="noreferrer" className="text-link underline underline-offset-4">
+                      обработку персональных данных
+                    </a>{" "}
+                    фондом «Дети Марии». Имя и контакт видит только координатор фонда, в AI-сервисы они не передаются.
+                  </span>
+                </label>
+                {errors.consent && <p className="-mt-3 text-sm font-medium text-red-700">{errors.consent}</p>}
+                {error && <ErrorBox text={`Не получилось отправить анкету: ${error}`} />}
+                {sending && <Sending />}
+              </>
+            )}
           </div>
         </div>
 
-        <div ref={questionsRef} className="flex flex-col gap-6">
-          {step === 0 && (
-            <>
-              <Question label="Как вас зовут" required error={errors.name}>
-                <input
-                  className={inputClass}
-                  value={draft.name}
-                  onChange={(e) => set({ name: e.target.value })}
-                  autoComplete="name"
-                  enterKeyHint="next"
-                  maxLength={100}
-                  placeholder="Имя и фамилия"
-                />
-              </Question>
-              <Question
-                label="Как с вами связаться"
-                required
-                hint="Телефон, e-mail или ник в Telegram. Его увидит только координатор фонда."
-                error={errors.contact}
-              >
-                <input
-                  className={inputClass}
-                  value={draft.contact}
-                  onChange={(e) => set({ contact: e.target.value })}
-                  enterKeyHint="next"
-                  maxLength={200}
-                  placeholder="+7 900 000-00-00 или @nickname"
-                />
-              </Question>
-            </>
+        <div className="sticky bottom-0 z-10 -mx-4 mt-auto flex gap-3 bg-gradient-to-t from-page from-70% to-transparent px-4 pt-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {step > 0 && !sending && (
+            <button
+              type="button"
+              onClick={() => goTo(fromCheck ? LAST : step - 1)}
+              {...flairHandlers}
+              className={`btn-flair min-h-14 shrink-0 rounded-full border-2 border-line bg-surface px-5 font-semibold ${FLAIR.secondary}`}
+              aria-label={fromCheck ? "Вернуться к проверке" : "Назад"}
+            >
+              ←<span className="hidden sm:inline"> {fromCheck ? "К проверке" : "Назад"}</span>
+            </button>
           )}
+          <button
+            type="submit"
+            disabled={sending}
+            {...flairHandlers}
+            className={`btn-flair min-h-14 flex-1 rounded-full bg-cta px-6 text-lg font-semibold text-white shadow-[0_14px_30px_-14px_var(--p-cta)] disabled:opacity-60 ${FLAIR.cta}`}
+          >
+            {sending
+              ? "Отправляем…"
+              : step === LAST
+                ? "Отправить анкету"
+                : fromCheck
+                  ? "Готово, к проверке →"
+                  : step === 0
+                    ? "Начнём →"
+                    : "Дальше →"}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
 
-          {step === 1 && (
-            <>
-              <Question label="Чем вы сейчас заняты" group>
-                <Choices<Occupation>
-                  options={OCCUPATION}
-                  icons={OCCUPATION_ICON}
-                  value={[a.occupation]}
-                  onChange={([v]) => setAnswers({ occupation: v })}
-                />
-              </Question>
-              <Question
-                label="Где вы живёте"
-                group
-                hint="Фонд работает в Москве, Подмосковье, Ярославской области и Северной Осетии"
-              >
-                <Choices<Region> options={REGION} value={[a.region]} onChange={([v]) => setAnswers({ region: v })} />
-              </Question>
-            </>
-          )}
+/** На компьютере слева — все шаги анкеты списком: где вы сейчас, что уже пройдено, сколько осталось. */
+function StepList(props: { step: number; reached: number; saved: boolean; onJump: (step: number) => void }) {
+  const percent = Math.round((props.step / LAST) * 100);
+  return (
+    <aside className="sticky top-6 hidden flex-col self-start gap-5 rounded-[2rem] bg-surface p-5 md:flex lg:p-6">
+      <div className="flex flex-col gap-1">
+        <span className="font-display text-lg leading-tight font-semibold">Анкета волонтёра</span>
+        <span className="text-sm text-hint">Займёт 5–7 минут</span>
+      </div>
 
-          {step === 2 && (
-            <>
-              <Question label="Пара слов о вас" required error={errors.about}>
-                <TextBox
-                  value={a.about}
-                  onChange={(v) => setAnswers({ about: v })}
-                  placeholder="Например: я на пенсии, 20 лет работала учителем рисования, люблю возиться с детьми"
-                  meter
-                />
-              </Question>
-              <Question label="Что вы умеете" hint="Нажмите на подходящее или допишите своё">
-                <Ideas ideas={SKILL_IDEAS} value={a.skills} onChange={(v) => setAnswers({ skills: v })} />
-                <TextBox
-                  value={a.skills}
-                  onChange={(v) => setAnswers({ skills: v })}
-                  placeholder="Например: керамика, фотография, шитьё, монтаж видео, веду соцсети"
-                />
-              </Question>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
-              <Question label="Чем хотели бы помогать фонду" hint="Можно выбрать несколько или написать своими словами">
-                <Ideas ideas={WISH_IDEAS} value={a.wishes} onChange={(v) => setAnswers({ wishes: v })} />
-                <TextBox
-                  value={a.wishes}
-                  onChange={(v) => setAnswers({ wishes: v })}
-                  placeholder="Например: помогать на занятиях с детьми, снимать мероприятия"
-                />
-              </Question>
-              <Question
-                label="Ваш опыт"
-                hint="Волонтёрство, работа с детьми или людьми с особенностями развития. Если опыта нет — это нормально, всему научим."
-              >
-                <TextBox
-                  value={a.experience}
-                  onChange={(v) => setAnswers({ experience: v })}
-                  placeholder="Например: год помогала в приюте для животных; с особыми детьми не работала, но готова учиться"
-                />
-              </Question>
-            </>
-          )}
-
-          {step === 4 && (
-            <>
-              <Question
-                label="Когда вы обычно свободны"
-                required
-                group
-                error={errors.availability}
-                hint={
-                  <>
-                    🧡 <b>Фонду особенно нужна помощь в будни днём</b> — группы из интернатов приезжают утром.
-                  </>
-                }
-              >
-                <Choices<Availability>
-                  multiple
-                  options={AVAILABILITY}
-                  icons={AVAILABILITY_ICON}
-                  subs={AVAILABILITY_SUB}
-                  value={a.availability}
-                  onChange={(v) => setAnswers({ availability: v })}
-                />
-              </Question>
-              <Question label="Как удобнее помогать" required group error={errors.formats}>
-                <Choices<Format>
-                  multiple
-                  options={FORMAT}
-                  icons={FORMAT_ICON}
-                  subs={FORMAT_SUB}
-                  value={a.formats}
-                  onChange={(v) => setAnswers({ formats: v })}
-                />
-              </Question>
-              <Question label="Как часто" group>
-                <Choices<Regularity>
-                  options={REGULARITY}
-                  icons={REGULARITY_ICON}
-                  subs={REGULARITY_SUB}
-                  value={[a.regularity]}
-                  onChange={([v]) => setAnswers({ regularity: v })}
-                />
-              </Question>
-            </>
-          )}
-
-          {step === LAST && (
-            <>
-              <Review draft={draft} onEdit={(n) => goTo(n, { fromCheck: true })} />
-              <label
-                data-error={errors.consent ? "" : undefined}
-                className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-4 transition-colors ${
-                  draft.consent ? "border-accent bg-soft/60" : errors.consent ? "border-red-300 bg-red-50" : "border-line"
+      <ol className="flex flex-col gap-1">
+        {STEPS.map((s, n) => {
+          const now = n === props.step;
+          const done = n < props.step || (!now && n <= props.reached);
+          return (
+            <li key={s.short}>
+              <button
+                type="button"
+                disabled={now || !done}
+                onClick={() => props.onJump(n)}
+                aria-current={now ? "step" : undefined}
+                className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors ${
+                  now ? "bg-page font-semibold shadow-[0_10px_24px_-18px_var(--p-ink)]" : done ? "hover:bg-page/70" : "text-hint"
                 }`}
               >
-                <input
-                  type="checkbox"
-                  checked={draft.consent}
-                  onChange={(e) => {
-                    set({ consent: e.target.checked });
-                    setErrors({});
-                  }}
-                  className="mt-1 size-6 shrink-0 accent-[var(--color-accent)]"
-                />
-                <span>
-                  Согласен(на) на{" "}
-                  <a href={FUND_DOCS.privacy} target="_blank" rel="noreferrer" className="text-link underline underline-offset-4">
-                    обработку персональных данных
-                  </a>{" "}
-                  фондом «Дети Марии». Имя и контакт видит только координатор фонда, в AI-сервисы они не передаются.
+                <span
+                  className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold transition-colors ${
+                    now ? "bg-cta text-white" : done ? "bg-accent text-accent-text" : "border-2 border-line"
+                  }`}
+                  aria-hidden="true"
+                >
+                  {done ? "✓" : n + 1}
                 </span>
-              </label>
-              {errors.consent && <p className="-mt-3 text-sm font-medium text-red-700">{errors.consent}</p>}
-              {error && <ErrorBox text={`Не получилось отправить анкету: ${error}`} />}
-              {sending && <Sending />}
-            </>
-          )}
+                <span className="leading-tight">{s.short}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="flex flex-col gap-2">
+        <div className="h-2 overflow-hidden rounded-full bg-line">
+          <span
+            className="block h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-hint">Готово на {percent}%</span>
+          <span className={`text-accent transition-opacity duration-500 ${props.saved ? "opacity-100" : "opacity-0"}`}>
+            ✓ Сохранено
+          </span>
         </div>
       </div>
 
-      <div className="sticky bottom-0 z-10 -mx-4 mt-2 flex gap-3 bg-gradient-to-t from-page from-70% to-transparent px-4 pt-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {step > 0 && !sending && (
-          <button
-            type="button"
-            onClick={() => goTo(fromCheck ? LAST : step - 1)}
-            {...flairHandlers}
-            className={`btn-flair min-h-14 shrink-0 rounded-full border-2 border-line bg-surface px-5 font-semibold ${FLAIR.secondary}`}
-            aria-label={fromCheck ? "Вернуться к проверке" : "Назад"}
-          >
-            ←<span className="hidden sm:inline"> {fromCheck ? "К проверке" : "Назад"}</span>
-          </button>
-        )}
-        <button
-          type="submit"
-          disabled={sending}
-          {...flairHandlers}
-          className={`btn-flair min-h-14 flex-1 rounded-full bg-cta px-6 text-lg font-semibold text-white shadow-[0_14px_30px_-14px_var(--p-cta)] disabled:opacity-60 ${FLAIR.cta}`}
-        >
-          {sending
-            ? "Отправляем…"
-            : step === LAST
-              ? "Отправить анкету"
-              : fromCheck
-                ? "Готово, к проверке →"
-                : step === 0
-                  ? "Начнём →"
-                  : "Дальше →"}
-        </button>
-      </div>
-    </form>
+      <p className="text-sm text-hint">
+        Ответы сохраняются на этом устройстве — можно закрыть страницу и вернуться позже.
+      </p>
+    </aside>
   );
 }
 
@@ -767,8 +842,8 @@ function Review(props: { draft: Draft; onEdit: (step: number) => void }) {
             {r.items.map(([k, v]) => (
               <div key={k} className="flex flex-col sm:flex-row sm:gap-3">
                 <dt className="shrink-0 text-sm text-hint sm:w-32 sm:pt-0.5">{k}</dt>
-                <dd className={`break-words whitespace-pre-line ${v.trim() ? "" : "text-hint italic"}`}>
-                  {v.trim() || "не заполнено"}
+                <dd className="min-w-0 flex-1">
+                  <LongText text={v.trim()} />
                 </dd>
               </div>
             ))}
@@ -776,6 +851,43 @@ function Review(props: { draft: Draft; onEdit: (step: number) => void }) {
         </Card>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Ответ на странице проверки: длинный текст — три строки и «…», нажатие показывает целиком.
+    Очень длинные слова переносятся, чтобы текст не вылезал за карточку. */
+function LongText(props: { text: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(false);
+
+  // обрезан ли текст на самом деле — зависит от ширины экрана, поэтому меряем после отрисовки
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || open) return;
+    const measure = () => setLong(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [props.text, open]);
+
+  if (!props.text) return <p className="text-hint italic">не заполнено</p>;
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <p ref={ref} className={`whitespace-pre-line [overflow-wrap:anywhere] ${open ? "" : "line-clamp-3"}`}>
+        {props.text}
+      </p>
+      {(long || open) && (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="-ml-2 rounded-full px-2 py-0.5 text-sm font-semibold text-link hover:bg-soft"
+        >
+          {open ? "Свернуть" : "… показать полностью"}
+        </button>
+      )}
     </div>
   );
 }
@@ -817,7 +929,7 @@ function Thanks(props: { volunteer: Volunteer }) {
   const tags = [...new Set([...(p?.skills ?? []), ...(p?.interests ?? [])])];
 
   return (
-    <div className="relative flex flex-col gap-5">
+    <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-5">
       <Confetti />
       <div className="flex flex-col items-center gap-3 pt-2 text-center">
         <svg viewBox="0 0 52 52" className="size-20" aria-hidden="true">

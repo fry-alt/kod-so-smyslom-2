@@ -1,7 +1,7 @@
 """Контракт API: что приходит в запросах и что уходит в ответах."""
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -540,3 +540,21 @@ class AuthOut(BaseModel):
 
     token: str
     account: AccountOut
+
+
+# ===== Оформление личного кабинета =====
+
+LookColor = Literal["blue", "cyan", "green", "orange", "berry", "yellow"]
+LookCover = Literal["sky", "sunset", "meadow", "sea", "berry", "night"]
+
+
+class Look(BaseModel):
+    """GET и PUT /auth/look. Только для красоты: в LLM и индекс не уходит."""
+
+    avatar: str = Field(default="", max_length=16, description="эмодзи; пусто — первая буква имени")
+    color: LookColor = "blue"
+    cover: LookCover = "sky"
+    stickers: list[Annotated[str, Field(max_length=16)]] = Field(default_factory=list, max_length=3)
+    nickname: str = Field(
+        default="", max_length=40, description="как обращаться; пусто — имя из анкеты"
+    )

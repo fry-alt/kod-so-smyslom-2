@@ -4,6 +4,7 @@
 // Сбросить демо-данные: localStorage.removeItem("mock_volunteers").
 import type {
   Account,
+  Look,
   AskResponse,
   AuthOut,
   Availability,
@@ -805,7 +806,7 @@ export const mockChatApi = {
 // Аккаунты живут в localStorage (mock_accounts); пароль в моках хранится как есть — это только демо в браузере.
 // Сбросить: localStorage.removeItem("mock_accounts").
 
-type MockAccount = Account & { password: string; token: string };
+type MockAccount = Account & { password: string; token: string; look?: Look };
 const ACCOUNTS_KEY = "mock_accounts";
 
 function loadAccounts(): MockAccount[] {
@@ -876,5 +877,18 @@ export const mockAuthApi: typeof authApi = {
   me: () => {
     const a = currentAccount(loadAccounts());
     return a ? wait(authOut(a).account, 200) : Promise.reject(new Error("Войдите заново"));
+  },
+  look: () => {
+    const a = currentAccount(loadAccounts());
+    if (!a) return Promise.reject(new Error("Войдите заново"));
+    return wait(a.look ?? { avatar: "", color: "blue", cover: "sky", stickers: [], nickname: "" }, 200);
+  },
+  saveLook: (look) => {
+    const list = loadAccounts();
+    const a = currentAccount(list);
+    if (!a) return Promise.reject(new Error("Войдите заново"));
+    a.look = { ...look, nickname: look.nickname.trim() };
+    saveAccounts(list);
+    return wait(a.look, 300);
   },
 };

@@ -146,3 +146,15 @@ class Account(SQLModel, table=True):
     token: str = Field(
         index=True, unique=True
     )  # ключ входа: сайт присылает его в заголовке Authorization
+
+
+class AccountLook(SQLModel, table=True):
+    """Оформление личного кабинета: аватар, обложка, стикеры, как обращаться.
+    Отдельная таблица, а не поля Account, — create_all добавит её и в уже работающую базу."""
+
+    account_id: int = Field(foreign_key="account.id", primary_key=True)
+    avatar: str = ""  # эмодзи; пусто — первая буква имени
+    color: str = "blue"  # schemas.LookColor
+    cover: str = "sky"  # schemas.LookCover
+    stickers: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    nickname: str = ""  # пусто — имя из анкеты

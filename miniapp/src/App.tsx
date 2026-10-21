@@ -97,19 +97,21 @@ export default function App() {
 }
 
 function VolunteerLayout(props: { path: string; children: ReactNode }) {
-  // лендинг, вход, кабинет, занятия и собеседование — широкие (колонки на компьютере), остальные — узкие, как в телефоне
-  const wide = ["/", "/login", "/me", "/opportunities", "/interview"].includes(props.path) || (props.path === "/form" && needsAccount());
+  // лендинг, вход, кабинет, занятия, собеседование и анкета — широкие (колонки на компьютере), остальные — узкие, как в телефоне
+  const wide = ["/", "/login", "/me", "/opportunities", "/form", "/interview"].includes(props.path);
+  // анкета — на весь экран и без подвала: ничего не отвлекает от заполнения
+  const focus = props.path === "/form";
   const auth = props.path === "/login" || needsAccount() && ["/me", "/form", "/interview"].includes(props.path);
   return (
-    <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 pb-24 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl pb-10"}`}>
+    <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : wide ? "pb-24" : "pb-10"}`}>
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Logo />
         {!auth && <AccountNav path={props.path} />}
       </header>
       <MockBanner />
-      <main>{props.children}</main>
+      <main className={focus ? "flex flex-1 flex-col" : undefined}>{props.children}</main>
       {/* на странице входа подвала нет — ничего не отвлекает от формы */}
-      {!auth && <Footer />}
+      {!auth && !focus && <Footer />}
     </div>
   );
 }

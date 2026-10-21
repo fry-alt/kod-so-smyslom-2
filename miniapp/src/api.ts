@@ -260,10 +260,17 @@ export type AuthOut = { token: string; account: Account };
 export type RegisterIn = { email: string; password: string; role: AccountRole; code?: string };
 export type LoginIn = { email: string; password: string; role: AccountRole };
 
+/** Оформление личного кабинета. avatar — эмодзи (пусто — буква имени), nickname — как обращаться (пусто — имя из анкеты). */
+export type LookColor = "blue" | "cyan" | "green" | "orange" | "berry" | "yellow";
+export type LookCover = "sky" | "sunset" | "meadow" | "sea" | "berry" | "night";
+export type Look = { avatar: string; color: LookColor; cover: LookCover; stickers: string[]; nickname: string };
+
 export const authApi = {
   register: (data: RegisterIn) => post<AuthOut>("/auth/register", data),
   login: (data: LoginIn) => post<AuthOut>("/auth/login", data),
   me: () => request<Account>("GET", "/auth/me"),
+  look: () => request<Look>("GET", "/auth/look"),
+  saveLook: (look: Look) => request<Look>("PUT", "/auth/look", look),
 };
 
 /** Адрес сигнального WebSocket звонка: тот же бэкенд, что и BASE, но ws:// или wss://. */
