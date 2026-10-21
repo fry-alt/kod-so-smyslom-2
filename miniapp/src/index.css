@@ -799,9 +799,6 @@ body {
 .marquee3d-down {
   animation-name: marquee-down;
 }
-.marquee3d:hover .marquee3d-col {
-  animation-play-state: paused;
-}
 @keyframes marquee-up {
   from {
     transform: translateY(0);
