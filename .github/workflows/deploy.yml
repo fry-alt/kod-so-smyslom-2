@@ -71,7 +71,9 @@ jobs:
             "rm -rf ~/deti/src && mkdir -p ~/deti/src ~/deti/data && tar -x -C ~/deti/src && cp -r ~/deti/src/data/. ~/deti/data/"
           scp deploy/docker-compose.prod.yml deploy@"$HOST":deti/docker-compose.yml
           scp deploy/.env deploy@"$HOST":deti/.env
-          ssh deploy@"$HOST" "cd ~/deti && chmod 600 .env && docker compose build -q"
+          # Свой пустой конфиг Docker: в общем лежит устаревший логин Yapp в ghcr.io, с ним не скачать даже
+          # публичный ghcr.io/astral-sh/uv (denied). Логин Yapp не трогаем.
+          ssh deploy@"$HOST" "cd ~/deti && chmod 600 .env && mkdir -p .docker && DOCKER_CONFIG=~/deti/.docker docker compose build -q"
 
       - name: Выкладка
         run: |
