@@ -6,7 +6,8 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, ty
 import type { ChatMessage, Source } from "../../api";
 import { chatApi } from "../../backend";
 import { tg } from "../../telegram";
-import { ErrorBox, errorText } from "../../ui";
+import { Button, ErrorBox, errorText } from "../../ui";
+import { navigate } from "../../router";
 
 /** Примеры вопросов — нажать и сразу спросить. */
 const EXAMPLES = ["Как стать волонтёром?", "Можно ли помогать онлайн?", "Что взять на первую встречу?"];
@@ -97,7 +98,7 @@ function ChatPanel() {
             <Examples onPick={send} />
           </>
         )}
-        {turns.map((t, i) => (t.role === "user" ? <UserBubble key={i} text={t.content} /> : <AnswerBubble key={i} turn={t} />))}
+        {turns.map((t, i) => (t.role === "user" ? <UserBubble key={i} text={t.content} /> : <AnswerBubble key={i} turn={t} question={turns[i - 1]?.role === "user" ? turns[i - 1].content : undefined} />))}
         {loading && (
           <>
             <UserBubble text={pending} />
@@ -142,11 +143,17 @@ function plain(text: string) {
 }
 
 /** Ответ помощника и под ним — откуда он: раскрывающиеся фрагменты документов фонда. */
-function AnswerBubble(props: { turn: Turn }) {
+function AnswerBubble(props: { turn: Turn; question?: string }) {
   const sources = props.turn.sources ?? [];
+  const unanswered = sources.length === 0 && /в документах фонда этого нет|в документах фонда об этом ничего нет|не знаю:.*документ|спросите координатора/i.test(props.turn.content);
   return (
     <div className="tile-in flex min-w-0 max-w-[85%] flex-col gap-2 self-start rounded-3xl rounded-bl-lg bg-page px-5 py-3">
       <p className="whitespace-pre-wrap">{props.turn.content}</p>
+      {unanswered && props.question && (
+        <Button variant="secondary" onClick={() => navigate(`/messages?about=fund&question=${encodeURIComponent(props.question!)}`)}>
+          Написать координатору
+        </Button>
+      )}
       {sources.length > 0 && (
         <div className="flex flex-col gap-1 border-t border-line pt-2 text-sm">
           <span className="text-hint">Откуда ответ:</span>
