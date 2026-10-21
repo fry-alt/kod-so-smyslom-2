@@ -195,6 +195,49 @@ def test_search_by_role_without_text(client, llm, ids):
     assert ids["photo_morning"] not in found(r)  # роль по субботам
 
 
+def opportunity(client, **changes) -> int:
+    data = {
+        "title": "Мастер-класс по керамике",
+        "description": "Помочь мастеру с глиной и гостями",
+        "role_code": "ceramics_assistant",
+        "starts_at": "2026-10-31T12:00:00",  # суббота
+        "region": "moscow",
+        "format": "offline",
+        **changes,
+    }
+    r = client.post("/opportunities", json=data)
+    assert r.status_code == 200, r.text
+    return r.json()["id"]
+
+
+def test_search_by_opportunity_without_text(client, llm, ids):
+    r = client.post("/search", json={"query": "", "opportunity_id": opportunity(client)})
+    parsed_query = r.json()["parsed"]
+    assert parsed_query["availability"] == ["weekend"]
+    assert (parsed_query["region"], parsed_query["format"]) == ("moscow", "offline")
+    assert "керамика" in parsed_query["skills"]
+    assert found(r)[0] == ids["ceramics"]
+    assert ids["photo_morning"] not in found(r)  # в субботу не может
+
+
+def test_opportunity_time_and_place_beat_query_text(client, llm, ids):
+    # координатор дописал «фотограф», а LLM поняла «будни утром» — но съёмка в субботу в Москве
+    llm.provider.parsed = parsed(availability=["weekday_morning"], region="yaroslavl")
+    oid = opportunity(client, role_code=None, title="Съёмка ярмарки", description="")
+    r = client.post("/search", json={"query": "фотограф", "opportunity_id": oid})
+    assert set(found(r)) == {ids["photo_weekend"], ids["ceramics"]}  # суббота, Москва, очно
+    assert r.json()["parsed"]["region"] == "moscow"
+
+
+def test_search_by_opportunity_without_role_and_llm(client, llm, ids):
+    llm.provider = BrokenProvider()
+    llm._embedder = BrokenEmbedder()
+    oid = opportunity(client, role_code=None, title="Керамика для гостей", description="")
+    r = client.post("/search", json={"opportunity_id": oid})
+    assert found(r)[0] == ids["ceramics"]
+    assert r.json()["candidates"][0]["reason"] == "совпадение по словам запроса: керамика"
+
+
 def test_rerank_prompt_has_no_personal_data(client, llm, ids):
     llm.provider.parsed = parsed()
     client.post("/search", json={"query": "фото"})
@@ -217,7 +260,7 @@ def test_search_is_logged(client, llm, ids):
 def test_bad_requests(client, llm):
     assert client.post("/search", json={"query": "  "}).status_code == 400
     assert client.post("/search", json={"role_code": "astronaut"}).status_code == 404
-    assert client.post("/search", json={"opportunity_id": 1}).status_code == 400
+    assert client.post("/search", json={"opportunity_id": 999}).status_code == 404
 
 
 def test_empty_base(client, llm):

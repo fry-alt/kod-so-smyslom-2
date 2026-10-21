@@ -1,6 +1,7 @@
 """Умный поиск волонтёров для координатора. Схема — docs/ARCHITECTURE.md, «Умный поиск».
 
 1. Разбор запроса (LLM) → ParsedQuery; для роли без текста — прямо из полей роли.
+   Подбор под возможность: роль возможности + её время, регион и формат (они важнее текста).
 2. Жёсткий фильтр в БД: статус, время, регион, очно/онлайн.
 3. Векторы: TOP_K ближайших по смыслу среди отфильтрованных.
 4. LLM одним вызовом ставит оценку 0–100 и пишет причину.
@@ -18,9 +19,9 @@ from sqlmodel import Session, select
 from app.llm.client import get_llm
 from app.llm.prompts import load_prompt
 from app.llm.providers import LLMError
-from app.models import Interaction, Volunteer
+from app.models import Interaction, Opportunity, Volunteer
 from app.schemas import Candidate, ParsedQuery, Role, SearchRequest, SearchResponse
-from app.services import volunteer_index, volunteers
+from app.services import opportunities, volunteer_index, volunteers
 from app.services.roles import load_roles
 
 log = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ TOP_K = 20  # сколько кандидатов отдаём LLM на пере
 STEM = 6  # сколько первых букв навыка сравниваем с анкетой — грубо, но без морфологии
 QUERY_STOP_WORDS = {"нужен", "нужна", "нужно", "нужны", "ищем", "который", "которая", "можно"}
 QUERY_STOP_WORDS |= {"помочь", "помощь", "волонтер", "волонтёр", "человек", "кто-то", "чтобы"}
+QUERY_STOP_WORDS |= {"роль", "возможность"}  # подписи из request_text
 
 
 class SearchError(Exception):
@@ -51,18 +53,22 @@ class RerankResult(BaseModel):
 
 def search(session: Session, req: SearchRequest) -> SearchResponse:
     started = time.perf_counter()
+    opportunity = None
     if req.opportunity_id is not None:
-        raise SearchError("Подбор под возможность появится вместе с каталогом возможностей.")
+        opportunity = opportunities.get(session, req.opportunity_id)
+        if opportunity is None:
+            raise SearchError(f"Возможность {req.opportunity_id} не найдена", status=404)
+    role_code = req.role_code or (opportunity.role_code if opportunity else None)
     role = None
-    if req.role_code:
-        role = next((r for r in load_roles() if r.code == req.role_code), None)
+    if role_code:
+        role = next((r for r in load_roles() if r.code == role_code), None)
         if role is None:
-            raise SearchError(f"Роль «{req.role_code}» не найдена в справочнике", status=404)
-    if not req.query.strip() and role is None:
+            raise SearchError(f"Роль «{role_code}» не найдена в справочнике", status=404)
+    if not req.query.strip() and role is None and opportunity is None:
         raise SearchError("Напишите, кого ищете, или выберите роль")
 
-    request = request_text(req.query, role)
-    parsed = parse_query(req.query, role)
+    request = request_text(req.query, role, opportunity)
+    parsed = parse_query(req.query, role, opportunity)
     regions = {parsed.region} if parsed.region else set(role.regions if role else [])
     pool = [
         v
@@ -73,7 +79,7 @@ def search(session: Session, req: SearchRequest) -> SearchResponse:
     documents = {v.id: volunteers.index_document(v) for v in pool}
     similarity = vector_similarity(f"{request}\n{', '.join(parsed.skills)}", list(documents))
     # с чем сверяем анкеты; запрос не разобран (LLM недоступна) — со словами самого запроса
-    terms = parsed.skills or query_words(req.query)
+    terms = parsed.skills or query_words(request)
     what = "по навыкам" if parsed.skills else "по словам запроса"
     matched = {i: matched_skills(terms, doc) for i, doc in documents.items()}
 
@@ -111,7 +117,8 @@ def search(session: Session, req: SearchRequest) -> SearchResponse:
     session.add(
         Interaction(
             kind="search",
-            question=req.query.strip() or f"роль {req.role_code}",
+            question=req.query.strip()
+            or (f"возможность «{opportunity.title}»" if opportunity else f"роль {role_code}"),
             answer=f"{len(candidates)} из {len(pool)}, AI: {'да' if ai else 'нет'}, {ms:.0f} мс",
         )
     )
@@ -120,15 +127,20 @@ def search(session: Session, req: SearchRequest) -> SearchResponse:
     return SearchResponse(parsed=parsed, candidates=candidates, total_checked=len(pool))
 
 
-def request_text(query: str, role: Role | None) -> str:
+def request_text(query: str, role: Role | None, opportunity: Opportunity | None = None) -> str:
     parts = [f"Роль: {role.title}. {role.description}"] if role else []
+    if opportunity:
+        parts.append(f"Возможность: {opportunity.title}. {opportunity.description}".strip())
     if query.strip():
         parts.append(query.strip())
     return "\n".join(parts)
 
 
-def parse_query(query: str, role: Role | None) -> ParsedQuery:
-    """Запрос словами → ParsedQuery. Роль без текста разбирать не нужно — берём её поля."""
+def parse_query(
+    query: str, role: Role | None, opportunity: Opportunity | None = None
+) -> ParsedQuery:
+    """Запрос словами → ParsedQuery. Роль без текста разбирать не нужно — берём её поля.
+    У возможности время, регион и формат уже известны — они заменяют разобранные из текста."""
     from_role = (
         ParsedQuery(
             skills=role.skills,
@@ -140,17 +152,25 @@ def parse_query(query: str, role: Role | None) -> ParsedQuery:
         if role
         else ParsedQuery(skills=[], availability=[], kind="any", notes="")
     )
-    if not query.strip():
-        return from_role
-    try:
-        return get_llm().chat_json(
-            load_prompt("search_query", request=request_text(query, role)),
-            ParsedQuery,
-            system=load_prompt("system"),
+    parsed = from_role
+    if query.strip():
+        try:
+            parsed = get_llm().chat_json(
+                load_prompt("search_query", request=request_text(query, role, opportunity)),
+                ParsedQuery,
+                system=load_prompt("system"),
+            )
+        except LLMError as e:
+            log.warning("Запрос не разобран, ищем без фильтров по тексту: %s", e)
+    if opportunity:
+        parsed = parsed.model_copy(
+            update={
+                "availability": [opportunities.time_slot(opportunity.starts_at)],
+                "region": opportunity.region,
+                "format": opportunity.format,
+            }
         )
-    except LLMError as e:
-        log.warning("Запрос не разобран, ищем без фильтров по тексту: %s", e)
-        return from_role
+    return parsed
 
 
 def passes_filter(
