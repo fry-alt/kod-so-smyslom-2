@@ -107,6 +107,10 @@ jobs:
 
       - name: Образы и данные на сервер
         run: |
+          docker images deti-python; docker images deti-miniapp
+          # Диск сервера 15 ГБ на двоих с Yapp. Чистим только кеш сборки и образы без имени —
+          # тегированные образы Yapp (откат) не трогаем. Первые сборки на сервере забили диск до отказа.
+          ssh deploy@"$HOST" "df -h / && docker builder prune -af && docker image prune -f && docker system df && df -h /"
           docker save deti-python:latest deti-miniapp:latest | gzip -1 | ssh deploy@"$HOST" "gunzip | docker load"
           # Данные фонда из репозитория (роли, учебные тексты, демо); база и индекс в ~/deti/data не трогаются.
           git archive --format=tar HEAD data | ssh deploy@"$HOST" "mkdir -p ~/deti && tar -x -C ~/deti && rm -rf ~/deti/src ~/deti/.docker"
