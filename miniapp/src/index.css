@@ -340,3 +340,46 @@ body {
     stroke-dashoffset: 0;
   }
 }
+
+/* Кнопки с «заливкой» (как на gsap.com): при наведении из точки входа курсора разливается круг цвета --flair,
+   при уходе — сжимается в точку выхода. На телефоне — от касания. Координаты ставит flairHandlers (ui.tsx). */
+.btn-flair {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    color 0.4s ease,
+    border-color 0.25s ease,
+    transform 0.15s ease;
+}
+.btn-flair::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: var(--flair-x, 50%);
+  top: var(--flair-y, 50%);
+  width: 260%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--flair);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.9s cubic-bezier(0.19, 1, 0.22, 1);
+  pointer-events: none;
+}
+.btn-flair.is-flair::before {
+  transform: translate(-50%, -50%) scale(1);
+}
+.btn-flair.is-flair {
+  color: var(--flair-text);
+}
+.btn-flair:active {
+  transform: scale(0.97);
+}
+.btn-flair:disabled::before {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-flair::before {
+    transition: none;
+  }
+}
