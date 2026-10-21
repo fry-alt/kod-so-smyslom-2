@@ -147,6 +147,13 @@ class VolunteerOut(BaseModel):
     created_at: datetime
 
 
+class Thanks(BaseModel):
+    """GET /volunteers/{id}/thanks — благодарность от фонда за часы и роли, координатор копирует её."""
+
+    text: str
+    ai: bool = Field(description="false — написана по шаблону, без LLM")
+
+
 class VolunteerUpdate(BaseModel):
     """PATCH /volunteers/{id} — меняет координатор."""
 
