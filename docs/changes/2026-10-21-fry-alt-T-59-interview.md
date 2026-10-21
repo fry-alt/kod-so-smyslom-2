@@ -2,7 +2,7 @@
 date: 2026-10-21
 author: fry-alt
 task: T-59 (#59)
-pr: будет добавлен
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/61
 areas: [бэкенд, интерфейс, документы]
 ---
 
