@@ -1,4 +1,4 @@
-# Пуш в main → выкладка на сервер (тот же, что у Yapp). Образы собираются на сервере.
+# Пуш в main → выкладка на сервер (тот же, что у Yapp). Образы собираются здесь и едут на сервер по ssh.
 # Сайт: https://deti.201-34-157-90.sslip.io (Mini App и /admin), /demo — Streamlit.
 # Тесты здесь не гоняем: в main попадают только PR с зелёным CI.
 #
@@ -85,16 +85,34 @@ jobs:
           echo "В .env на сервере: $(cut -d= -f1 deploy/.env | tr '\n' ' ')"
           sed "s/__DOMAIN__/$domain/" deploy/deti.caddy > deploy/deti.caddy.out
 
-      - name: Сборка на сервере
+      # Собираем на машине GitHub: на сервере (1 ядро, медленный Docker Hub из РФ) первая сборка шла > 25 минут.
+      - uses: docker/setup-buildx-action@v3
+      - name: Образ Python (backend, bot, web)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/python.Dockerfile
+          tags: deti-python:latest
+          load: true
+          cache-from: type=gha,scope=python
+          cache-to: type=gha,mode=max,scope=python
+      - name: Образ Mini App
+        uses: docker/build-push-action@v6
+        with:
+          context: miniapp
+          tags: deti-miniapp:latest
+          load: true
+          cache-from: type=gha,scope=miniapp
+          cache-to: type=gha,mode=max,scope=miniapp
+
+      - name: Образы и данные на сервер
         run: |
-          # Туда уходит только код из git (без node_modules и .venv); база и индекс в ~/deti/data не трогаются.
-          git archive --format=tar HEAD | ssh deploy@"$HOST" \
-            "rm -rf ~/deti/src && mkdir -p ~/deti/src ~/deti/data && tar -x -C ~/deti/src && cp -r ~/deti/src/data/. ~/deti/data/"
+          docker save deti-python:latest deti-miniapp:latest | gzip -1 | ssh deploy@"$HOST" "gunzip | docker load"
+          # Данные фонда из репозитория (роли, учебные тексты, демо); база и индекс в ~/deti/data не трогаются.
+          git archive --format=tar HEAD data | ssh deploy@"$HOST" "mkdir -p ~/deti && tar -x -C ~/deti && rm -rf ~/deti/src ~/deti/.docker"
           scp deploy/docker-compose.prod.yml deploy@"$HOST":deti/docker-compose.yml
           scp deploy/.env deploy@"$HOST":deti/.env
-          # Свой пустой конфиг Docker: в общем лежит устаревший логин Yapp в ghcr.io, с ним не скачать даже
-          # публичный ghcr.io/astral-sh/uv (denied). Логин Yapp не трогаем.
-          ssh deploy@"$HOST" "cd ~/deti && chmod 600 .env && mkdir -p .docker && DOCKER_CONFIG=~/deti/.docker docker compose build -q"
+          ssh deploy@"$HOST" "chmod 600 ~/deti/.env"
 
       - name: Выкладка
         run: |

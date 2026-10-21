@@ -114,7 +114,7 @@ miniapp/             Vite + React + TS + Tailwind, Telegram WebApp SDK
 ## Деплой на сервер
 
 **Каждый мерж в `main` выкладывается сам** (`.github/workflows/deploy.yml`): GitHub Actions собирает образы,
-кладёт их в ghcr.io и поднимает стек на сервере Yapp. Адреса:
+загружает их на сервер Yapp по ssh и поднимает стек. Адреса:
 - https://deti.201-34-157-90.sslip.io — сайт и Mini App (`/admin` — кабинет фонда);
 - https://deti.201-34-157-90.sslip.io/api/health — API;
 - https://deti.201-34-157-90.sslip.io/demo — Streamlit.

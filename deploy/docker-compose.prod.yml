@@ -1,6 +1,6 @@
-# Прод на сервере Yapp (201.34.157.90). Лежит там в ~/deti вместе с .env, data/ и src/ (код из main);
+# Прод на сервере Yapp (201.34.157.90). Лежит там в ~/deti вместе с .env и data/;
 # всё это при каждом пуше в main заливает .github/workflows/deploy.yml.
-# Образы собираются на сервере из src/, слои кешируются между выкладками.
+# Образы deti-python и deti-miniapp собирает GitHub Actions и загружает на сервер (docker load).
 #
 # Порты 80/443 на сервере заняты Caddy от Yapp. Он подключает наш сайт из /opt/yapp/sites/deti.caddy
 # и ходит в контейнеры miniapp и web по общей сети yapp_default.
@@ -19,9 +19,6 @@ x-python: &python
 services:
   backend:
     <<: *python
-    build:
-      context: ./src
-      dockerfile: docker/python.Dockerfile
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - ./data:/app/data # SQLite, Chroma, загруженные файлы и данные фонда из репозитория
@@ -62,7 +59,8 @@ services:
         condition: service_healthy
 
   miniapp:
-    build: ./src/miniapp
+    image: deti-miniapp
+    pull_policy: never
     environment:
       BACKEND_HOST: backend:8000
     restart: unless-stopped
