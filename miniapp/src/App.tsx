@@ -4,12 +4,12 @@
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
 import type { ReactNode } from "react";
 
-import { getVolunteerId, USE_MOCK } from "./backend";
+import { backend, getVolunteerId, USE_MOCK } from "./backend";
 import Footer from "./Footer";
 import CallScreen from "./call/CallScreen";
 import CoordinatorPanel from "./call/CoordinatorPanel";
-import { match, usePath } from "./router";
-import { Link } from "./ui";
+import { match, navigate, usePath } from "./router";
+import { Button, Link, useLoad } from "./ui";
 import Analytics from "./screens/admin/Analytics";
 import AdminOpportunities from "./screens/admin/Opportunities";
 import OpportunityCard from "./screens/admin/OpportunityCard";
@@ -21,6 +21,7 @@ import Volunteers from "./screens/admin/Volunteers";
 import Ask from "./screens/volunteer/Ask";
 import Form from "./screens/volunteer/Form";
 import History from "./screens/volunteer/History";
+import Login from "./screens/volunteer/Login";
 import Me from "./screens/volunteer/Me";
 import Opportunities from "./screens/volunteer/Opportunities";
 import Training from "./screens/volunteer/Training";
@@ -34,6 +35,7 @@ const VOLUNTEER_ROUTES: Route[] = [
   ["/form", () => <Form />],
   ["/training", () => <Training />],
   ["/me", () => <Me />],
+  ["/login", () => <Login />],
   ["/opportunities", () => <Opportunities />],
   ["/history", () => <History />],
   ["/ask", () => <Ask />],
@@ -89,18 +91,32 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
         <Link to="/" className="flex items-center gap-2.5 font-display text-lg font-semibold whitespace-nowrap">
           <img src="/logo.svg" alt="Дети Марии" className="h-9 w-auto md:h-11" />
         </Link>
-        <nav className="flex gap-4 whitespace-nowrap">
-          <NavLink to="/opportunities" path={props.path}>
-            Куда пойти
-          </NavLink>
-          <NavLink to="/me" path={props.path}>
-            Мой статус
-          </NavLink>
-        </nav>
+        <AccountNav />
       </header>
       <MockBanner />
       <main>{props.children}</main>
       <Footer />
+    </div>
+  );
+}
+
+/** Справа в шапке: «Войти» — или имя волонтёра и «Личный кабинет», если анкета уже есть на этом устройстве. */
+function AccountNav() {
+  const id = getVolunteerId();
+  const { data: me } = useLoad(() => (id ? backend.get(id) : Promise.resolve(null)), [id]);
+  if (!id || !me) {
+    return (
+      <Button variant="secondary" onClick={() => navigate("/login")}>
+        Войти
+      </Button>
+    );
+  }
+  return (
+    <div className="flex items-center gap-3">
+      <span className="hidden max-w-[12rem] truncate font-semibold sm:inline">{me.name.split(" ")[0]}</span>
+      <Button variant="secondary" onClick={() => navigate("/me")}>
+        Личный кабинет
+      </Button>
     </div>
   );
 }
