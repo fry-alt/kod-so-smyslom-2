@@ -11,6 +11,7 @@ hit@3 — в первой тройке есть хоть один из ожид�
 
 import json
 import os
+import ssl
 import sys
 import time
 import urllib.error
@@ -20,15 +21,31 @@ from pathlib import Path
 BASE_URL = os.environ.get("BACKEND_URL", "http://localhost:8000").rstrip("/")
 DEMO = Path(__file__).resolve().parents[1] / "data" / "demo"
 TIMEOUT = 120  # секунд на запрос: разбор и переранжирование — два вызова LLM
+RETRIES = 10  # обрыв соединения до ответа (бывает по пути до сервера) — пробуем ещё раз
+
+
+last_seconds = 0.0  # сколько шла последняя удачная попытка call — без обрывов и пауз перед повтором
 
 
 def call(method: str, path: str, body: dict | None = None):
+    global last_seconds
     data = json.dumps(body).encode() if body is not None else None
     request = urllib.request.Request(
         BASE_URL + path, data=data, method=method, headers={"Content-Type": "application/json"}
     )
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        return json.loads(response.read())
+    for attempt in range(RETRIES):
+        started = time.perf_counter()
+        try:
+            with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+                result = json.loads(response.read())
+            last_seconds = time.perf_counter() - started
+            return result
+        except urllib.error.URLError as e:
+            # ответ сервера (HTTPError) и таймаут не повторяем — запрос мог выполниться
+            broken = isinstance(e.reason, (ssl.SSLError, ConnectionError))
+            if isinstance(e, urllib.error.HTTPError) or not broken or attempt == RETRIES - 1:
+                raise
+            time.sleep(2)
 
 
 def main() -> int:
@@ -55,13 +72,12 @@ def main() -> int:
         expected = {names[i - 1] for i in q["expected"]}
         results = []
         for _ in range(repeat):
-            started = time.perf_counter()
             try:
                 body = call("POST", "/search", {"query": q["query"]})
             except (urllib.error.URLError, TimeoutError) as e:
                 print(f"❌ Запрос {number}: {e}")
                 return 1
-            seconds.append(time.perf_counter() - started)
+            seconds.append(last_seconds)
             top = [c["volunteer"]["name"] for c in body["candidates"][:3]]
             hit = bool(expected & set(top))
             fallback = not any(c["ai"] for c in body["candidates"])
