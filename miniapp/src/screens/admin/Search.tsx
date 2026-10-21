@@ -6,8 +6,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Candidate, Opportunity, ParsedQuery, Role, SearchRequest, SearchResponse, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
 import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
-import { navigate, useSearchParam } from "../../router";
-import { Badge, Button, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link } from "../../ui";
+import { useSearchParam } from "../../router";
+import { Badge, Button, ButtonLink, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link } from "../../ui";
 
 const EXAMPLES = [
   "Фотограф на четверг утром, разово",
@@ -351,7 +351,7 @@ function CandidateCard(props: {
 }) {
   const { volunteer: v, score, reason, matched_skills, ai } = props.c;
   const barColor = score >= 70 ? "bg-green-600" : score >= 40 ? "bg-amber-500" : "bg-gray-400";
-  const open = () => navigate(`/admin/volunteers/${v.id}`);
+  const volunteerPath = `/admin/volunteers/${v.id}`;
 
   return (
     <Card className="flex flex-col gap-3">
@@ -399,9 +399,9 @@ function CandidateCard(props: {
       <Contact contact={v.contact} />
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={open}>
+        <ButtonLink to={volunteerPath}>
           Открыть карточку
-        </Button>
+        </ButtonLink>
         {props.invite &&
           (props.invite.done ? (
             <Badge className="self-center bg-green-100 text-green-900">Приглашён</Badge>

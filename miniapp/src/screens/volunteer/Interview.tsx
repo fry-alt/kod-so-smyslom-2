@@ -7,7 +7,7 @@ import type { Interview as InterviewT } from "../../api";
 import { backend, getVolunteerId } from "../../backend";
 import { navigate } from "../../router";
 import { tg } from "../../telegram";
-import { Button, Card, ErrorBox, errorText, FLAIR, flairHandlers, Loading, useLoad } from "../../ui";
+import { ButtonLink, Card, ErrorBox, errorText, FLAIR, flairHandlers, Loading, useLoad } from "../../ui";
 import { callWhen, nextCall } from "./Me";
 
 export default function Interview() {
@@ -43,9 +43,6 @@ export default function Interview() {
   return (
     <div className="flex flex-col gap-6 pb-6">
       <div className="flex flex-col gap-2">
-        <button type="button" onClick={() => navigate("/me")} className="self-start font-semibold text-link hover:underline">
-          ← Личный кабинет
-        </button>
         <h1 className="font-display text-[1.65rem] leading-tight font-semibold tracking-tight sm:text-[2rem] md:text-[2.4rem]">Собеседование</h1>
         <p className="max-w-[52ch] text-lg text-hint">
           Короткий видеозвонок с координатором фонда — 30 минут. Познакомимся, расскажем о занятиях и ответим на ваши
@@ -72,7 +69,7 @@ function NeedForm() {
     <Card className="flex flex-col items-start gap-3 sm:p-6">
       <h2 className="font-display text-xl font-semibold">Сначала — анкета</h2>
       <p className="text-hint">По анкете координатор подготовится к разговору. Займёт 5–7 минут.</p>
-      <Button onClick={() => navigate("/form")}>Заполнить анкету</Button>
+      <ButtonLink to="/form">Заполнить анкету</ButtonLink>
     </Card>
   );
 }
@@ -89,7 +86,7 @@ function NeedTraining() {
         Несколько коротких текстов о наших подопечных и правилах фонда, в конце — тест. Как только пройдёте, здесь
         откроется запись на собеседование.
       </p>
-      <Button onClick={() => navigate("/training")}>Пройти обучение</Button>
+      <ButtonLink to="/training">Пройти обучение</ButtonLink>
     </Card>
   );
 }
@@ -106,7 +103,7 @@ function Passed() {
         Спасибо за разговор! Координатор посмотрит итоги и допустит вас к занятиям — обычно это 1–2 дня. А пока можно
         присмотреть, куда пойти.
       </p>
-      <Button onClick={() => navigate("/opportunities")}>Куда можно пойти</Button>
+      <ButtonLink to="/opportunities">Куда можно пойти</ButtonLink>
     </Card>
   );
 }

@@ -74,6 +74,26 @@ export function Link(props: { to: string; children: ReactNode; className?: strin
   );
 }
 
+/** Навигационная ссылка, оформленная как кнопка для заметного действия-перехода. */
+export function ButtonLink(props: {
+  to: string;
+  children: ReactNode;
+  variant?: "primary" | "secondary";
+  wide?: boolean;
+}) {
+  const look = props.variant === "primary"
+    ? "bg-accent text-accent-text shadow-sm"
+    : "border-2 border-line bg-surface text-ink hover:border-accent";
+  return (
+    <Link
+      to={props.to}
+      className={`inline-flex min-h-12 items-center justify-center rounded-full px-6 py-3 font-semibold no-underline ${look} ${props.wide ? "w-full" : ""}`}
+    >
+      {props.children}
+    </Link>
+  );
+}
+
 export function Card(props: { children: ReactNode; className?: string }) {
   return <div className={`min-w-0 rounded-3xl bg-surface p-5 ${props.className ?? ""}`}>{props.children}</div>;
 }

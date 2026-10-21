@@ -12,7 +12,7 @@ import CallScreen from "./call/CallScreen";
 import CoordinatorPanel from "./call/CoordinatorPanel";
 import { match, navigate, usePath } from "./router";
 import { tg } from "./telegram";
-import { Button, Link, useLoad } from "./ui";
+import { ButtonLink, Link, useLoad } from "./ui";
 import Auth from "./screens/Auth";
 import Analytics from "./screens/admin/Analytics";
 import AdminMessages from "./screens/admin/Messages";
@@ -118,6 +118,7 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
   // сообщения — как мессенджер: ровно на высоту экрана, прокручиваются только чаты внутри, подвала нет
   const chat = props.path === "/messages" && !auth;
   const bottomPadding = focus ? "pb-0" : chat ? "pb-4 md:pb-6" : props.path === "/" ? "pb-24" : "pb-10";
+  const showVolunteerBack = !auth && ["/training", "/interview", "/messages", "/opportunities", "/history", "/ask"].includes(props.path);
   return (
     <div
       className={`mx-auto flex w-full min-w-0 flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${bottomPadding}`}
@@ -127,6 +128,11 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
         {!auth && <AccountNav path={props.path} />}
       </header>
       <MockBanner />
+      {showVolunteerBack && (
+        <nav aria-label="Навигация по кабинету">
+          <Link to="/me">← Личный кабинет</Link>
+        </nav>
+      )}
       <main className={`w-full min-w-0 ${focus ? "flex flex-1 flex-col" : chat ? "flex min-h-0 flex-1 flex-col" : ""}`}>{props.children}</main>
       {props.path === "/" && <Footer />}
     </div>
@@ -151,31 +157,31 @@ function AccountNav(props: { path: string }) {
   if (account && props.path === "/me") return null;
   if (account?.role === "coordinator") {
     return (
-      <Button variant="secondary" onClick={() => navigate("/admin")}>
+      <ButtonLink to="/admin">
         Кабинет фонда
-      </Button>
+      </ButtonLink>
     );
   }
   if (account && !me) {
     return (
-      <Button variant="secondary" onClick={() => navigate("/me")}>
+      <ButtonLink to="/me">
         Личный кабинет
-      </Button>
+      </ButtonLink>
     );
   }
   if (!id || !me) {
     return (
-      <Button variant="secondary" onClick={() => navigate("/login?mode=login")}>
+      <ButtonLink to="/login?mode=login">
         Войти
-      </Button>
+      </ButtonLink>
     );
   }
   return (
     <div className="flex items-center gap-3">
       <span className="hidden max-w-[12rem] truncate font-semibold sm:inline">{me.name.split(" ")[0]}</span>
-      <Button variant="secondary" onClick={() => navigate("/me")}>
+      <ButtonLink to="/me">
         Личный кабинет
-      </Button>
+      </ButtonLink>
     </div>
   );
 }

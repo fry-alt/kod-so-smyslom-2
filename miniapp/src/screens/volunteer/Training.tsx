@@ -1,17 +1,15 @@
 // Обучение волонтёра: список модулей → чтение модуля → тест → результат.
-// Весь путь — внутри /training, на состоянии экрана (без новых адресов).
+// Открытый модуль и тест хранятся в URL, чтобы переходы можно было открыть и отменить.
 import { useState } from "react";
 
 import type { TrainingModule, VolunteerStatus } from "../../api";
 import { backend, getVolunteerId, setVolunteerId } from "../../backend";
 import { STATUS, STATUS_COLOR } from "../../labels";
-import { navigate } from "../../router";
-import { Badge, Button, Card, ErrorBox, Loading, useLoad } from "../../ui";
+import { navigate, useSearchParam } from "../../router";
+import { Badge, Button, ButtonLink, Card, ErrorBox, Link, Loading, useLoad } from "../../ui";
 import Markdown from "./training/Markdown";
 import { loadProgress, saveAttempt, type Progress } from "./training/progress";
 import QuizView from "./training/QuizView";
-
-type View = { screen: "list" } | { screen: "read" | "quiz"; module: TrainingModule };
 
 export default function Training() {
   const volunteerId = getVolunteerId();
@@ -20,50 +18,50 @@ export default function Training() {
   const me = useLoad(() => (volunteerId ? backend.get(volunteerId) : Promise.resolve(null)), [volunteerId]);
   const [status, setStatus] = useState<VolunteerStatus | null>(null);
   const [progress, setProgress] = useState<Progress>(() => loadProgress(volunteerId));
-  const [view, setView] = useState<View>({ screen: "list" });
+  const moduleParam = useSearchParam("module");
+  const quizParam = useSearchParam("quiz");
+  const activeModule = modules?.find((module) => String(module.id) === moduleParam) ?? null;
+  const view = activeModule ? (quizParam === "1" && volunteerId ? "quiz" : "read") : "list";
 
-  function open(next: View) {
-    setView(next);
-    window.scrollTo(0, 0);
+  function openModule(module: TrainingModule, quiz = false) {
+    navigate(`/training?module=${encodeURIComponent(module.id)}${quiz ? "&quiz=1" : ""}`);
   }
 
-  if (view.screen === "quiz" && volunteerId) {
+  if (view === "quiz" && activeModule && volunteerId) {
     return (
       <QuizView
-        module={view.module}
+        module={activeModule}
         volunteerId={volunteerId}
         onResult={(r) => {
-          setProgress(saveAttempt(volunteerId, view.module.id, { score: r.score, passed: r.passed }));
+          setProgress(saveAttempt(volunteerId, activeModule.id, { score: r.score, passed: r.passed }));
           setStatus(r.status);
         }}
-        onBack={() => open({ screen: "list" })}
+        onBack={() => openModule(activeModule)}
       />
     );
   }
 
-  if (view.screen !== "list") {
-    const m = view.module;
+  if (view === "read" && activeModule) {
+    const m = activeModule;
     const done = progress[m.id];
     return (
       <div className="flex flex-col gap-5">
-        <button type="button" onClick={() => open({ screen: "list" })} className="min-h-12 self-start text-link">
-          ← К модулям
-        </button>
+        <Link to="/training">← К модулям</Link>
         <h1 className="text-3xl font-bold">{m.title}</h1>
         <Card>
           <Markdown text={m.text} />
         </Card>
         {done?.passed && <p className="text-center text-hint">Вы уже прошли этот тест: {done.score}%</p>}
         {volunteerId ? (
-          <Button wide onClick={() => open({ screen: "quiz", module: m })}>
+          <ButtonLink wide variant="primary" to={`/training?module=${encodeURIComponent(m.id)}&quiz=1`}>
             {done?.passed ? "Пройти тест ещё раз" : "Пройти тест"}
-          </Button>
+          </ButtonLink>
         ) : (
           <NoForm />
         )}
-        <Button wide variant="secondary" onClick={() => open({ screen: "list" })}>
+        <ButtonLink wide to="/training">
           Вернуться к модулям
-        </Button>
+        </ButtonLink>
       </div>
     );
   }
@@ -121,9 +119,9 @@ export default function Training() {
             <p className="text-lg font-semibold">Модуль {modules?.findIndex((m) => m.id === nextRequired.id)! + 1}: {nextRequired.title}</p>
             <p className="text-sm text-hint">Обязательный модуль. Прочитайте его и ответьте на вопросы.</p>
           </div>
-          <Button wide onClick={() => open({ screen: "read", module: nextRequired })}>
+          <ButtonLink wide variant="primary" to={`/training?module=${encodeURIComponent(nextRequired.id)}`}>
             {progress[nextRequired.id] ? "Продолжить модуль" : "Начать обучение"}
-          </Button>
+          </ButtonLink>
         </Card>
       )}
 
@@ -135,9 +133,8 @@ export default function Training() {
           const done = progress[m.id];
           return (
             <li key={m.id}>
-              <button
-                type="button"
-                onClick={() => open({ screen: "read", module: m })}
+              <Link
+                to={`/training?module=${encodeURIComponent(m.id)}`}
                 className={`flex w-full flex-col gap-1 rounded-3xl border-2 bg-surface p-5 text-left transition active:scale-[.99] ${
                   done?.passed ? "border-green-600" : "border-transparent"
                 }`}
@@ -156,16 +153,16 @@ export default function Training() {
                   )}
                   <span className="text-link">{done?.passed ? "Прочитать ещё раз →" : done ? "Продолжить →" : "Начать →"}</span>
                 </span>
-              </button>
+              </Link>
             </li>
           );
         })}
       </ol>
 
       {currentStatus === "trained" && (
-        <Button wide onClick={() => navigate("/interview")}>
+        <ButtonLink wide variant="primary" to="/interview">
           Записаться на собеседование
-        </Button>
+        </ButtonLink>
       )}
     </div>
   );
