@@ -1,7 +1,7 @@
 ---
 date: 2026-10-21
 author: fry-alt
-pr: напрямую
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/48
 areas: [деплой]
 ---
 
