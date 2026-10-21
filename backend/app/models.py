@@ -181,3 +181,10 @@ class DialogMessage(SQLModel, table=True):
     sender: str  # schemas.Sender: coordinator | volunteer
     text: str
     opportunity_id: int | None = Field(default=None, foreign_key="opportunity.id")
+
+
+class FundSetting(SQLModel, table=True):
+    """Настройки фонда, которые координатор меняет в кабинете («Настройки»), например код фонда."""
+
+    key: str = Field(primary_key=True)
+    value: str

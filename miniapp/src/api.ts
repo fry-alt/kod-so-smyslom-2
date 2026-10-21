@@ -280,6 +280,8 @@ export type Account = { id: number; email: string; role: AccountRole; volunteer_
 export type AuthOut = { token: string; account: Account };
 export type RegisterIn = { email: string; password: string; role: AccountRole; code?: string };
 export type LoginIn = { email: string; password: string; role: AccountRole };
+/** Код фонда, без которого нельзя зарегистрироваться координатором. Меняет координатор в «Настройках». */
+export type FundCode = { code: string };
 
 /** Оформление личного кабинета. avatar — эмодзи (пусто — буква имени), nickname — как обращаться (пусто — имя из анкеты). */
 export type LookColor = "blue" | "cyan" | "green" | "orange" | "berry" | "yellow";
@@ -292,6 +294,8 @@ export const authApi = {
   me: () => request<Account>("GET", "/auth/me"),
   look: () => request<Look>("GET", "/auth/look"),
   saveLook: (look: Look) => request<Look>("PUT", "/auth/look", look),
+  fundCode: () => request<FundCode>("GET", "/auth/fund-code"),
+  setFundCode: (data: FundCode) => request<FundCode>("PUT", "/auth/fund-code", data),
 };
 
 /** Адрес сигнального WebSocket звонка: тот же бэкенд, что и BASE, но ws:// или wss://. */

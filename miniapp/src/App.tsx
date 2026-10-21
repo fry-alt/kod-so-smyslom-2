@@ -1,7 +1,7 @@
 // Одно приложение — две части:
 //   /        — лендинг; /login — регистрация и вход по почте (волонтёр или координатор)
 //   /me      — личный кабинет волонтёра: анкета, путь, занятия, обучение, часы (сайт и Telegram Mini App)
-//   /admin   — кабинет фонда (ноутбук, только после входа координатора): сводка, умный поиск, база, аналитика
+//   /admin   — кабинет фонда (ноутбук, только после входа координатора): сводка, умный поиск, база, аналитика, настройки
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
 import type { ReactNode } from "react";
 
@@ -20,6 +20,7 @@ import AdminOpportunities from "./screens/admin/Opportunities";
 import OpportunityCard from "./screens/admin/OpportunityCard";
 import OpportunityForm from "./screens/admin/OpportunityForm";
 import Search from "./screens/admin/Search";
+import Settings from "./screens/admin/Settings";
 import Summary from "./screens/admin/Summary";
 import VolunteerCard from "./screens/admin/VolunteerCard";
 import Volunteers from "./screens/admin/Volunteers";
@@ -56,6 +57,7 @@ const ADMIN_ROUTES: Route[] = [
   ["/admin", () => (new URLSearchParams(location.search).has("opportunity") ? <Search /> : <Summary />)],
   ["/admin/search", () => <Search />],
   ["/admin/analytics", () => <Analytics />],
+  ["/admin/settings", () => <Settings />],
   ["/admin/volunteers", () => <Volunteers />],
   ["/admin/volunteers/:id", (p) => <VolunteerCard id={Number(p.id)} />],
   ["/admin/opportunities", () => <AdminOpportunities />],
@@ -103,8 +105,9 @@ export default function App() {
 }
 
 function VolunteerLayout(props: { path: string; children: ReactNode }) {
-  // лендинг, вход, кабинет, занятия, собеседование и анкета — широкие (колонки на компьютере), остальные — узкие, как в телефоне
-  const wide = ["/", "/login", "/me", "/opportunities", "/form", "/interview", "/messages"].includes(props.path);
+  // лендинг, вход, кабинет, занятия, собеседование, анкета, сообщения и «Спросить о фонде» — широкие (колонки на компьютере),
+  // остальные — узкие, как в телефоне
+  const wide = ["/", "/login", "/me", "/opportunities", "/form", "/interview", "/messages", "/ask"].includes(props.path);
   // анкета — на весь экран и без подвала: ничего не отвлекает от заполнения
   const focus = props.path === "/form";
   const auth = props.path === "/login" || needsAccount() && ["/me", "/form", "/interview", "/messages"].includes(props.path);
@@ -112,7 +115,7 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
   const chat = props.path === "/messages" && !auth;
   return (
     <div
-      className={`mx-auto flex flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"}${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : chat ? "pb-4 md:pb-6" : wide ? "pb-24" : "pb-10"}`}
+      className={`mx-auto flex flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : chat ? "pb-4 md:pb-6" : wide ? "pb-24" : "pb-10"}`}
     >
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Logo />
@@ -200,6 +203,9 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
             </NavLink>
             <NavLink to="/admin/messages" path={props.path}>
               <MessagesLabel />
+            </NavLink>
+            <NavLink to="/admin/settings" path={props.path}>
+              Настройки
             </NavLink>
           </nav>
           <CoordinatorMenu />

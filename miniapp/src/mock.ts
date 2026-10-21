@@ -959,11 +959,31 @@ function linkToAccount(volunteerId: number) {
   }
 }
 
+/** Код фонда в моках — как на бэкенде: 1111, пока координатор не сменил его в «Настройках». */
+const FUND_CODE_KEY = "mock_fund_code";
+
+function loadFundCode(): string {
+  try {
+    return localStorage.getItem(FUND_CODE_KEY) ?? "1111";
+  } catch {
+    return "1111";
+  }
+}
+
+function coordinatorOnly(): Promise<never> | null {
+  const a = currentAccount(loadAccounts());
+  if (!a) return Promise.reject(new Error("Войдите заново"));
+  if (a.role !== "coordinator") return Promise.reject(new Error("Это может только координатор фонда"));
+  return null;
+}
+
 export const mockAuthApi: typeof authApi = {
   register: (data) => {
     const list = loadAccounts();
     const email = data.email.trim().toLowerCase();
     if (list.some((a) => a.email === email)) return Promise.reject(new Error("Эта почта уже зарегистрирована — войдите"));
+    if (data.role === "coordinator" && (data.code ?? "").trim() !== loadFundCode())
+      return Promise.reject(new Error("Неверный код фонда. Его выдаёт руководитель фонда"));
     const a: MockAccount = {
       id: list.length + 1,
       email,
@@ -1000,5 +1020,18 @@ export const mockAuthApi: typeof authApi = {
     a.look = { ...look, nickname: look.nickname.trim() };
     saveAccounts(list);
     return wait(a.look, 300);
+  },
+  fundCode: () => coordinatorOnly() ?? wait({ code: loadFundCode() }, 200),
+  setFundCode: (data) => {
+    const denied = coordinatorOnly();
+    if (denied) return denied;
+    const code = data.code.trim();
+    if (code.length < 4 || /\s/.test(code)) return Promise.reject(new Error("Код — от 4 символов, без пробелов"));
+    try {
+      localStorage.setItem(FUND_CODE_KEY, code);
+    } catch {
+      /* приватный режим — код не запомнится */
+    }
+    return wait({ code }, 400);
   },
 };
