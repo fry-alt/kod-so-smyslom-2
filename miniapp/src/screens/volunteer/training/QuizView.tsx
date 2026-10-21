@@ -231,6 +231,11 @@ function ResultView(props: { quiz: Quiz; answers: (number | null)[]; result: Qui
               <p className={`font-semibold ${ok ? "text-green-800" : "text-red-800"}`}>
                 {ok ? "✓ Верно" : "✗ Неверно"}
               </p>
+              {!ok && (
+                <p className="font-medium text-green-900">
+                  Правильный ответ: {q.options[result.correct_answers[i]]}
+                </p>
+              )}
             </li>
           );
         })}

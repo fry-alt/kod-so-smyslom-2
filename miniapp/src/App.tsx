@@ -3,7 +3,7 @@
 //   /me      — личный кабинет волонтёра: анкета, путь, занятия, обучение, часы (сайт и Telegram Mini App)
 //   /admin   — кабинет фонда (ноутбук, только после входа координатора): сводка, умный поиск, база, аналитика, настройки
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import { backend, getAccount, getVolunteerId, logout, USE_MOCK } from "./backend";
 import Footer from "./Footer";
@@ -77,6 +77,10 @@ function render(routes: Route[], path: string): ReactNode {
 
 export default function App() {
   const path = usePath();
+  const search = location.search;
+  useEffect(() => {
+    document.title = `${pageTitle(path, search)} — Дети Марии`;
+  }, [path, search]);
   // видеособеседование — на весь экран, без меню (ссылку открывают и волонтёр, и координатор)
   const call = match("/call/:token", path);
   if (call) {
@@ -161,7 +165,7 @@ function AccountNav(props: { path: string }) {
   }
   if (!id || !me) {
     return (
-      <Button variant="secondary" onClick={() => navigate("/login")}>
+      <Button variant="secondary" onClick={() => navigate("/login?mode=login")}>
         Войти
       </Button>
     );
@@ -174,6 +178,30 @@ function AccountNav(props: { path: string }) {
       </Button>
     </div>
   );
+}
+
+function pageTitle(path: string, search: string): string {
+  if (path === "/") return "Волонтёрам";
+  if (path === "/form") return "Анкета волонтёра";
+  if (path === "/training") return "Обучение";
+  if (path === "/me") return "Личный кабинет";
+  if (path === "/interview") return "Собеседование";
+  if (path === "/messages") return "Сообщения";
+  if (path === "/opportunities") return "Занятия и события";
+  if (path === "/history") return "Моя история";
+  if (path === "/ask") return "Спросить о фонде";
+  if (path === "/login") return "Вход и регистрация";
+  if (path === "/admin") return new URLSearchParams(search).has("opportunity") ? "Подбор волонтёров" : "Сводка";
+  if (path.startsWith("/call/")) return "Видеособеседование";
+  if (path.startsWith("/admin/search")) return "Умный поиск";
+  if (path.startsWith("/admin/analytics")) return "Аналитика";
+  if (path.startsWith("/admin/volunteers/")) return "Карточка волонтёра";
+  if (path.startsWith("/admin/volunteers")) return "Волонтёры";
+  if (path.startsWith("/admin/opportunities/")) return "Карточка возможности";
+  if (path.startsWith("/admin/opportunities")) return "Возможности";
+  if (path.startsWith("/admin/messages")) return "Сообщения";
+  if (path.startsWith("/admin/settings")) return "Настройки";
+  return "Страница не найдена";
 }
 
 function AdminLayout(props: { path: string; children: ReactNode }) {

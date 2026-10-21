@@ -71,6 +71,7 @@ export default function Training() {
   const currentStatus = status ?? me.data?.status ?? null;
   const required = modules?.filter((m) => m.required) ?? [];
   const requiredDone = required.filter((m) => progress[m.id]?.passed).length;
+  const nextRequired = required.find((m) => !progress[m.id]?.passed);
 
   return (
     <div className="flex flex-col gap-5">
@@ -113,6 +114,19 @@ export default function Training() {
         </Card>
       )}
 
+      {nextRequired && (
+        <Card className="flex flex-col gap-3 border-2 border-accent bg-soft">
+          <div>
+            <p className="text-sm font-semibold text-link">С чего начать</p>
+            <p className="text-lg font-semibold">Модуль {modules?.findIndex((m) => m.id === nextRequired.id)! + 1}: {nextRequired.title}</p>
+            <p className="text-sm text-hint">Обязательный модуль. Прочитайте его и ответьте на вопросы.</p>
+          </div>
+          <Button wide onClick={() => open({ screen: "read", module: nextRequired })}>
+            {progress[nextRequired.id] ? "Продолжить модуль" : "Начать обучение"}
+          </Button>
+        </Card>
+      )}
+
       {loading && <Loading text="Загружаем модули…" />}
       {error && <ErrorBox text={error} onRetry={reload} />}
       {modules?.length === 0 && <p className="text-hint">Модулей пока нет — фонд скоро их добавит.</p>}
@@ -140,7 +154,7 @@ export default function Training() {
                   ) : (
                     <Badge className="bg-page">Не начат</Badge>
                   )}
-                  <span className="text-link">Читать →</span>
+                  <span className="text-link">{done?.passed ? "Прочитать ещё раз →" : done ? "Продолжить →" : "Начать →"}</span>
                 </span>
               </button>
             </li>

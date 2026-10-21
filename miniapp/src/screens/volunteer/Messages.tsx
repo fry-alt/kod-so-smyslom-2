@@ -293,7 +293,7 @@ function ChatPane(props: {
   }
 
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
       e.preventDefault();
       send();
     }
@@ -410,7 +410,7 @@ function ChatPane(props: {
           onKeyDown={onKey}
           maxLength={MAX_LENGTH}
           placeholder="Сообщение…"
-          title="Enter — отправить, Shift+Enter — новая строка"
+          title="Enter — новая строка, Ctrl+Enter — отправить"
           className="min-h-13 flex-1 resize-none rounded-3xl border-2 border-transparent bg-surface px-5 py-3 text-lg leading-snug outline-none placeholder:text-hint focus:border-accent"
         />
         <button

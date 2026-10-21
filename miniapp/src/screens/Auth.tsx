@@ -1,5 +1,4 @@
 // Регистрация и вход по почте и паролю — одна страница для волонтёра и координатора фонда.
-// Слева (на телефоне — сверху) форма, справа — живые сцены «что делают волонтёры», как на лендинге.
 // После входа: волонтёр — в личный кабинет (/me), координатор — в кабинет фонда (/admin).
 import { useState, type FormEvent, type ReactNode } from "react";
 
@@ -9,7 +8,6 @@ import { FUND_DOCS } from "../Footer";
 import { navigate } from "../router";
 import { tg } from "../telegram";
 import { ErrorBox, errorText, FLAIR, flairHandlers, inputClass } from "../ui";
-import VolunteerScenes from "./volunteer/VolunteerScenes";
 
 type Mode = "register" | "login";
 
@@ -41,9 +39,15 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
     try {
       const out = register
         ? await auth.register({ email: clean, password, role, code: code.trim() })
-        : await auth.login({ email: clean, password, role });
+        : await auth.login({ email: clean, password });
       saveSession(out);
-      navigate(out.account.role === "coordinator" ? "/admin" : "/me");
+      const next =
+        out.account.role === "coordinator"
+          ? "/admin"
+          : register && location.pathname === "/form"
+            ? "/form"
+            : "/me";
+      navigate(next);
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -57,22 +61,26 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
   }
 
   return (
-    <div className="grid gap-8 md:grid-cols-[minmax(0,26rem)_1fr] md:gap-10 lg:gap-14">
+    <div className="mx-auto grid w-full max-w-[26rem]">
       <section className="flex flex-col gap-6 rounded-[2rem] bg-surface p-5 shadow-[0_24px_60px_-40px_var(--p-ink)] sm:p-7">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-balance">
-            {register ? "Регистрация" : role === "coordinator" ? "Вход в кабинет фонда" : "Вход в личный кабинет"}
+            {register ? "Регистрация" : "Вход в аккаунт"}
           </h1>
           <p className="text-hint">
             {register
-              ? "Почта и пароль — и сразу откроется личный кабинет."
-              : "Введите почту и пароль, с которыми регистрировались."}
+              ? role === "coordinator"
+                ? "После регистрации откроется кабинет фонда."
+                : location.pathname === "/form"
+                  ? "После регистрации вы сразу продолжите заполнение анкеты."
+                  : "После регистрации откроется личный кабинет."
+              : "Введите почту и пароль, с которыми регистрировались. Роль определится автоматически."}
           </p>
         </div>
 
         <form onSubmit={submit} noValidate className="flex flex-col gap-5">
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-2 font-semibold">{register ? "Зарегистрироваться как" : "Войти как"}</legend>
+          {register && <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 font-semibold">Зарегистрироваться как</legend>
             <div className="grid grid-cols-2 gap-2" role="radiogroup">
               {(Object.keys(ROLE) as AccountRole[]).map((r) => {
                 const on = role === r;
@@ -99,7 +107,7 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
                 );
               })}
             </div>
-          </fieldset>
+          </fieldset>}
 
           <Label text="Почта">
             <input
@@ -149,6 +157,21 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
             {sending ? "Секунду…" : register ? "Зарегистрироваться" : "Войти"}
           </button>
 
+          {!register && (
+            <p className="text-sm text-hint">
+              Не получается войти?{" "}
+              <a
+                href="https://t.me/DetiMarii_bot"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-link underline"
+              >
+                Напишите координатору фонда в Telegram
+              </a>
+              , он поможет восстановить доступ.
+            </p>
+          )}
+
           {register && (
             <p className="text-sm text-hint">
               Нажимая «Зарегистрироваться», вы соглашаетесь с{" "}
@@ -183,7 +206,6 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
         )}
       </section>
 
-      <Showcase role={role} />
     </div>
   );
 }
@@ -195,35 +217,5 @@ function Label(props: { text: string; hint?: string; children: ReactNode }) {
       {props.hint && <span className="text-sm text-hint">{props.hint}</span>}
       {props.children}
     </label>
-  );
-}
-
-/** Правая часть: что ждёт после входа — и сцены с лендинга, они двигаются. */
-function Showcase(props: { role: AccountRole }) {
-  const points =
-    props.role === "volunteer"
-      ? ["Занятия, куда можно пойти", "Обучение и тест", "Ваши часы и путь в фонде"]
-      : ["Умный поиск волонтёров", "Собеседования и итоги", "Сводка и аналитика"];
-  return (
-    <section className="auth-showcase relative flex flex-col gap-6 overflow-hidden rounded-[2rem] bg-soft p-5 sm:p-7">
-      <span aria-hidden="true" className="auth-blob auth-blob-1" />
-      <span aria-hidden="true" className="auth-blob auth-blob-2" />
-      <span aria-hidden="true" className="auth-blob auth-blob-3" />
-      <div className="relative flex flex-col gap-3">
-        <p className="font-display text-2xl leading-tight font-semibold text-balance md:text-[2rem]">
-          {props.role === "volunteer" ? "Творческие мастерские ждут вас" : "Кабинет фонда «Дети Марии»"}
-        </p>
-        <ul className="flex flex-wrap gap-2">
-          {points.map((p) => (
-            <li key={p} className="rounded-full bg-page/80 px-4 py-1.5 font-medium backdrop-blur-sm">
-              {p}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="relative flex flex-1 flex-col justify-center">
-        <VolunteerScenes />
-      </div>
-    </section>
   );
 }

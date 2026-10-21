@@ -7,7 +7,7 @@ import type { Candidate, Opportunity, ParsedQuery, Role, SearchRequest, SearchRe
 import { backend } from "../../backend";
 import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
 import { navigate, useSearchParam } from "../../router";
-import { Badge, Button, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link, Loading } from "../../ui";
+import { Badge, Button, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link } from "../../ui";
 
 const EXAMPLES = [
   "Фотограф на четверг утром, разово",
@@ -35,6 +35,7 @@ export default function Search() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [roles, setRoles] = useState<Role[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
 
   useEffect(() => {
@@ -59,12 +60,14 @@ export default function Search() {
   // Подбор под возможность — сразу при открытии
   useEffect(() => {
     setOpportunity(null);
-    if (!opportunityId) return;
     backend
       .opportunities()
-      .then((list) => setOpportunity(list.find((o) => o.id === opportunityId) ?? null))
+      .then((list) => {
+        setOpportunities(list);
+        setOpportunity(opportunityId ? list.find((o) => o.id === opportunityId) ?? null : null);
+      })
       .catch(() => setOpportunity(null));
-    run({ query: "", opportunity_id: opportunityId });
+    if (opportunityId) run({ query: "", opportunity_id: opportunityId });
   }, [opportunityId]); // только при смене возможности, а не при каждом изменении фильтра
 
   function submit(e: FormEvent) {
@@ -98,10 +101,16 @@ export default function Search() {
           maxLength={1000}
           autoFocus={!opportunityId}
         />
-        <Button type="submit" loading={loading}>
+        <Button type="submit" loading={loading} loadingLabel="Ищем…">
           Найти
         </Button>
       </form>
+
+      {loading && (
+        <p role="status" aria-live="polite" className="rounded-2xl bg-soft px-4 py-3 text-hint">
+          Подбираем волонтёров по анкетам. Обычно это занимает до 10 секунд.
+        </p>
+      )}
 
       {!opportunityId && (
         <div className="flex flex-col gap-3">
@@ -154,11 +163,18 @@ export default function Search() {
         />
       </div>
 
-      {loading && <Loading text="Ищем подходящих людей — читаем анкеты, это до 10 секунд…" />}
       {error && !loading && (
         <ErrorBox text={`Поиск не удался: ${error}`} onRetry={lastRequest ? () => run(lastRequest) : undefined} />
       )}
-      {result && !loading && <Results result={result} opportunity={opportunityId ? opportunity : null} />}
+      {result && !loading && (
+        <Results
+          result={result}
+          opportunity={opportunityId ? opportunity : null}
+          opportunities={opportunities.filter(
+            (o) => new Date(o.starts_at).getTime() > Date.now() && o.slots > o.taken,
+          )}
+        />
+      )}
     </div>
   );
 }
@@ -179,14 +195,15 @@ function OpportunityHeader(props: { opportunity: Opportunity | null }) {
   );
 }
 
-function Results(props: { result: SearchResponse; opportunity: Opportunity | null }) {
+function Results(props: { result: SearchResponse; opportunity: Opportunity | null; opportunities: Opportunity[] }) {
   const { parsed, candidates, total_checked } = props.result;
   const [selected, setSelected] = useState<number[]>([]);
   const [invited, setInvited] = useState<number[]>([]);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [sent, setSent] = useState(0);
-  const opp = props.opportunity;
+  const [inviteOpportunityId, setInviteOpportunityId] = useState("");
+  const opp = props.opportunity ?? props.opportunities.find((item) => String(item.id) === inviteOpportunityId) ?? null;
   const top = useRef<HTMLDivElement>(null);
 
   // новые результаты — прокрутить к ним, чтобы не искать их ниже подсказок
@@ -197,11 +214,12 @@ function Results(props: { result: SearchResponse; opportunity: Opportunity | nul
   // кто уже откликнулся или приглашён на эту возможность
   useEffect(() => {
     if (!opp) return;
+    setInvited([]);
     backend
       .participants(opp.id)
       .then((ps) => setInvited(ps.filter((p) => p.status !== "declined").map((p) => p.volunteer_id)))
       .catch(() => setInvited([]));
-  }, [opp]);
+  }, [opp?.id]);
 
   async function invite() {
     if (!opp || selected.length === 0) return;
@@ -232,6 +250,33 @@ function Results(props: { result: SearchResponse; opportunity: Opportunity | nul
           <p className="text-hint">
             Проверили анкет: {total_checked}. Лучшие совпадения — сверху.
           </p>
+          {!props.opportunity && (
+            props.opportunities.length > 0 ? (
+              <label className="flex flex-col gap-2 font-semibold">
+                На какое занятие пригласить?
+                <select
+                  value={inviteOpportunityId}
+                  onChange={(event) => {
+                    setInviteOpportunityId(event.target.value);
+                    setSelected([]);
+                    setSent(0);
+                  }}
+                  className="min-h-12 rounded-2xl border-2 border-[color-mix(in_srgb,var(--p-ink)_55%,transparent)] bg-page px-4 py-3 font-normal"
+                >
+                  <option value="">Выберите занятие</option>
+                  {props.opportunities.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.title} — {new Date(item.starts_at).toLocaleDateString("ru", { day: "numeric", month: "long" })}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <p className="rounded-2xl bg-soft px-4 py-3 text-hint">
+                Чтобы пригласить человека, сначала создайте возможность в разделе «Возможности».
+              </p>
+            )
+          )}
           <div className="grid gap-4 lg:grid-cols-2">
             {candidates.map((c) => (
               <CandidateCard

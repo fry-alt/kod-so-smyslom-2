@@ -698,7 +698,13 @@ export const mockApi: typeof volunteersApi = {
     if (v.status === "new") v.status = "training";
     if (required.every((s) => s >= 70) && v.status === "training") v.status = "trained";
     save();
-    const result: QuizResult = { score, passed: score >= 70, correct, status: v.status };
+    const result: QuizResult = {
+      score,
+      passed: score >= 70,
+      correct,
+      correct_answers: quiz.right,
+      status: v.status,
+    };
     return wait(result, 1200);
   },
   opportunities: (volunteerId) => {
@@ -998,10 +1004,6 @@ export const mockAuthApi: typeof authApi = {
   login: (data) => {
     const a = loadAccounts().find((x) => x.email === data.email.trim().toLowerCase());
     if (!a || a.password !== data.password) return Promise.reject(new Error("Неверная почта или пароль"));
-    if (a.role !== data.role) {
-      const who = a.role === "coordinator" ? "координатор фонда" : "волонтёр";
-      return Promise.reject(new Error(`Эта почта зарегистрирована как ${who} — выберите «${who}» и войдите ещё раз`));
-    }
     return wait(authOut(a), 600);
   },
   me: () => {

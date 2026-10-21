@@ -96,11 +96,6 @@ def login(session: Session, data: LoginIn) -> AuthOut:
     account = by_email(session, data.email)
     if account is None or not check_password(data.password, account.password_hash):
         raise AuthError("Неверная почта или пароль")
-    if account.role != data.role:
-        who = "координатор фонда" if account.role == "coordinator" else "волонтёр"
-        raise AuthError(
-            f"Эта почта зарегистрирована как {who} — выберите «{who}» и войдите ещё раз"
-        )
     return _auth(account)
 
 
