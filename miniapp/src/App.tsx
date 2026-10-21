@@ -95,8 +95,8 @@ export default function App() {
 }
 
 function VolunteerLayout(props: { path: string; children: ReactNode }) {
-  // лендинг, вход и кабинет — широкие (колонки на компьютере), остальные — узкие, как в телефоне
-  const wide = ["/", "/login", "/me"].includes(props.path) || (props.path === "/form" && needsAccount());
+  // лендинг, вход, кабинет и занятия — широкие (колонки на компьютере), остальные — узкие, как в телефоне
+  const wide = ["/", "/login", "/me", "/opportunities"].includes(props.path) || (props.path === "/form" && needsAccount());
   const auth = props.path === "/login" || needsAccount() && ["/me", "/form"].includes(props.path);
   return (
     <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 pb-24 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl pb-10"}`}>
