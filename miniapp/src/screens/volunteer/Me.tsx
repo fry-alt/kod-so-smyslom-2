@@ -101,6 +101,7 @@ export default function Me() {
       />
 
       {!v && <StartCard />}
+      {v && <NextStepCard volunteer={v} interviews={interviews ?? undefined} />}
       {call && <CallCard i={call} />}
       {unread > 0 && (
         <section className="flex flex-col gap-3 rounded-[1.75rem] bg-soft p-5 ring-2 ring-accent sm:flex-row sm:items-center sm:justify-between">
@@ -229,6 +230,47 @@ function StartCard() {
       >
         Заполнить анкету
       </button>
+    </section>
+  );
+}
+
+/** После анкеты главный следующий шаг держим вверху кабинета, а не только в длинной шкале пути. */
+function NextStepCard(props: { volunteer: Volunteer; interviews: Interview[] | undefined }) {
+  const { volunteer, interviews } = props;
+  if (volunteer.status === "paused" || volunteer.status === "active") return null;
+
+  let title: string;
+  let detail: string;
+  let action: { label: string; path: string } | null = null;
+
+  if (volunteer.status === "new" || volunteer.status === "training") {
+    title = volunteer.status === "training" ? "Продолжите обучение" : "Пройдите короткое обучение";
+    detail = "Это следующий шаг после анкеты. В конце каждого обязательного раздела будет небольшой тест.";
+    action = { label: volunteer.status === "training" ? "Продолжить обучение" : "Пройти обучение", path: "/training" };
+  } else if (volunteer.status === "trained") {
+    if (!interviews) return null;
+    const interviewed = interviews.some((interview) => interview.status === "done");
+    title = interviewed ? "Дождитесь решения координатора" : "Запишитесь на собеседование";
+    detail = interviewed
+      ? "Координатор посмотрит итоги встречи и сообщит, когда можно будет присоединиться к занятиям."
+      : "На коротком видеозвонке вы познакомитесь с координатором и сможете задать вопросы.";
+    if (!interviewed) action = { label: "Выбрать время", path: "/interview" };
+  } else if (volunteer.status === "approved") {
+    title = "Вы допущены к занятиям";
+    detail = "Посмотрите открытые занятия и выберите, куда хотите присоединиться.";
+    action = { label: "Выбрать занятие", path: "/opportunities" };
+  } else {
+    return null;
+  }
+
+  return (
+    <section className="flex flex-col gap-3 rounded-[1.75rem] border-2 border-accent/30 bg-soft p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <div className="flex flex-col gap-1">
+        <span className="font-semibold text-link">Следующий шаг</span>
+        <h2 className="font-display text-xl leading-snug font-semibold">{title}</h2>
+        <p className="text-hint">{detail}</p>
+      </div>
+      {action && <Button onClick={() => navigate(action.path)}>{action.label}</Button>}
     </section>
   );
 }

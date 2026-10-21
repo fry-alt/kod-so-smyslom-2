@@ -135,6 +135,7 @@ export type QuizResult = {
   score: number;
   passed: boolean;
   correct: boolean[];
+  correct_answers: number[];
   status: VolunteerStatus;
 };
 
@@ -278,7 +279,7 @@ export type AccountRole = "volunteer" | "coordinator";
 export type Account = { id: number; email: string; role: AccountRole; volunteer_id: number | null };
 export type AuthOut = { token: string; account: Account };
 export type RegisterIn = { email: string; password: string; role: AccountRole; code?: string };
-export type LoginIn = { email: string; password: string; role: AccountRole };
+export type LoginIn = { email: string; password: string };
 /** Код фонда, без которого нельзя зарегистрироваться координатором. Меняет координатор в «Настройках». */
 export type FundCode = { code: string };
 

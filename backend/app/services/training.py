@@ -130,7 +130,11 @@ def submit(
 
     update_status(session, volunteer)
     return QuizResult(
-        score=score, passed=score >= PASS_SCORE, correct=correct, status=volunteer.status
+        score=score,
+        passed=score >= PASS_SCORE,
+        correct=correct,
+        correct_answers=[q.correct for q in questions],
+        status=volunteer.status,
     )
 
 

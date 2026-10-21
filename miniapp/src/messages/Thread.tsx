@@ -1,7 +1,7 @@
 // Переписка фонда с волонтёром (T-100) глазами координатора (/admin/messages). У волонтёра та же переписка
 // разложена по чатам — screens/volunteer/Messages.tsx, оттуда же берёт пузырь сообщения и время.
 // Упрощённый чат из Yapp: новые сообщения сайт спрашивает раз в несколько секунд, без WebSocket.
-// Enter — отправить, Shift+Enter — новая строка.
+// Enter — новая строка (в том числе на телефоне); Ctrl/Cmd+Enter — отправить.
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import type { Dialog, Message, Sender } from "../api";
@@ -91,7 +91,7 @@ export default function Thread(props: {
   }
 
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
       e.preventDefault();
       send();
     }
@@ -162,7 +162,7 @@ export default function Thread(props: {
         />
         {sendError && <ErrorBox text={sendError} />}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm text-hint">Enter — отправить, Shift+Enter — новая строка</span>
+          <span className="text-sm text-hint">Enter — новая строка · Ctrl+Enter — отправить</span>
           <Button type="submit" loading={sending} disabled={!text.trim()}>
             Отправить
           </Button>

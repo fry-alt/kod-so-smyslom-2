@@ -211,8 +211,8 @@ def funnel(data: Data, now: datetime) -> list[FunnelRow]:
     active_since = now - timedelta(days=ACTIVE_DAYS)
     passed: dict[FunnelStep, Callable[[Volunteer], bool]] = {
         "applied": lambda v: True,
-        "interviewed": lambda v: v.id in interviewed or v.status != "new",
         "trained": lambda v: v.status in TRAINED,
+        "interviewed": lambda v: v.id in interviewed or v.status != "new",
         "approved": lambda v: v.status in APPROVED,
         "participated": lambda v: bool(attended_at[v.id]),
         "active": lambda v: any(d >= active_since for d in attended_at[v.id]),
