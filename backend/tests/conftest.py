@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -44,3 +45,16 @@ def client():
 
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture(autouse=True)
+def telegram(monkeypatch) -> list[dict]:
+    """Вместо Telegram Bot API — список отправленных сообщений. Тесты никогда не пишут в настоящий Telegram."""
+    sent: list[dict] = []
+
+    def post(url, json, timeout):
+        sent.append({"url": url, **json})
+        return httpx.Response(200, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr("app.services.notify.httpx.post", post)
+    return sent
