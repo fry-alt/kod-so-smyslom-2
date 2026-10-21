@@ -125,6 +125,25 @@ def ingest_path(path: Path) -> dict[str, int]:
     return {f.name: ingest_file(f) for f in files if f.suffix.lower() in SUPPORTED_SUFFIXES}
 
 
+def autoload_if_empty() -> int:
+    """База знаний пуста (новый сервер, пересоздали data/chroma) — загружаем документы фонда
+    из data/demo и data/training, как make ingest. Возвращает число чанков.
+    Ошибка не роняет бэкенд: помощник тогда отвечает по краткой справке о фонде."""
+    try:
+        if get_collection().count():
+            return 0
+        data_dir = get_settings().data_dir
+        total = 0
+        for name in ("demo", "training"):
+            if (data_dir / name).is_dir():
+                total += sum(ingest_path(data_dir / name).values())
+        log.info("База знаний была пустой — загрузили документы фонда: %d чанков", total)
+        return total
+    except Exception as e:  # сеть, ключи, битый файл — бэкенд всё равно должен подняться
+        log.warning("Не удалось загрузить документы фонда при запуске: %s", e)
+        return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Загрузить документы в Chroma")
     parser.add_argument("paths", nargs="+", type=Path, help="файлы или папки")

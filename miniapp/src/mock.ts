@@ -5,7 +5,6 @@
 import type {
   Account,
   Look,
-  AskResponse,
   AuthOut,
   Availability,
   Candidate,
@@ -898,18 +897,28 @@ export const mockApi: typeof volunteersApi = {
 
 };
 
-/** Моки для «Спросить о фонде» (api.chat / api.ask из шаблона). */
+/** Мок помощника «Спросить о фонде» (api.chat). */
 export const mockChatApi = {
   chat: (message: string): Promise<ChatResponse> =>
-    wait({ answer: `Демо-режим: здесь будет ответ помощника на «${message}».`, provider: "mock", model: "mock" }, 800),
-  ask: (question: string): Promise<AskResponse> =>
-    wait({
-      found: /волонт/i.test(question),
-      answer: /волонт/i.test(question)
-        ? "Заполните анкету в этом приложении — координатор свяжется с вами и пригласит на встречу-знакомство."
-        : "В документах фонда ответа на этот вопрос нет. Напишите координатору.",
-      sources: [],
-    }, 800),
+    wait(
+      /волонт/i.test(message)
+        ? {
+            answer:
+              "Заполните анкету в этом приложении, пройдите обучение — и координатор пригласит вас на знакомство.",
+            sources: [
+              {
+                source: "volunteer_rules.md",
+                chunk: 0,
+                score: 0.8,
+                text: "1. Заполнить анкету на сайте фонда или в Telegram Mini App.\n2. Пройти обучение.\n3. Познакомиться с координатором.",
+              },
+            ],
+            provider: "mock",
+            model: "mock",
+          }
+        : { answer: `Демо-режим: здесь будет ответ помощника на «${message}».`, sources: [], provider: "mock", model: "mock" },
+      800,
+    ),
 };
 
 // ===== Вход по почте и паролю =====

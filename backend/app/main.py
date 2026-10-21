@@ -1,6 +1,7 @@
 """FastAPI-приложение. Запуск: make dev  (или uv run uvicorn app.main:app --reload)"""
 
 import logging
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -28,6 +29,7 @@ from app.config import get_settings
 from app.db import init_db
 from app.llm.providers import LLMError
 from app.log import setup_logging
+from app.rag.ingest import autoload_if_empty
 
 log = logging.getLogger("app")
 
@@ -38,6 +40,9 @@ async def lifespan(_: FastAPI):
     setup_logging(s.log_level)
     init_db()
     log.info("Бэкенд запущен: LLM_PROVIDER=%s", s.llm_provider)
+    if s.rag_autoload:
+        # в фоне: эмбеддинги — сетевые вызовы, а /health должен отвечать сразу
+        threading.Thread(target=autoload_if_empty, daemon=True).start()
     yield
 
 

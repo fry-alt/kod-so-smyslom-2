@@ -1,36 +1,35 @@
-// «Спросить о фонде»: вопросы по документам фонда (RAG) и чат — перенесено из демо шаблона.
-// На компьютере — две колонки: слева заголовок и вкладки, справа поле и ответы. На телефоне — одна колонка.
+// «Спросить о фонде»: чат с помощником, который отвечает по документам фонда (RAG) и показывает, откуда ответ.
+// На компьютере — две колонки: слева заголовок и подсказки, справа переписка. На телефоне — одна колонка.
 // Поле ввода и кнопка — одна «тягучая» капля (GooeyComposer, стили .goo в index.css).
-import { useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
-import type { AskResponse, ChatMessage } from "../../api";
+import type { ChatMessage, Source } from "../../api";
 import { chatApi } from "../../backend";
 import { tg } from "../../telegram";
 import { ErrorBox, errorText } from "../../ui";
 
-type Tab = "docs" | "chat";
-
-const TABS: { id: Tab; icon: string; title: string; hint: string }[] = [
-  { id: "docs", icon: "📚", title: "По документам", hint: "Точный ответ со ссылкой на документ фонда" },
-  { id: "chat", icon: "💬", title: "Чат", hint: "Поговорить и уточнить шаг за шагом" },
-];
-
 /** Примеры вопросов — нажать и сразу спросить. */
 const EXAMPLES = ["Как стать волонтёром?", "Можно ли помогать онлайн?", "Что взять на первую встречу?"];
 
+/** Понятные названия документов фонда вместо имён файлов. Новый файл без названия покажется как есть. */
+const DOC_TITLES: Record<string, string> = {
+  "about_fund.md": "О фонде",
+  "faq.md": "Частые вопросы",
+  "volunteer_rules.md": "Правила для волонтёров",
+  "privacy_policy.md": "Политика конфиденциальности",
+  "donations.txt": "Как ещё помочь фонду",
+  "events.csv": "Ближайшие мероприятия",
+  "volunteer_shifts.xlsx": "Расписание занятий",
+  "workshop_guide.docx": "Памятка для мастерской",
+  "01-about.md": "Обучение: о фонде",
+  "02-wards.md": "Обучение: подопечные",
+  "03-safety.md": "Обучение: безопасность",
+  "04-mentoring.md": "Обучение: наставничество",
+};
+
+type Turn = ChatMessage & { sources?: Source[] };
+
 export default function Ask() {
-  const [tab, setTab] = useState<Tab>("docs");
-  const id = useId();
-
-  function onTabKey(e: KeyboardEvent<HTMLButtonElement>) {
-    // стрелки переключают вкладки — как в обычных вкладках
-    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
-    e.preventDefault();
-    const next = tab === "docs" ? "chat" : "docs";
-    setTab(next);
-    document.getElementById(`${id}-tab-${next}`)?.focus();
-  }
-
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-10">
       <header className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
@@ -38,141 +37,49 @@ export default function Ask() {
           Спросить о фонде
         </h1>
         <p className="text-lg text-hint">
-          Отвечаем по документам фонда — уставу, правилам и памяткам для волонтёров. Если в них ответа нет, честно
-          скажем об этом.
+          Помощник отвечает по документам фонда — правилам, памяткам и учебным материалам для волонтёров — и
+          показывает, откуда взят ответ. Если в документах ответа нет, он честно об этом скажет.
         </p>
-        <div role="tablist" aria-label="Как спросить" className="grid grid-cols-2 gap-1 rounded-3xl bg-surface p-1 sm:p-1.5 lg:grid-cols-1 lg:gap-2">
-          {TABS.map((t) => {
-            const on = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                id={`${id}-tab-${t.id}`}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                aria-controls={`${id}-panel`}
-                tabIndex={on ? 0 : -1}
-                onClick={() => setTab(t.id)}
-                onKeyDown={onTabKey}
-                className={`ask-tab flex min-h-12 items-center justify-center gap-3 rounded-[1.1rem] px-2 py-2 text-left sm:px-3 lg:justify-start lg:px-4 lg:py-3 ${
-                  on ? "bg-page font-semibold shadow-sm" : "text-hint hover:bg-soft hover:text-ink"
-                }`}
-              >
-                <span aria-hidden="true" className="hidden text-xl sm:inline lg:flex lg:size-11 lg:shrink-0 lg:items-center lg:justify-center lg:rounded-full lg:bg-soft">
-                  {t.icon}
-                </span>
-                <span className="flex flex-col">
-                  <span className="whitespace-nowrap text-[0.9rem] sm:text-base">{t.title}</span>
-                  <span className="hidden text-sm font-normal text-hint lg:block">{t.hint}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <p className="hidden rounded-3xl bg-surface p-4 text-hint sm:block">
+          🔒 Не пишите сюда телефон, адрес и паспортные данные — их лучше передать координатору лично.
+        </p>
       </header>
-      <section
-        id={`${id}-panel`}
-        role="tabpanel"
-        aria-labelledby={`${id}-tab-${tab}`}
-        className="flex flex-col gap-5 rounded-[2rem] bg-surface p-4 md:p-6 lg:min-h-[26rem]"
-      >
-        {tab === "docs" ? <AskPanel /> : <ChatPanel />}
+      <section aria-label="Переписка с помощником" className="flex flex-col gap-5 rounded-[2rem] bg-surface p-4 md:p-6 lg:min-h-[26rem]">
+        <ChatPanel />
       </section>
     </div>
   );
 }
 
-function AskPanel() {
-  const [question, setQuestion] = useState("");
-  const [result, setResult] = useState<AskResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  async function ask(text: string) {
-    if (!text.trim() || loading) return;
-    setLoading(true);
-    setError("");
-    try {
-      setResult(await chatApi.ask(text));
-      tg?.HapticFeedback?.impactOccurred("light");
-    } catch (err) {
-      setError(errorText(err));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    ask(question);
-  }
-
-  return (
-    <>
-      <div className="flex flex-col gap-2">
-        <form onSubmit={submit}>
-          <GooeyComposer
-            value={question}
-            onChange={setQuestion}
-            label="Ваш вопрос о фонде"
-            placeholder="Напишите ваш вопрос"
-            action="Спросить"
-            loading={loading}
-          />
-        </form>
-        <p role="status" className="px-2 text-hint">
-          {loading ? "Ищем ответ в документах фонда…" : ""}
-        </p>
-      </div>
-      {error && <ErrorBox text={error} />}
-      {result ? (
-        <article key={result.answer} className="tile-in flex flex-col gap-3 rounded-3xl bg-page p-5 md:p-6">
-          <span className={`self-start rounded-full px-3 py-1 text-sm font-semibold ${result.found ? "bg-soft text-accent" : "bg-surface text-hint"}`}>
-            {result.found ? "✓ Нашли в документах" : "В документах ответа нет"}
-          </span>
-          <p className={`text-lg ${result.found ? "" : "text-hint"}`}>{result.answer}</p>
-          {result.sources.map((s) => (
-            <details key={`${s.source}:${s.chunk}`} className="text-sm">
-              <summary className="cursor-pointer text-link">
-                📄 {s.source} · фрагмент {s.chunk}
-              </summary>
-              <p className="mt-2 whitespace-pre-wrap text-hint">{s.text}</p>
-            </details>
-          ))}
-        </article>
-      ) : (
-        <Examples
-          onPick={(q) => {
-            setQuestion(q);
-            ask(q);
-          }}
-        />
-      )}
-    </>
-  );
-}
-
 function ChatPanel() {
-  const [history, setHistory] = useState<ChatMessage[]>([]);
+  const [turns, setTurns] = useState<Turn[]>([]);
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [pending, setPending] = useState(""); // вопрос, на который ждём ответ, — показываем сразу
   const [error, setError] = useState("");
+  const loading = pending !== "";
+  const end = useRef<HTMLDivElement>(null);
+
+  // новый вопрос или ответ — прокручиваем к нему, чтобы он не прятался под полем ввода
+  useEffect(() => {
+    if (turns.length || loading) end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [turns, loading]);
 
   async function send(raw: string) {
     const text = raw.trim();
     if (!text || loading) return;
     setMessage("");
-    setLoading(true);
+    setPending(text);
     setError("");
     try {
-      const { answer } = await chatApi.chat(text, history);
-      setHistory([...history, { role: "user", content: text }, { role: "assistant", content: answer }]);
+      const history = turns.map(({ role, content }) => ({ role, content }));
+      const { answer, sources } = await chatApi.chat(text, history);
+      setTurns([...turns, { role: "user", content: text }, { role: "assistant", content: answer, sources }]);
+      tg?.HapticFeedback?.impactOccurred("light");
     } catch (err) {
       setError(errorText(err));
       setMessage(text);
     } finally {
-      setLoading(false);
+      setPending("");
     }
   }
 
@@ -184,36 +91,74 @@ function ChatPanel() {
   return (
     <>
       <div aria-live="polite" className="flex flex-1 flex-col gap-2">
-        {history.length === 0 && (
+        {turns.length === 0 && !loading && (
           <>
-            <p className="text-lg text-hint">Напишите первое сообщение — помощник ответит здесь.</p>
+            <p className="text-lg text-hint">Задайте вопрос о фонде или волонтёрстве — помощник ответит здесь.</p>
             <Examples onPick={send} />
           </>
         )}
-        {history.map((m, i) => (
-          <div
-            key={i}
-            className={`tile-in max-w-[85%] whitespace-pre-wrap rounded-3xl px-5 py-3 ${
-              m.role === "user" ? "self-end rounded-br-lg bg-accent text-accent-text" : "self-start rounded-bl-lg bg-page"
-            }`}
-          >
-            {m.content}
-          </div>
-        ))}
-        {loading && <p className="self-start px-2 text-hint">Помощник пишет…</p>}
+        {turns.map((t, i) => (t.role === "user" ? <UserBubble key={i} text={t.content} /> : <AnswerBubble key={i} turn={t} />))}
+        {loading && (
+          <>
+            <UserBubble text={pending} />
+            <p role="status" className="self-start px-2 text-hint">
+              Помощник ищет ответ в документах фонда…
+            </p>
+          </>
+        )}
+        <div ref={end} className="scroll-mb-32" />
       </div>
       {error && <ErrorBox text={error} />}
-      <form onSubmit={submit} className="sticky bottom-0 -mx-1 bg-surface px-1 py-2">
+      <form onSubmit={submit} className="sticky bottom-0 -mx-1 flex flex-col gap-2 bg-surface px-1 py-2">
         <GooeyComposer
           value={message}
           onChange={setMessage}
-          label="Сообщение"
-          placeholder="Сообщение"
-          action="Отправить"
+          label="Ваш вопрос о фонде"
+          placeholder="Напишите ваш вопрос"
+          action="Спросить"
           loading={loading}
         />
+        {turns.length > 0 && !loading && (
+          <button type="button" onClick={() => setTurns([])} className="self-start px-2 text-hint underline-offset-4 hover:text-ink hover:underline">
+            Начать разговор заново
+          </button>
+        )}
       </form>
     </>
+  );
+}
+
+function UserBubble(props: { text: string }) {
+  return (
+    <div className="tile-in max-w-[85%] self-end whitespace-pre-wrap rounded-3xl rounded-br-lg bg-accent px-5 py-3 text-accent-text">
+      {props.text}
+    </div>
+  );
+}
+
+/** Фрагмент документа без значков разметки (##, **, >) — читать как обычный текст. */
+function plain(text: string) {
+  return text.replace(/^\s*(#+|>)\s*/gm, "").replace(/\*\*|__/g, "");
+}
+
+/** Ответ помощника и под ним — откуда он: раскрывающиеся фрагменты документов фонда. */
+function AnswerBubble(props: { turn: Turn }) {
+  const sources = props.turn.sources ?? [];
+  return (
+    <div className="tile-in flex max-w-[85%] flex-col gap-2 self-start rounded-3xl rounded-bl-lg bg-page px-5 py-3">
+      <p className="whitespace-pre-wrap">{props.turn.content}</p>
+      {sources.length > 0 && (
+        <div className="flex flex-col gap-1 border-t border-line pt-2 text-sm">
+          <span className="text-hint">Откуда ответ:</span>
+          {sources.map((s) => (
+            <details key={`${s.source}:${s.chunk}`}>
+              <summary className="cursor-pointer text-link">📄 {DOC_TITLES[s.source] ?? s.source}</summary>
+              <p className="mt-1 whitespace-pre-wrap text-hint">{plain(s.text)}</p>
+            </details>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

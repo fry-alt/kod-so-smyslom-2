@@ -9,6 +9,7 @@ from app.llm.prompts import load_prompt
 from app.llm.providers import LLMError
 from app.rag.retrieve import retrieve
 from app.schemas import AskResponse
+from app.services.assistant import REFUSAL, TAG_RE, clean, looks_like_injection
 
 log = logging.getLogger(__name__)
 
@@ -26,11 +27,17 @@ class RagAnswer(BaseModel):
 
 
 def answer_question(question: str, top_k: int | None = None) -> AskResponse:
+    # та же защита, что у помощника в чате: грубые инъекции — отказ, телефоны и почты — не в LLM
+    if looks_like_injection(question):
+        return AskResponse(answer=REFUSAL, found=False, sources=[])
+    question = clean(question)
     chunks = retrieve(question, top_k)
     if not chunks:
         return AskResponse(answer=NOT_FOUND, found=False, sources=[])
 
-    context = "\n\n".join(f"[{i}] источник: {c.source}\n{c.text}" for i, c in enumerate(chunks, 1))
+    context = "\n\n".join(
+        f"[{i}] источник: {c.source}\n{TAG_RE.sub('', c.text)}" for i, c in enumerate(chunks, 1)
+    )
     try:
         result = get_llm().chat_json(
             load_prompt("rag_answer", context=context, question=question),

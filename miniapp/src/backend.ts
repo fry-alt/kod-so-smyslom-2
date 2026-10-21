@@ -7,7 +7,7 @@ export const USE_MOCK = import.meta.env.VITE_MOCK === "1";
 
 export const backend: typeof volunteersApi = USE_MOCK ? mockApi : volunteersApi;
 
-export const chatApi: Pick<typeof api, "chat" | "ask"> = USE_MOCK ? mockChatApi : api;
+export const chatApi: Pick<typeof api, "chat"> = USE_MOCK ? mockChatApi : api;
 
 export const auth: typeof authApi = USE_MOCK ? mockAuthApi : authApi;
 
