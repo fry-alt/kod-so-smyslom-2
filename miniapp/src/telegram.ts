@@ -1,7 +1,7 @@
 // Минимальная типизация Telegram WebApp SDK — только то, что используем.
 // Полное API: https://core.telegram.org/bots/webapps
 
-type TelegramUser = { id: number; first_name: string; username?: string };
+type TelegramUser = { id: number; first_name: string; last_name?: string; username?: string };
 
 type TelegramWebApp = {
   initData: string; // подписанная строка — отправляем на бэкенд для проверки

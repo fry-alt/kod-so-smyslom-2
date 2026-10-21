@@ -74,6 +74,9 @@ export default function Me() {
       <Button wide variant="secondary" onClick={() => navigate("/opportunities")}>
         Куда можно пойти
       </Button>
+      <Button wide variant="secondary" onClick={() => navigate("/ask")}>
+        Спросить о фонде
+      </Button>
       <Button
         variant="ghost"
         onClick={() => {
