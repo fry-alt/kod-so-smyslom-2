@@ -2,7 +2,8 @@
 
 1. Разбор запроса (LLM) → ParsedQuery; для роли без текста — прямо из полей роли.
    Подбор под возможность: роль возможности + её время, регион и формат (они важнее текста).
-2. Жёсткий фильтр в БД: статус, время, регион, очно/онлайн.
+2. Жёсткий фильтр в БД: статус, время, регион, очно/онлайн. Никого не осталось — ослабляем
+   время, потом регион, и пишем об этом в «Как я понял запрос» (notes).
 3. Векторы: TOP_K ближайших по смыслу среди отфильтрованных.
 4. LLM одним вызовом ставит оценку 0–100 и пишет причину.
    Не вышло — фолбэк: сходство × 70 + доля совпавших навыков × 30, ai=False.
@@ -73,11 +74,9 @@ def search(session: Session, req: SearchRequest) -> SearchResponse:
     request = request_text(req.query, role, opportunity)
     parsed = parse_query(req.query, role, opportunity)
     regions = {parsed.region} if parsed.region else set(role.regions if role else [])
-    pool = [
-        v
-        for v in session.exec(select(Volunteer)).all()
-        if passes_filter(v, parsed, regions, req.statuses)
-    ]
+    pool, dropped = filtered_pool(
+        list(session.exec(select(Volunteer)).all()), parsed, regions, req.statuses
+    )
 
     documents = {v.id: volunteers.index_document(v) for v in pool}
     shortlist = max(TOP_K, req.limit)
@@ -130,7 +129,33 @@ def search(session: Session, req: SearchRequest) -> SearchResponse:
     )
     session.commit()
     log.info("search: %d из %d за %.0f мс, AI=%s", len(candidates), len(pool), ms, bool(ai))
+    if dropped and pool:
+        # чипсы остаются как поняли запрос, а в пометке — что пришлось ослабить
+        conditions = "этих условий" if len(dropped) > 1 else "этого условия"
+        note = f"Никого не нашлось {' и '.join(dropped)} — показываю без {conditions}"
+        parsed = parsed.model_copy(update={"notes": ". ".join(filter(None, [note, parsed.notes]))})
     return SearchResponse(parsed=parsed, candidates=candidates, total_checked=len(pool))
+
+
+def filtered_pool(
+    everyone: list[Volunteer], parsed: ParsedQuery, regions: set[str], statuses: list[str]
+) -> tuple[list[Volunteer], list[str]]:
+    """Жёсткий фильтр. Никого не осталось — ослабляем: сначала время, потом регион.
+
+    Статус и очно/онлайн не трогаем. Возвращаем и список ослабленных условий — для пометки.
+    Переранжирование всё равно видит исходный запрос и оценит неподходящих по времени ниже.
+    """
+    dropped: list[str] = []
+    pool = [v for v in everyone if passes_filter(v, parsed, regions, statuses)]
+    if not pool and parsed.availability:
+        parsed = parsed.model_copy(update={"availability": []})
+        dropped.append("в это время")
+        pool = [v for v in everyone if passes_filter(v, parsed, regions, statuses)]
+    if not pool and regions and parsed.format != "online":
+        regions = set()
+        dropped.append("в этом регионе")
+        pool = [v for v in everyone if passes_filter(v, parsed, regions, statuses)]
+    return pool, dropped
 
 
 def request_text(query: str, role: Role | None, opportunity: Opportunity | None = None) -> str:

@@ -127,6 +127,38 @@ def test_hard_filter_by_time_region_format_and_status(client, llm, ids):
     assert top["matched_skills"] == ["фото"]
 
 
+def test_no_one_at_that_time_relaxes_time_but_keeps_region(client, llm, ids):
+    # будни днём в анкетах нет ни у кого — показываем москвичей, свободных в другое время
+    llm.provider.parsed = parsed(availability=["weekday_day"], region="moscow", format="offline")
+    r = client.post("/search", json={"query": "фотограф в будни днём в Москве"})
+    assert set(found(r)) == {ids["photo_morning"], ids["photo_weekend"], ids["ceramics"]}
+    body = r.json()
+    assert body["parsed"]["availability"] == ["weekday_day"]  # чипсы — как поняли запрос
+    assert body["parsed"]["notes"] == "Никого не нашлось в это время — показываю без этого условия"
+    rerank_prompt = next(t for t in llm.provider.seen if '"title": "RerankResult"' in t)
+    assert "Когда: будни днём" in rerank_prompt  # LLM оценивает по исходному запросу
+    assert "Никого не нашлось" not in rerank_prompt
+
+
+def test_no_one_in_region_relaxes_time_then_region(client, llm, ids):
+    llm.provider.parsed = parsed(
+        availability=["weekday_day"], region="north_ossetia", format="offline", notes="с опытом"
+    )
+    r = client.post("/search", json={"query": "фотограф во Владикавказе в будни днём"})
+    assert ids["photo_yaroslavl"] in found(r)
+    assert ids["photo_paused"] not in found(r)  # статус не ослабляем
+    assert r.json()["parsed"]["notes"] == (
+        "Никого не нашлось в это время и в этом регионе — показываю без этих условий. с опытом"
+    )
+
+
+def test_no_relaxing_when_someone_fits(client, llm, ids):
+    llm.provider.parsed = parsed(availability=["weekend"], region="moscow", format="offline")
+    body = client.post("/search", json={"query": "фото в субботу"}).json()
+    assert body["total_checked"] == 2
+    assert body["parsed"]["notes"] == ""
+
+
 def test_online_request_ignores_region(client, llm, ids):
     llm.provider.parsed = parsed(skills=["соцсети"], region="moscow", format="online")
     assert found(client.post("/search", json={"query": "вести соцсети онлайн"})) == [
