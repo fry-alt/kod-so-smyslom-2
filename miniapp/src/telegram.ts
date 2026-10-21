@@ -8,6 +8,7 @@ type TelegramWebApp = {
   initDataUnsafe: { user?: TelegramUser }; // НЕ проверено — только для отображения
   ready(): void;
   expand(): void;
+  openLink?(url: string): void; // открыть ссылку во внешнем браузере
   HapticFeedback?: { impactOccurred(style: "light" | "medium" | "heavy"): void };
 };
 

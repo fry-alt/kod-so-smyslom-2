@@ -13,16 +13,19 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   if (initData) headers["X-Telegram-Init-Data"] = initData;
 
   const r = await fetch(BASE + path, { method: "POST", headers, body: JSON.stringify(body) });
-  if (!r.ok) {
-    let detail: unknown = r.statusText;
-    try {
-      detail = (await r.json()).detail ?? detail;
-    } catch {
-      /* ответ не JSON — оставляем statusText */
-    }
-    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
-  }
+  if (!r.ok) throw await httpError(r);
   return r.json() as Promise<T>;
+}
+
+/** Ошибка с текстом для человека: detail из ответа FastAPI, иначе statusText. */
+async function httpError(r: Response): Promise<Error> {
+  let detail: unknown = r.statusText;
+  try {
+    detail = (await r.json()).detail ?? detail;
+  } catch {
+    /* ответ не JSON — оставляем statusText */
+  }
+  return new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
 }
 
 export const api = {
@@ -42,6 +45,8 @@ export type Region = "moscow" | "moscow_region" | "yaroslavl" | "north_ossetia" 
 export type Format = "offline" | "online";
 export type Regularity = "regular" | "episodic" | "any";
 export type ParticipationStatus = "responded" | "invited" | "confirmed" | "attended" | "declined";
+export type InterviewStatus = "scheduled" | "done" | "canceled";
+export type CallRole = "coordinator" | "volunteer";
 
 export type Answers = {
   about: string;
@@ -148,6 +153,25 @@ export type Participation = {
   created_at: string;
 };
 
+export type Interview = {
+  id: number;
+  volunteer_id: number;
+  starts_at: string;
+  status: InterviewStatus;
+  token: string; // ссылка на звонок — /call/<token>
+  notified: boolean; // ссылка ушла волонтёру в Telegram; false — координатор отправляет её сам
+  created_at: string;
+};
+export type IceServer = { urls: string[]; username?: string | null; credential?: string | null };
+export type CallInfo = { starts_at: string; status: InterviewStatus; ice_servers: IceServer[] };
+
+/** Адрес сигнального WebSocket звонка: тот же бэкенд, что и BASE, но ws:// или wss://. */
+export function callSocketUrl(token: string): string {
+  const url = new URL(`${BASE}/calls/${encodeURIComponent(token)}/ws`, location.href);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  return url.toString();
+}
+
 async function request<T>(method: "GET" | "PATCH", path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (initData) headers["X-Telegram-Init-Data"] = initData;
@@ -156,7 +180,7 @@ async function request<T>(method: "GET" | "PATCH", path: string, body?: unknown)
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!r.ok) throw new Error((await r.text()) || r.statusText);
+  if (!r.ok) throw await httpError(r);
   return r.json() as Promise<T>;
 }
 
@@ -174,6 +198,9 @@ export const volunteersApi = {
     post<Participation>(`/opportunities/${opportunityId}/respond`, { volunteer_id: volunteerId }),
   myParticipations: (volunteerId: number) =>
     request<Participation[]>("GET", `/volunteers/${volunteerId}/participations`),
+  // видеособеседование: список — и для «Я», и для карточки в /admin
+  interviews: (volunteerId: number) => request<Interview[]>("GET", `/volunteers/${volunteerId}/interviews`),
+  callInfo: (token: string) => request<CallInfo>("GET", `/calls/${encodeURIComponent(token)}`),
   // координатор (/admin)
   createOpportunity: (data: OpportunityIn) => post<Opportunity>("/opportunities", data),
   participants: (opportunityId: number) =>
@@ -189,4 +216,8 @@ export const volunteersApi = {
     request<Volunteer>("PATCH", `/volunteers/${id}`, data),
   notes: (id: number) => request<Note[]>("GET", `/volunteers/${id}/notes`),
   addNote: (id: number, data: NoteIn) => post<Note>(`/volunteers/${id}/notes`, data),
+  scheduleInterview: (volunteerId: number, startsAt: string) =>
+    post<Interview>(`/volunteers/${volunteerId}/interviews`, { starts_at: startsAt }),
+  updateInterview: (id: number, status: InterviewStatus) =>
+    request<Interview>("PATCH", `/interviews/${id}`, { status }),
 };

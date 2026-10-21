@@ -301,3 +301,47 @@ class ParticipationUpdate(BaseModel):
     """PATCH /participations/{id} — подтвердить, отметить участие (начисляет часы), отказать."""
 
     status: ParticipationStatus
+
+
+# ---------- Видеособеседование ----------
+
+InterviewStatus = Literal["scheduled", "done", "canceled"]
+CallRole = Literal["coordinator", "volunteer"]
+
+
+class InterviewIn(BaseModel):
+    """POST /volunteers/{id}/interviews — координатор назначает собеседование."""
+
+    starts_at: datetime
+
+
+class Interview(BaseModel):
+    id: int
+    volunteer_id: int
+    starts_at: datetime
+    status: InterviewStatus
+    token: str  # ссылка на звонок — /call/<token>
+    notified: bool  # ссылка ушла волонтёру в Telegram; false — координатор отправит её сам
+    created_at: datetime
+
+
+class InterviewUpdate(BaseModel):
+    """PATCH /interviews/{id} — отметить, что прошло, или отменить."""
+
+    status: InterviewStatus
+
+
+class IceServer(BaseModel):
+    """Сервер STUN/TURN для RTCPeerConnection — поля как в браузерном RTCIceServer."""
+
+    urls: list[str]
+    username: str | None = None
+    credential: str | None = None
+
+
+class CallInfo(BaseModel):
+    """GET /calls/{token} — всё, что нужно странице звонка. Имён здесь нет: ссылку могут переслать."""
+
+    starts_at: datetime
+    status: InterviewStatus
+    ice_servers: list[IceServer]
