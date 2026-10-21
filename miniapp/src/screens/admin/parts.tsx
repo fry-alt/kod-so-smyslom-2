@@ -18,11 +18,11 @@ export function Panel(props: {
     <section className={`flex min-w-0 flex-col gap-4 rounded-[1.75rem] bg-surface p-5 md:p-6 ${props.className ?? ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 className="flex items-center gap-2.5 font-display text-xl font-semibold leading-tight">
+          <h2 className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 font-display text-xl font-semibold leading-tight">
             {props.dot && <span className={`size-3 shrink-0 rounded-full ${props.dot}`} aria-hidden="true" />}
             {props.title}
             {props.count !== undefined && props.count > 0 && (
-              <span className="rounded-full bg-page px-2.5 py-0.5 font-sans text-base font-semibold">{props.count}</span>
+              <span className="shrink-0 rounded-full bg-page px-2.5 py-0.5 font-sans text-base font-semibold">{props.count}</span>
             )}
           </h2>
           {props.hint && <p className="text-hint">{props.hint}</p>}

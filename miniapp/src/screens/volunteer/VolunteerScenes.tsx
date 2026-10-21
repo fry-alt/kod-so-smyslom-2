@@ -375,7 +375,7 @@ export default function VolunteerScenes() {
           {paused ? "Продолжить анимацию" : "Остановить анимацию"}
         </button>
       </div>
-      <div className={`marquee3d tile-in relative h-[26rem] md:h-[34rem] ${paused ? "is-paused" : ""}`} aria-hidden="true">
+      <div className={`marquee3d tile-in relative h-[26rem] overflow-x-clip md:h-[34rem] ${paused ? "is-paused" : ""}`} aria-hidden="true">
         <div className="marquee3d-fade absolute inset-0 overflow-hidden bg-surface">
           <div className="marquee3d-plane grid grid-cols-3 gap-4">
             {columns.map((col, c) => (

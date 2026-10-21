@@ -40,7 +40,7 @@ export default function Opportunities() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       <h1 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">Куда можно пойти</h1>
 
       {!id && (
@@ -65,7 +65,7 @@ export default function Opportunities() {
       {data && invites.length > 0 && (
         <section className="flex flex-col gap-4">
           <h2 className="font-display text-2xl font-semibold">Вас приглашают</h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid min-w-0 gap-4 md:grid-cols-2">
             {invites.map((o) => (
               <OpportunityItem
                 key={o.id}
@@ -85,7 +85,7 @@ export default function Opportunities() {
           {feed.length === 0 ? (
             <Empty>Пока нет открытых возможностей. Загляните позже — координатор добавит новые.</Empty>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid min-w-0 gap-4 md:grid-cols-2">
               {feed.map((o) => (
                 <OpportunityItem
                   key={o.id}
@@ -152,17 +152,17 @@ function OpportunityItem(props: {
 
   return (
     <article
-      className={`flex h-full flex-col gap-4 rounded-3xl border-2 bg-page p-4 sm:p-5 ${props.invite ? "border-accent" : "border-line"}`}
+      className={`flex h-full min-w-0 flex-col gap-4 rounded-3xl border-2 bg-page p-4 sm:p-5 ${props.invite ? "border-accent" : "border-line"}`}
     >
-      <div className="flex gap-3 sm:gap-4">
+      <div className="flex min-w-0 gap-3 sm:gap-4">
         <span className="flex w-14 shrink-0 flex-col items-center self-start sm:w-16 rounded-2xl bg-soft py-2">
           <span className="font-display text-2xl leading-none font-semibold">{d.getDate()}</span>
           <span className="text-sm">{d.toLocaleDateString("ru", { month: "short" }).replace(".", "")}</span>
           <span className="text-sm text-hint">{d.toLocaleDateString("ru", { weekday: "short" })}</span>
         </span>
         <div className="flex min-w-0 flex-col gap-1">
-          <h3 className="text-xl leading-snug font-semibold">{o.title}</h3>
-          <p className="text-hint">
+          <h3 className="break-words text-xl leading-snug font-semibold">{o.title}</h3>
+          <p className="[overflow-wrap:anywhere] text-hint">
             {d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })},{" "}
             {o.format === "online" ? FORMAT.online.toLowerCase() : o.place || REGION[o.region]}
           </p>
@@ -213,5 +213,5 @@ function OpportunityItem(props: {
 }
 
 function Chip(props: { children: ReactNode; className: string }) {
-  return <span className={`rounded-full px-3 py-0.5 text-sm font-semibold whitespace-nowrap ${props.className}`}>{props.children}</span>;
+  return <span className={`max-w-full rounded-full px-3 py-0.5 text-sm font-semibold [overflow-wrap:anywhere] ${props.className}`}>{props.children}</span>;
 }
