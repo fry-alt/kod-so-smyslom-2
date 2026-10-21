@@ -724,6 +724,28 @@ body {
   }
 }
 
+/* Сообщения (screens/volunteer/Messages.tsx, messages/Thread.tsx): «обои» чата в мелкий горошек,
+   новое сообщение мягко всплывает снизу. */
+.chat-wall {
+  background-color: var(--p-surface);
+  background-image: radial-gradient(color-mix(in srgb, var(--p-accent) 13%, transparent) 1.2px, transparent 1.6px);
+  background-size: 20px 20px;
+}
+.bubble-in {
+  animation: bubble-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble-in {
+    animation: none;
+  }
+}
+
 /* 3D-карточки «Ближайшие занятия» (Welcome.tsx → Cards3D): наведённая наклоняется за мышью и выходит вперёд,
    соседние уменьшаются и уходят вглубь. Наклон — переменные --rx/--ry. Только устройства с мышью. */
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
