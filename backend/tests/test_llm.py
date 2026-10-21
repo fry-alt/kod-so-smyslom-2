@@ -67,3 +67,26 @@ def test_load_prompt_substitutes_variables():
         load_prompt("rag_answer", context="...")
     with pytest.raises(FileNotFoundError):
         load_prompt("no_such_prompt")
+
+
+def test_openai_embedder_asks_for_float_vectors():
+    """Yandex не принимает base64 (его по умолчанию просит SDK openai) — из-за этого не грузились документы."""
+    from types import SimpleNamespace
+
+    from app.llm.providers import OpenAIEmbedder
+
+    calls = []
+
+    def create(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            data=[SimpleNamespace(embedding=[0.1, 0.2]) for _ in kwargs["input"]]
+        )
+
+    client = SimpleNamespace(embeddings=SimpleNamespace(create=create))
+    embedder = OpenAIEmbedder(
+        name="yandex", client=client, doc_model="d", query_model="q", batch_size=1
+    )
+    assert embedder.embed(["а", "б"]) == [[0.1, 0.2], [0.1, 0.2]]
+    assert len(calls) == 2
+    assert all(c["encoding_format"] == "float" for c in calls)
