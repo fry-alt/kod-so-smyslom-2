@@ -239,7 +239,9 @@ def create(
 
 
 @router.get("/volunteers/{volunteer_id}/interviews", response_model=list[Interview])
-def list_for_volunteer(volunteer_id: int, session: Session = Depends(get_session)) -> list[Interview]:
+def list_for_volunteer(
+    volunteer_id: int, session: Session = Depends(get_session)
+) -> list[Interview]:
     """Собеседования волонтёра — для карточки в /admin и для раздела «Я»."""
     volunteer = _volunteer_or_404(session, volunteer_id)
     return [interviews.to_out(session, i) for i in interviews.for_volunteer(session, volunteer)]
@@ -410,7 +412,9 @@ class InterviewPlan(SQLModel, table=True):
 
     volunteer_id: int = Field(foreign_key="volunteer.id", primary_key=True)
     created_at: datetime = Field(default_factory=_now)
-    questions: list[dict[str, Any]] = Field(sa_column=Column(JSON, nullable=False))  # schemas.PlanQuestion
+    questions: list[dict[str, Any]] = Field(
+        sa_column=Column(JSON, nullable=False)
+    )  # schemas.PlanQuestion
     focus: list[str] = Field(sa_column=Column(JSON, nullable=False))
 ```
 
@@ -506,9 +510,7 @@ class GeneratedPlan(BaseModel):
 
 
 BASE_QUESTIONS = [
-    PlanQuestion(
-        question="Почему вы хотите помогать именно нашему фонду?", why="Понять мотивацию"
-    ),
+    PlanQuestion(question="Почему вы хотите помогать именно нашему фонду?", why="Понять мотивацию"),
     PlanQuestion(
         question="Был ли у вас опыт общения с детьми или взрослыми с особенностями развития?",
         why="Готовность к работе с подопечными",
@@ -721,16 +723,27 @@ def volunteer(session, name, status="new", hours=0.0, days_ago=1, **answers) -> 
 def opportunity(session, starts_at, slots=1, hours=3.0, **changes) -> Opportunity:
     return add(
         session,
-        Opportunity(title=f"Занятие {starts_at:%d.%m}", starts_at=starts_at, slots=slots, hours=hours, **changes),
+        Opportunity(
+            title=f"Занятие {starts_at:%d.%m}",
+            starts_at=starts_at,
+            slots=slots,
+            hours=hours,
+            **changes,
+        ),
     )
 
 
 def participation(session, o, v, status, hours=0.0) -> Participation:
-    return add(session, Participation(opportunity_id=o.id, volunteer_id=v.id, status=status, hours=hours))
+    return add(
+        session, Participation(opportunity_id=o.id, volunteer_id=v.id, status=status, hours=hours)
+    )
 
 
 def interview(session, v, starts_at, status="scheduled") -> Interview:
-    return add(session, Interview(volunteer_id=v.id, starts_at=starts_at, status=status, token=f"t{v.id}{status}"))
+    return add(
+        session,
+        Interview(volunteer_id=v.id, starts_at=starts_at, status=status, token=f"t{v.id}{status}"),
+    )
 
 
 @pytest.fixture
@@ -742,7 +755,9 @@ def db():
         booked = volunteer(s, "Назначено сегодня")
         overdue = volunteer(s, "Просрочено")
         trained = volunteer(s, "Прошёл обучение", status="trained")
-        active = volunteer(s, "Активная", status="active", hours=3, availability=["weekday_morning"])
+        active = volunteer(
+            s, "Активная", status="active", hours=3, availability=["weekday_morning"]
+        )
         sleepy = volunteer(s, "Ни разу", status="approved", availability=["weekend"])
         old = volunteer(s, "Давно был", status="approved", hours=2, formats=["offline", "online"])
 
@@ -752,14 +767,26 @@ def db():
         participation(s, long_ago, old, "attended", hours=2)
         soon = opportunity(s, datetime(2026, 10, 23, 10, 0), slots=3)  # пт, будни утро, Москва очно
         participation(s, soon, active, "confirmed")
-        online = opportunity(s, datetime(2026, 11, 10, 18, 0), slots=2, format="online", region="other")
+        online = opportunity(
+            s, datetime(2026, 11, 10, 18, 0), slots=2, format="online", region="other"
+        )
         participation(s, online, sleepy, "responded")
 
         interview(s, booked, datetime(2026, 10, 21, 15, 0))
         interview(s, overdue, datetime(2026, 10, 20, 15, 0))
         interview(s, new_old, datetime(2026, 10, 21, 16, 0), status="canceled")
         done = interview(s, trained, datetime(2026, 10, 10, 15, 0), status="done")
-        add(s, InterviewResult(interview_id=done.id, motivation=5, readiness=4, regularity=4, decision="next", roles=[]))
+        add(
+            s,
+            InterviewResult(
+                interview_id=done.id,
+                motivation=5,
+                readiness=4,
+                regularity=4,
+                decision="next",
+                roles=[],
+            ),
+        )
         yield s
 
 
@@ -1090,12 +1117,26 @@ git commit -m "T-66: сводка координатора «что сегодн
 ```python
 def test_funnel(db):
     funnel = {row.step: row for row in dashboard.analytics(db, NOW).funnel}
-    assert list(funnel) == ["applied", "interviewed", "trained", "approved", "participated", "active"]
+    assert list(funnel) == [
+        "applied",
+        "interviewed",
+        "trained",
+        "approved",
+        "participated",
+        "active",
+    ]
     assert [funnel[s].count for s in funnel] == [7, 4, 4, 3, 2, 1]
     assert funnel["applied"].by_occupation["schoolkid"] == 1
-    assert funnel["interviewed"].by_occupation["schoolkid"] == 0  # школьник отвалился до собеседования
+    assert (
+        funnel["interviewed"].by_occupation["schoolkid"] == 0
+    )  # школьник отвалился до собеседования
     assert set(funnel["applied"].by_occupation) == {
-        "student", "pensioner", "remote", "employed", "schoolkid", "other"
+        "student",
+        "pensioner",
+        "remote",
+        "employed",
+        "schoolkid",
+        "other",
     }
 
 
@@ -1108,7 +1149,10 @@ def test_supply_and_demand(db):
     assert by_time["weekday_evening"] == (2, 1)  # онлайн-занятие 10.11 в 18:00
     assert by_time["weekend"] == (0, 2)
     by_region = {r.key: (r.demand, r.supply) for r in a.by_region}
-    assert by_region == {"moscow": (2, 3), "online": (2, 1)}  # регионы без спроса и людей не показываем
+    assert by_region == {
+        "moscow": (2, 3),
+        "online": (2, 1),
+    }  # регионы без спроса и людей не показываем
 
 
 def test_activity(db):
@@ -1117,7 +1161,10 @@ def test_activity(db):
     assert a.weeks[-1].week_start.isoformat() == "2026-10-19"  # понедельник текущей недели
     assert sum(w.hours for w in a.weeks) == 3  # занятие 100 дней назад — за окном
     assert [(t.volunteer.name, t.hours) for t in a.top] == [("Активная", 3)]
-    assert [(d.volunteer.name, d.days) for d in a.dormant] == [("Ни разу", None), ("Давно был", 100)]
+    assert [(d.volunteer.name, d.days) for d in a.dormant] == [
+        ("Ни разу", None),
+        ("Давно был", 100),
+    ]
 
 
 def test_analytics_api(client):
@@ -1294,9 +1341,7 @@ def supply_and_demand(data: Data, now: datetime) -> dict[str, list[SupplyRow]]:
             demand = sum(free[o.id] for o in upcoming if o.format == "online")
             supply = sum("online" in a.formats for a in approved)
         else:
-            demand = sum(
-                free[o.id] for o in upcoming if o.format == "offline" and o.region == key
-            )
+            demand = sum(free[o.id] for o in upcoming if o.format == "offline" and o.region == key)
             supply = sum(a.region == key and "offline" in a.formats for a in approved)
         if demand or supply:
             by_region.append(SupplyRow(key=key, demand=demand, supply=supply))
@@ -1767,7 +1812,9 @@ def test_history_is_consistent():
 
     for past in history["past_opportunities"]:
         assert past["days_ago"] > 0
-        OpportunityIn.model_validate({**past["opportunity"], "starts_at": f"2026-01-01T{past['time']}:00"})
+        OpportunityIn.model_validate(
+            {**past["opportunity"], "starts_at": f"2026-01-01T{past['time']}:00"}
+        )
         assert past["opportunity"]["role_code"] in roles
         assert len(past["attended"]) <= past["opportunity"]["slots"]
         assert all(in_range(n) for n in past["attended"])
@@ -1785,7 +1832,9 @@ def test_history_is_consistent():
 
     # школьники отваливаются: никто из них не дошёл до допуска — это видно на воронке
     schoolkids = {str(i) for i, f in enumerate(forms, 1) if f.answers.occupation == "schoolkid"}
-    assert not {n for n, s in history["statuses"].items() if s in ("approved", "active")} & schoolkids
+    assert (
+        not {n for n, s in history["statuses"].items() if s in ("approved", "active")} & schoolkids
+    )
 ```
 
 - [ ] **Step 2: Запустить — должен упасть**

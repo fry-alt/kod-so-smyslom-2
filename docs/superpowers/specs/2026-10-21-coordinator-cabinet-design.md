@@ -29,13 +29,14 @@
 ```python
 class PlanQuestion(BaseModel):
     question: str  # что спросить, обычными словами
-    why: str       # зачем: что уточняем по анкете
+    why: str  # зачем: что уточняем по анкете
+
 
 class InterviewPlan(BaseModel):
     volunteer_id: int
     questions: list[PlanQuestion]  # 5–7
-    focus: list[str]               # 1–3 пункта «на что обратить внимание»
-    ai: bool                       # False — базовый план без LLM
+    focus: list[str]  # 1–3 пункта «на что обратить внимание»
+    ai: bool  # False — базовый план без LLM
     created_at: datetime
 ```
 
@@ -65,13 +66,15 @@ class InterviewPlan(BaseModel):
 ```python
 Decision = Literal["next", "think", "reject"]  # дальше / подумать / не подходит
 
+
 class InterviewResultIn(BaseModel):
     motivation: int = Field(ge=1, le=5)  # мотивация
-    readiness: int = Field(ge=1, le=5)   # готовность к работе с подопечными
+    readiness: int = Field(ge=1, le=5)  # готовность к работе с подопечными
     regularity: int = Field(ge=1, le=5)  # насколько надёжно будет приходить
     decision: Decision
-    roles: list[str] = []                # коды из data/roles.json
+    roles: list[str] = []  # коды из data/roles.json
     comment: str = ""
+
 
 class InterviewResult(InterviewResultIn):
     created_at: datetime
@@ -96,6 +99,7 @@ class VolunteerRef(BaseModel):  # имя — для экрана фонда, в 
     id: int
     name: str
 
+
 class TodayInterview(BaseModel):
     interview_id: int
     volunteer: VolunteerRef
@@ -103,11 +107,13 @@ class TodayInterview(BaseModel):
     token: str
     overdue: bool  # время прошло, а итога нет
 
+
 class WaitingVolunteer(BaseModel):
     volunteer: VolunteerRef
-    since: datetime        # анкета от / обучение пройдено
-    days: int              # сколько дней ждёт
+    since: datetime  # анкета от / обучение пройдено
+    days: int  # сколько дней ждёт
     training_score: int | None = None
+
 
 class PendingResponse(BaseModel):
     participation_id: int
@@ -115,6 +121,7 @@ class PendingResponse(BaseModel):
     opportunity_title: str
     starts_at: datetime
     volunteer: VolunteerRef
+
 
 class Understaffed(BaseModel):
     opportunity_id: int
@@ -124,18 +131,24 @@ class Understaffed(BaseModel):
     taken: int
     missing: int
 
+
 class Counters(BaseModel):
     volunteers: int
-    active: int        # участвовали за 60 дней
+    active: int  # участвовали за 60 дней
     hours_total: float
-    hours_month: float # занятия с начала текущего месяца
+    hours_month: float  # занятия с начала текущего месяца
+
 
 class DashboardToday(BaseModel):
-    interviews: list[TodayInterview]              # сегодня + прошедшие scheduled без итога, по времени
-    new_without_interview: list[WaitingVolunteer] # status=new и ни одного scheduled/done собеседования, дольше ждут — выше
-    awaiting_approval: list[WaitingVolunteer]     # status=trained
-    pending_responses: list[PendingResponse]      # participation.status=responded у будущих возможностей
-    understaffed: list[Understaffed]              # ближайшие 7 дней, taken < slots, по времени
+    interviews: list[TodayInterview]  # сегодня + прошедшие scheduled без итога, по времени
+    new_without_interview: list[
+        WaitingVolunteer
+    ]  # status=new и ни одного scheduled/done собеседования, дольше ждут — выше
+    awaiting_approval: list[WaitingVolunteer]  # status=trained
+    pending_responses: list[
+        PendingResponse
+    ]  # participation.status=responded у будущих возможностей
+    understaffed: list[Understaffed]  # ближайшие 7 дней, taken < slots, по времени
     counters: Counters
 ```
 
@@ -151,38 +164,44 @@ class DashboardToday(BaseModel):
 ```python
 FunnelStep = Literal["applied", "interviewed", "trained", "approved", "participated", "active"]
 
+
 class FunnelRow(BaseModel):
     step: FunnelStep
     count: int
     by_occupation: dict[Occupation, int]  # все 6 ключей, нули тоже
 
+
 class SupplyRow(BaseModel):
-    key: str     # Availability (слот времени) или Region
+    key: str  # Availability (слот времени) или Region
     demand: int  # свободных мест в ближайших занятиях: sum(slots - taken)
     supply: int  # допущенных волонтёров (approved/active), подходящих по этому ключу
+
 
 class WeekRow(BaseModel):
     week_start: date  # понедельник
     hours: float
     participations: int
 
+
 class TopVolunteer(BaseModel):
     volunteer: VolunteerRef
     hours: float
     participations: int
+
 
 class Dormant(BaseModel):
     volunteer: VolunteerRef
     last_attended: date | None  # None — допущен, но ни разу не участвовал
     days: int | None
 
+
 class DashboardAnalytics(BaseModel):
-    funnel: list[FunnelRow]          # 6 шагов по порядку
-    by_time: list[SupplyRow]         # 4 слота в порядке AVAILABILITY
-    by_region: list[SupplyRow]       # регионы, где есть спрос или предложение
-    weeks: list[WeekRow]             # 12 недель, пустые недели — с нулями
-    top: list[TopVolunteer]          # 5 по часам за 12 недель
-    dormant: list[Dormant]           # допущены, не участвовали 45+ дней или ни разу; дольше — выше
+    funnel: list[FunnelRow]  # 6 шагов по порядку
+    by_time: list[SupplyRow]  # 4 слота в порядке AVAILABILITY
+    by_region: list[SupplyRow]  # регионы, где есть спрос или предложение
+    weeks: list[WeekRow]  # 12 недель, пустые недели — с нулями
+    top: list[TopVolunteer]  # 5 по часам за 12 недель
+    dormant: list[Dormant]  # допущены, не участвовали 45+ дней или ни разу; дольше — выше
 ```
 
 Шаги воронки — «дошёл хотя бы до», поэтому числа не растут слева направо:
