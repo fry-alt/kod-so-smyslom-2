@@ -553,6 +553,29 @@ class AuthOut(BaseModel):
     account: AccountOut
 
 
+class CodeSent(BaseModel):
+    """Ответ на POST /auth/register и /auth/register/resend: на почту ушёл код, аккаунта ещё нет.
+    Код вводят в POST /auth/register/verify. Если почта на сервере не настроена, /auth/register
+    сразу отвечает AuthOut — регистрация без кода."""
+
+    pending: Literal[True] = True
+    email: str
+    resend_after: int = Field(description="через сколько секунд можно отправить код ещё раз")
+
+
+class EmailIn(BaseModel):
+    """POST /auth/register/resend."""
+
+    email: str = Field(min_length=3, max_length=200)
+
+
+class VerifyIn(BaseModel):
+    """POST /auth/register/verify — код из письма."""
+
+    email: str = Field(min_length=3, max_length=200)
+    code: str = Field(min_length=1, max_length=20)
+
+
 # ===== Оформление личного кабинета =====
 
 LookColor = Literal["blue", "cyan", "green", "orange", "berry", "yellow"]

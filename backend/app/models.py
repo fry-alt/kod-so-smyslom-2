@@ -183,6 +183,20 @@ class DialogMessage(SQLModel, table=True):
     opportunity_id: int | None = Field(default=None, foreign_key="opportunity.id")
 
 
+class EmailCode(SQLModel, table=True):
+    """Заявка на регистрацию, пока не введён код из письма (services/email_codes.py).
+    Храним только хэши кодов и хэш пароля — ни самого кода, ни пароля."""
+
+    email: str = Field(primary_key=True)  # в нижнем регистре
+    code_hash: str  # до трёх хэшей через пробел: подходит и код из прошлого письма
+    payload: dict[str, Any] = Field(
+        sa_column=Column(JSON, nullable=False)
+    )  # почта, хэш пароля, роль
+    attempts: int = 0
+    sent_at: float  # секунды (time.time())
+    expires_at: float
+
+
 class FundSetting(SQLModel, table=True):
     """Настройки фонда, которые координатор меняет в кабинете («Настройки»), например код фонда."""
 

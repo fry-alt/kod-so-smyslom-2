@@ -75,6 +75,8 @@ jobs:
             echo "LLM_PROVIDER=${LLM_PROVIDER:-fake}"
             echo "WEBAPP_URL=https://$domain"
             echo "CORS_ORIGINS=https://$domain"
+            # без Postbox код в лог не печатаем: регистрация идёт без кода (deploy/mail-from-yapp.sh)
+            echo "MAIL_LOG_CODES=false"
             for name in LLM_MODEL LLM_BASE_URL YANDEX_MODEL GIGACHAT_MODEL \
                         TELEGRAM_BOT_TOKEN YANDEX_API_KEY YANDEX_FOLDER_ID GIGACHAT_CREDENTIALS \
                         GPT2GIGA_API_KEY LLM_API_KEY ANTHROPIC_API_KEY; do
@@ -121,6 +123,8 @@ jobs:
           ssh deploy@"$HOST" "chmod 600 ~/deti/.env"
           # TURN для звонков — coturn Yapp: секрет берётся из его .env прямо на сервере.
           ssh deploy@"$HOST" 'bash -s' < deploy/turn-from-yapp.sh
+          # Письма с кодом подтверждения почты — Postbox Yapp: ключ берётся из его .env прямо на сервере.
+          ssh deploy@"$HOST" 'bash -s' < deploy/mail-from-yapp.sh
 
       - name: Выкладка
         run: |

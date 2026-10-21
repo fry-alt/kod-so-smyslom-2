@@ -1,12 +1,20 @@
 from tests.test_volunteers import FORM
 
 from app.config import get_settings
+from app.services import mail
 from app.services.accounts import check_password, hash_password
 
 
 def register(client, **changes) -> dict:
+    """Регистрация в два шага: форма → код из письма → аккаунт."""
     body = {"email": "Anna@Example.ru", "password": "secret1", "role": "volunteer", **changes}
+    letters: list[str] = []
+    mail.set_mailer(lambda to, subject, text, html: letters.append(subject))
     r = client.post("/auth/register", json=body)
+    assert r.status_code == 200, r.text
+    assert r.json()["pending"] is True
+    code = letters[-1].split()[0]
+    r = client.post("/auth/register/verify", json={"email": body["email"], "code": code})
     assert r.status_code == 200, r.text
     return r.json()
 

@@ -80,6 +80,13 @@ class Settings(BaseSettings):
     # --- вход на сайт ---
     coordinator_code: str = "1111"  # начальный код фонда для координатора; дальше — в кабинете
 
+    # --- письма с кодом подтверждения почты (Yandex Cloud Postbox) ---
+    postbox_key_id: str = ""  # статический ключ сервисного аккаунта с ролью postbox.sender
+    postbox_secret: str = ""
+    mail_from: str = ""  # отправитель, домен подтверждён в Postbox: «Дети Марии <noreply@...>»
+    # Без Postbox: true — код печатается в лог бэкенда (локально), false — регистрация без кода (прод без почты)
+    mail_log_codes: bool = True
+
     # --- видеособеседование (WebRTC) ---
     # STUN помогает браузерам найти друг друга; TURN пересылает видео, когда напрямую не выходит.
     stun_urls: str = "stun:stun.l.google.com:19302"  # через запятую
