@@ -4,7 +4,15 @@ from sqlmodel import Session
 from app.db import get_session
 from app.models import Interview as InterviewRow
 from app.models import Volunteer
-from app.schemas import Interview, InterviewIn, InterviewPlan, InterviewResultIn, InterviewUpdate
+from app.schemas import (
+    Interview,
+    InterviewBookIn,
+    InterviewIn,
+    InterviewPlan,
+    InterviewResultIn,
+    InterviewSlots,
+    InterviewUpdate,
+)
 from app.services import interview_plan, interviews, volunteers
 from app.services.roles import load_roles
 
@@ -32,6 +40,24 @@ def create(
     """Координатор назначает видеособеседование; волонтёру уходит ссылка в Telegram."""
     volunteer = _volunteer_or_404(session, volunteer_id)
     return interviews.to_out(session, interviews.create(session, volunteer, data.starts_at))
+
+
+@router.get("/interviews/slots", response_model=InterviewSlots)
+def slots(session: Session = Depends(get_session)) -> InterviewSlots:
+    """Свободное время для собеседования — волонтёр выбирает его на странице «Собеседование»."""
+    return InterviewSlots(slots=interviews.free_slots(session), minutes=interviews.SLOT_MINUTES)
+
+
+@router.post("/volunteers/{volunteer_id}/interviews/book", response_model=Interview)
+def book(
+    volunteer_id: int, data: InterviewBookIn, session: Session = Depends(get_session)
+) -> Interview:
+    """Волонтёр сам записывается на свободное время; координатор увидит запись в «Сводке»."""
+    volunteer = _volunteer_or_404(session, volunteer_id)
+    try:
+        return interviews.to_out(session, interviews.book(session, volunteer, data.starts_at))
+    except interviews.BookingError as e:
+        raise HTTPException(409, str(e)) from e
 
 
 @router.get("/volunteers/{volunteer_id}/interviews", response_model=list[Interview])

@@ -187,6 +187,8 @@ export type Interview = {
   created_at: string;
   result: InterviewResult | null; // итог после звонка — только для фонда, волонтёру не показываем
 };
+/** Свободное время для записи на собеседование (московское, по порядку). */
+export type InterviewSlots = { slots: string[]; minutes: number };
 export type PlanQuestion = { question: string; why: string };
 export type InterviewPlan = {
   volunteer_id: number;
@@ -297,6 +299,9 @@ export const volunteersApi = {
     request<Participation[]>("GET", `/volunteers/${volunteerId}/participations`),
   // видеособеседование: список — и для «Я», и для карточки в /admin
   interviews: (volunteerId: number) => request<Interview[]>("GET", `/volunteers/${volunteerId}/interviews`),
+  interviewSlots: () => request<InterviewSlots>("GET", "/interviews/slots"),
+  bookInterview: (volunteerId: number, startsAt: string) =>
+    post<Interview>(`/volunteers/${volunteerId}/interviews/book`, { starts_at: startsAt }),
   callInfo: (token: string) => request<CallInfo>("GET", `/calls/${encodeURIComponent(token)}`),
   // координатор (/admin)
   createOpportunity: (data: OpportunityIn) => post<Opportunity>("/opportunities", data),
