@@ -1,11 +1,11 @@
 // Куда можно пойти: приглашения координатора сверху, ниже — лента возможностей с откликом.
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import type { Opportunity, Participation, ParticipationStatus } from "../../api";
 import { backend, getVolunteerId } from "../../backend";
 import { FORMAT, REGION } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Button, Card, Empty, ErrorBox, errorText, formatHours, formatWhen, Loading, useLoad } from "../../ui";
+import { Button, Empty, ErrorBox, errorText, formatHours, formatWhen, Loading, useLoad } from "../../ui";
 
 /** Что видит волонтёр, если уже откликнулся или приглашён. */
 const MY_STATUS: Record<ParticipationStatus, string> = {
@@ -40,16 +40,18 @@ export default function Opportunities() {
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      <h1 className="text-3xl font-bold">Куда можно пойти</h1>
+    <div className="flex flex-col gap-6">
+      <h1 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">Куда можно пойти</h1>
 
       {!id && (
-        <Card className="flex flex-col gap-3">
-          <p>Чтобы откликнуться и получать приглашения, сначала заполните анкету — это 5 минут.</p>
-          <Button wide onClick={() => navigate("/form")}>
-            Заполнить анкету
-          </Button>
-        </Card>
+        <section className="flex flex-col gap-4 rounded-3xl bg-soft p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
+          <p className="max-w-[44ch] text-lg">
+            Чтобы откликнуться и получать приглашения, сначала заполните анкету — это 5 минут.
+          </p>
+          <div className="shrink-0">
+            <Button onClick={() => navigate("/form")}>Заполнить анкету</Button>
+          </div>
+        </section>
       )}
 
       {notice && (
@@ -61,42 +63,48 @@ export default function Opportunities() {
       {error && <ErrorBox text={error} onRetry={reload} />}
 
       {data && invites.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-2xl font-bold">Вас приглашают</h2>
-          {invites.map((o) => (
-            <OpportunityItem
-              key={o.id}
-              o={o}
-              participation={mine.find((p) => p.opportunity_id === o.id)}
-              onDone={done}
-              invite
-            />
-          ))}
-        </section>
-      )}
-
-      {data && (
-        <section className="flex flex-col gap-3">
-          {invites.length > 0 && <h2 className="text-2xl font-bold">Все возможности</h2>}
-          {feed.length === 0 ? (
-            <Empty>Пока нет открытых возможностей. Загляните позже — координатор добавит новые.</Empty>
-          ) : (
-            feed.map((o) => (
+        <section className="flex flex-col gap-4">
+          <h2 className="font-display text-2xl font-semibold">Вас приглашают</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {invites.map((o) => (
               <OpportunityItem
                 key={o.id}
                 o={o}
                 participation={mine.find((p) => p.opportunity_id === o.id)}
                 onDone={done}
+                invite
               />
-            ))
+            ))}
+          </div>
+        </section>
+      )}
+
+      {data && (
+        <section className="flex flex-col gap-4">
+          {invites.length > 0 && <h2 className="font-display text-2xl font-semibold">Все возможности</h2>}
+          {feed.length === 0 ? (
+            <Empty>Пока нет открытых возможностей. Загляните позже — координатор добавит новые.</Empty>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {feed.map((o) => (
+                <OpportunityItem
+                  key={o.id}
+                  o={o}
+                  participation={mine.find((p) => p.opportunity_id === o.id)}
+                  onDone={done}
+                />
+              ))}
+            </div>
           )}
         </section>
       )}
 
       {id && (
-        <Button wide variant="secondary" onClick={() => navigate("/history")}>
-          Моя история и часы
-        </Button>
+        <div className="self-start">
+          <Button variant="secondary" onClick={() => navigate("/history")}>
+            Моя история и часы
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -136,41 +144,74 @@ function OpportunityItem(props: {
     }
   }
 
+  const d = new Date(o.starts_at);
+  const status = o.my_status && !props.invite ? MY_STATUS[o.my_status] : "";
+  const canRespond = !props.invite && volunteerId && !o.my_status && left > 0;
+  // откликнулся, приглашён или записан — можно задать вопрос координатору об этом занятии
+  const canWrite = volunteerId && o.my_status && o.my_status !== "declined";
+
   return (
-    <Card className={`flex flex-col gap-2 ${props.invite ? "ring-2 ring-accent" : ""}`}>
-      {o.recommended && (
-        <div>
-          <Badge className="bg-accent text-accent-text">Подходит вам</Badge>
+    <article
+      className={`flex h-full flex-col gap-4 rounded-3xl border-2 bg-page p-4 sm:p-5 ${props.invite ? "border-accent" : "border-line"}`}
+    >
+      <div className="flex gap-3 sm:gap-4">
+        <span className="flex w-14 shrink-0 flex-col items-center self-start sm:w-16 rounded-2xl bg-soft py-2">
+          <span className="font-display text-2xl leading-none font-semibold">{d.getDate()}</span>
+          <span className="text-sm">{d.toLocaleDateString("ru", { month: "short" }).replace(".", "")}</span>
+          <span className="text-sm text-hint">{d.toLocaleDateString("ru", { weekday: "short" })}</span>
+        </span>
+        <div className="flex min-w-0 flex-col gap-1">
+          <h3 className="text-xl leading-snug font-semibold">{o.title}</h3>
+          <p className="text-hint">
+            {d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })},{" "}
+            {o.format === "online" ? FORMAT.online.toLowerCase() : o.place || REGION[o.region]}
+          </p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {left > 0 ? (
+              <Chip className="bg-pop">
+                {left === 1 ? "Нужен ещё 1 человек" : `Нужно ещё ${left} человек${left < 5 ? "а" : ""}`}
+              </Chip>
+            ) : (
+              <Chip className="bg-soft">Все места заняты</Chip>
+            )}
+            <Chip className="bg-soft">⏱ {formatHours(o.hours)} ч</Chip>
+            {o.recommended && <Chip className="bg-accent text-accent-text">Подходит вам</Chip>}
+          </div>
+        </div>
+      </div>
+
+      {o.description && <p className="leading-relaxed">{o.description}</p>}
+
+      {(status || error || props.invite || canRespond) && (
+        <div className="mt-auto flex flex-col gap-2">
+          {status && <p className="rounded-2xl bg-soft px-4 py-3 font-semibold">{status}</p>}
+          {error && <ErrorBox text={error} />}
+          {props.invite && (
+            <>
+              <Button wide loading={busy === "confirm"} disabled={!!busy} onClick={() => act("confirm")}>
+                Подтвердить участие
+              </Button>
+              <Button wide variant="ghost" loading={busy === "decline"} disabled={!!busy} onClick={() => act("decline")}>
+                Не смогу
+              </Button>
+            </>
+          )}
+          {canRespond && (
+            <Button wide loading={busy === "respond"} onClick={() => act("respond")}>
+              Откликнуться
+            </Button>
+          )}
+          {canWrite && (
+            <Button wide variant="secondary" onClick={() => navigate(`/messages?about=${o.id}`)}>
+              Написать координатору
+            </Button>
+          )}
         </div>
       )}
-      <p className="text-xl font-semibold">{o.title}</p>
-      {o.description && <p>{o.description}</p>}
-      <p className="text-hint">
-        🗓 {formatWhen(o.starts_at)}
-        <br />
-        📍 {o.format === "online" ? FORMAT.online : `${REGION[o.region]}${o.place ? ", " + o.place : ""}`}
-        <br />
-        👥 {left > 0 ? `Мест осталось: ${left} из ${o.slots}` : "Все места заняты"} · ⏱ {formatHours(o.hours)} ч
-      </p>
-
-      {o.my_status && !props.invite && <p className="font-semibold">{MY_STATUS[o.my_status]}</p>}
-      {error && <ErrorBox text={error} />}
-
-      {props.invite && (
-        <div className="flex flex-col gap-2">
-          <Button wide loading={busy === "confirm"} disabled={!!busy} onClick={() => act("confirm")}>
-            Подтвердить участие
-          </Button>
-          <Button wide variant="ghost" loading={busy === "decline"} disabled={!!busy} onClick={() => act("decline")}>
-            Не смогу
-          </Button>
-        </div>
-      )}
-      {!props.invite && volunteerId && !o.my_status && left > 0 && (
-        <Button wide loading={busy === "respond"} onClick={() => act("respond")}>
-          Откликнуться
-        </Button>
-      )}
-    </Card>
+    </article>
   );
+}
+
+function Chip(props: { children: ReactNode; className: string }) {
+  return <span className={`rounded-full px-3 py-0.5 text-sm font-semibold whitespace-nowrap ${props.className}`}>{props.children}</span>;
 }

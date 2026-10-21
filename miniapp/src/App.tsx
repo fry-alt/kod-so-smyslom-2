@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 
 import { backend, getAccount, getVolunteerId, logout, USE_MOCK } from "./backend";
 import Footer from "./Footer";
+import { UnreadBadge, useUnread } from "./messages/Thread";
 import CallScreen from "./call/CallScreen";
 import CoordinatorPanel from "./call/CoordinatorPanel";
 import { match, navigate, usePath } from "./router";
@@ -14,6 +15,7 @@ import { tg } from "./telegram";
 import { Button, Link, useLoad } from "./ui";
 import Auth from "./screens/Auth";
 import Analytics from "./screens/admin/Analytics";
+import AdminMessages from "./screens/admin/Messages";
 import AdminOpportunities from "./screens/admin/Opportunities";
 import OpportunityCard from "./screens/admin/OpportunityCard";
 import OpportunityForm from "./screens/admin/OpportunityForm";
@@ -27,6 +29,7 @@ import Form from "./screens/volunteer/Form";
 import History from "./screens/volunteer/History";
 import Interview from "./screens/volunteer/Interview";
 import Me from "./screens/volunteer/Me";
+import Messages from "./screens/volunteer/Messages";
 import Opportunities from "./screens/volunteer/Opportunities";
 import Training from "./screens/volunteer/Training";
 import Welcome from "./screens/volunteer/Welcome";
@@ -42,6 +45,7 @@ const VOLUNTEER_ROUTES: Route[] = [
   ["/training", () => <Training />],
   ["/me", () => (needsAccount() ? <Auth /> : <Me />)],
   ["/interview", () => (needsAccount() ? <Auth /> : <Interview />)],
+  ["/messages", () => (needsAccount() ? <Auth /> : <Messages />)],
   ["/login", () => <Auth mode={new URLSearchParams(location.search).get("mode") === "login" ? "login" : "register"} />],
   ["/opportunities", () => <Opportunities />],
   ["/history", () => <History />],
@@ -59,6 +63,8 @@ const ADMIN_ROUTES: Route[] = [
   ["/admin/opportunities", () => <AdminOpportunities />],
   ["/admin/opportunities/new", () => <OpportunityForm />],
   ["/admin/opportunities/:id", (p) => <OpportunityCard id={Number(p.id)} />],
+  ["/admin/messages", () => <AdminMessages />],
+  ["/admin/messages/:id", (p) => <AdminMessages volunteerId={Number(p.id)} />],
 ];
 
 function render(routes: Route[], path: string): ReactNode {
@@ -99,19 +105,21 @@ export default function App() {
 }
 
 function VolunteerLayout(props: { path: string; children: ReactNode }) {
-  // лендинг, вход и кабинет — широкие (колонки на компьютере), остальные — узкие, как в телефоне
-  const wide = ["/", "/login", "/me", "/interview"].includes(props.path) || (props.path === "/form" && needsAccount());
-  const auth = props.path === "/login" || needsAccount() && ["/me", "/form", "/interview"].includes(props.path);
+  // лендинг, вход, кабинет, занятия, собеседование, анкета и «Спросить о фонде» — широкие (колонки на компьютере), остальные — узкие, как в телефоне
+  const wide = ["/", "/login", "/me", "/opportunities", "/form", "/interview", "/ask"].includes(props.path);
+  // анкета — на весь экран и без подвала: ничего не отвлекает от заполнения
+  const focus = props.path === "/form";
+  const auth = props.path === "/login" || needsAccount() && ["/me", "/form", "/interview", "/messages"].includes(props.path);
   return (
-    <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 pb-24 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl pb-10"}`}>
+    <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : wide ? "pb-24" : "pb-10"}`}>
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Logo />
         {!auth && <AccountNav path={props.path} />}
       </header>
       <MockBanner />
-      <main>{props.children}</main>
+      <main className={focus ? "flex flex-1 flex-col" : undefined}>{props.children}</main>
       {/* на странице входа подвала нет — ничего не отвлекает от формы */}
-      {!auth && <Footer />}
+      {!auth && !focus && <Footer />}
     </div>
   );
 }
@@ -130,19 +138,8 @@ function AccountNav(props: { path: string }) {
   const account = getAccount();
   const id = getVolunteerId();
   const { data: me } = useLoad(() => (id ? backend.get(id) : Promise.resolve(null)), [id]);
-  if (account && props.path === "/me") {
-    return (
-      <Button
-        variant="secondary"
-        onClick={() => {
-          logout();
-          navigate("/");
-        }}
-      >
-        Выйти
-      </Button>
-    );
-  }
+  // в самом кабинете шапка пустая: «Выйти из кабинета» — внизу, под разделами
+  if (account && props.path === "/me") return null;
   if (account?.role === "coordinator") {
     return (
       <Button variant="secondary" onClick={() => navigate("/admin")}>
@@ -199,6 +196,9 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
             <NavLink to="/admin/analytics" path={props.path}>
               Аналитика
             </NavLink>
+            <NavLink to="/admin/messages" path={props.path}>
+              <MessagesLabel />
+            </NavLink>
             <NavLink to="/admin/settings" path={props.path}>
               Настройки
             </NavLink>
@@ -211,6 +211,16 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
         {props.children}
       </main>
     </div>
+  );
+}
+
+/** «Сообщения» в меню фонда — со значком новых от волонтёров. */
+function MessagesLabel() {
+  const unread = useUnread(null, "coordinator");
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      Сообщения <UnreadBadge count={unread} />
+    </span>
   );
 }
 

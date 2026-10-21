@@ -1,13 +1,15 @@
 // Личный кабинет волонтёра. Открывается сразу после регистрации — ещё до анкеты:
 // уже видно, куда можно пойти, а первый шаг пути — «Заполнить анкету».
 // Итог собеседования (оценка координатора) здесь не показываем — он только для фонда.
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import type { Interview, Opportunity, Participation, Volunteer } from "../../api";
-import { backend, getAccount, getVolunteerId, logout, setVolunteerId } from "../../backend";
+import type { Interview, Look, Opportunity, Participation, Volunteer } from "../../api";
+import { backend, getAccount, getLook, getVolunteerId, loadLook, logout, setVolunteerId } from "../../backend";
 import { FORMAT, REGION, STATUS, STATUS_COLOR } from "../../labels";
+import { UnreadBadge, useUnread } from "../../messages/Thread";
 import { navigate } from "../../router";
 import { Badge, Button, Card, ErrorBox, FLAIR, flairHandlers, formatHours, Loading, useLoad } from "../../ui";
+import { Avatar, COVERS, Cover, LookEditor, type Progress } from "./Look";
 
 export default function Me() {
   const account = getAccount();
@@ -27,6 +29,15 @@ export default function Me() {
   // приглашения координатора — показываем сверху, чтобы не пропустить
   const invites = mine?.filter((p) => p.status === "invited") ?? [];
   const call = nextCall(interviews ?? []);
+  const unread = useUnread(id, "volunteer");
+  // оформление: сразу из копии на устройстве, потом — свежее с сервера
+  const [look, setLook] = useState<Look>(getLook);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    loadLook().then(setLook, () => {
+      /* не загрузилось — остаётся копия с устройства */
+    });
+  }, []);
 
   if (id && loading) return <Loading />;
   if (error) {
@@ -48,11 +59,34 @@ export default function Me() {
   }
 
   const attended = (mine ?? []).filter((p) => p.status === "attended").length;
+  const firstName = v ? v.name.split(" ")[0] : null;
+  const progress: Progress = {
+    hasForm: !!v,
+    trained: !!v && ["trained", "approved", "active"].includes(v.status),
+    attended,
+    hours: v?.hours ?? 0,
+  };
+  const letter = (look.nickname || firstName || account?.email || "?")[0].toUpperCase();
 
   return (
     <div className="flex flex-col gap-6 pb-6">
+      <LookEditor
+        open={editing}
+        look={look}
+        letter={letter}
+        name={firstName}
+        progress={progress}
+        onClose={() => setEditing(false)}
+        onSaved={(saved) => {
+          setLook(saved);
+          setEditing(false);
+        }}
+      />
       <Hero
-        name={v ? v.name.split(" ")[0] : null}
+        name={look.nickname || firstName}
+        look={look}
+        letter={letter}
+        onEdit={() => setEditing(true)}
         email={account?.email ?? null}
         badge={v ? <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge> : null}
         stats={
@@ -68,6 +102,14 @@ export default function Me() {
 
       {!v && <StartCard />}
       {call && <CallCard i={call} />}
+      {unread > 0 && (
+        <section className="flex flex-col gap-3 rounded-[1.75rem] bg-soft p-5 ring-2 ring-accent sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-lg font-semibold">
+            📨 Координатор написал вам{unread > 1 ? ` — новых сообщений: ${unread}` : ""}
+          </p>
+          <Button onClick={() => navigate("/messages")}>Прочитать и ответить</Button>
+        </section>
+      )}
       {invites.length > 0 && (
         <section className="flex flex-col gap-3 rounded-[1.75rem] bg-pop/25 p-5 ring-2 ring-pop sm:flex-row sm:items-center sm:justify-between">
           <p className="text-lg font-semibold">
@@ -95,7 +137,7 @@ export default function Me() {
               </div>
             </Card>
           )}
-          <QuickActions hasForm={!!v} />
+          <QuickActions hasForm={!!v} unread={unread} />
           <button
             type="button"
             onClick={() => {
@@ -116,23 +158,21 @@ export default function Me() {
 
 function Hero(props: {
   name: string | null;
+  look: Look;
+  letter: string;
+  onEdit: () => void;
   email: string | null;
   badge: ReactNode;
   stats: { value: string; label: string }[] | null;
 }) {
-  const initial = (props.name ?? props.email ?? "?")[0].toUpperCase();
+  const dark = COVERS[props.look.cover]?.dark;
   return (
-    <section className="relative overflow-hidden rounded-[2rem] bg-soft p-5 sm:p-8">
-      <span aria-hidden="true" className="auth-blob auth-blob-1" />
-      <span aria-hidden="true" className="auth-blob auth-blob-2" />
-      <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <div className="flex items-center gap-4">
-          <span
-            aria-hidden="true"
-            className="flex size-16 shrink-0 items-center justify-center rounded-full bg-logo-blue font-display text-2xl font-semibold text-white shadow-[0_10px_24px_-12px_var(--logo-blue)] sm:size-20 sm:text-3xl"
-          >
-            {initial}
-          </span>
+    <Cover cover={props.look.cover} className="rounded-[2rem] p-5 sm:p-8">
+      <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <button type="button" onClick={props.onEdit} aria-label="Оформить кабинет" className="rounded-full transition hover:scale-105">
+            <Avatar look={props.look} letter={props.letter} />
+          </button>
           <div className="flex min-w-0 flex-col gap-1.5">
             <h1 className="font-display text-[1.7rem] leading-tight font-semibold tracking-tight sm:text-[2.2rem]">
               {props.name ? `Здравствуйте, ${props.name}!` : "Добро пожаловать!"}
@@ -140,13 +180,25 @@ function Hero(props: {
             <div className="flex flex-wrap items-center gap-2">
               {props.badge}
               {props.email && <span className="truncate text-hint">{props.email}</span>}
+              <button
+                type="button"
+                onClick={props.onEdit}
+                className={`flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap backdrop-blur-sm transition hover:scale-105 ${
+                  dark ? "bg-white/15 hover:bg-white/25" : "bg-page/80 hover:bg-page"
+                }`}
+              >
+                <span aria-hidden="true">🎨</span> Оформить кабинет
+              </button>
             </div>
           </div>
         </div>
         {props.stats && (
           <dl className="grid grid-cols-3 gap-2 sm:gap-3">
             {props.stats.map((s) => (
-              <div key={s.label} className="flex flex-col rounded-2xl bg-page/85 px-3 py-3 backdrop-blur-sm sm:min-w-28 sm:px-4">
+              <div
+                key={s.label}
+                className={`flex flex-col rounded-2xl px-3 py-3 backdrop-blur-sm sm:min-w-28 sm:px-4 ${dark ? "bg-white/12" : "bg-page/85"}`}
+              >
                 <dt className="order-2 text-sm leading-tight text-hint">{s.label}</dt>
                 <dd className="order-1 font-display text-2xl font-semibold">{s.value}</dd>
               </div>
@@ -154,7 +206,7 @@ function Hero(props: {
           </dl>
         )}
       </div>
-    </section>
+    </Cover>
   );
 }
 
@@ -265,9 +317,10 @@ function EventCard({ o }: { o: Opportunity }) {
 
 // ===== Быстрые действия =====
 
-function QuickActions(props: { hasForm: boolean }) {
+function QuickActions(props: { hasForm: boolean; unread: number }) {
   const items = [
     { icon: "📹", title: "Собеседование", sub: "Запись на видеозвонок с координатором", to: "/interview" },
+    { icon: "📨", title: "Сообщения", sub: "Переписка с координатором фонда", to: "/messages", needsForm: true, unread: props.unread },
     { icon: "🎓", title: "Обучение", sub: "Курс и тест перед занятиями", to: "/training" },
     { icon: "⏱", title: "История и часы", sub: "Где вы были и сколько помогли", to: "/history", needsForm: true },
     { icon: "💬", title: "Спросить о фонде", sub: "Ответим по документам фонда", to: "/ask" },
@@ -285,7 +338,10 @@ function QuickActions(props: { hasForm: boolean }) {
             {i.icon}
           </span>
           <span className="flex flex-col">
-            <span className="font-semibold">{i.title}</span>
+            <span className="flex items-center gap-2 font-semibold">
+              {i.title}
+              {"unread" in i && <UnreadBadge count={i.unread ?? 0} />}
+            </span>
             <span className="text-sm leading-snug text-hint">{i.sub}</span>
           </span>
         </button>
@@ -337,11 +393,12 @@ function CallCard({ i }: { i: Interview }) {
 
 // ===== Путь в фонде =====
 
-type StepKey = "form" | "interview" | "training" | "approval" | "classes";
+// порядок шагов — порядок ключей: сначала обучение, потом собеседование
+type StepKey = "form" | "training" | "interview" | "approval" | "classes";
 const STEP_TITLE: Record<StepKey, string> = {
   form: "Анкета",
-  interview: "Собеседование",
   training: "Обучение",
+  interview: "Собеседование",
   approval: "Допуск",
   classes: "Занятия",
 };
@@ -354,9 +411,9 @@ function Path(props: { v: Volunteer | null; interviews: Interview[]; participati
   const later = (...s: Volunteer["status"][]) => !!v && s.includes(v.status);
   const done: Record<StepKey, boolean> = {
     form: !!v,
-    // до видеособеседований на сайте знакомились без системы — поэтому «дальше новой анкеты» тоже считается
-    interview: !!v && (props.interviews.some((i) => i.status === "done") || !later("new")),
     training: later("trained", "approved", "active"),
+    // до видеособеседований на сайте знакомились без системы — поэтому допуск тоже значит «собеседование было»
+    interview: props.interviews.some((i) => i.status === "done") || later("approved", "active"),
     approval: later("approved", "active"),
     classes: later("active") || props.participations.some((p) => p.status === "attended"),
   };

@@ -12,6 +12,12 @@ from app.services import interviews
 NOW = datetime(2026, 10, 21, 9, 0)
 
 
+def trained_volunteer(client) -> int:
+    v = create_volunteer(client)
+    client.patch(f"/volunteers/{v}", json={"status": "trained"})
+    return v
+
+
 def slots_at(now: datetime = NOW) -> list[datetime]:
     with Session(get_engine()) as session:
         return interviews.free_slots(session, now)
@@ -38,8 +44,16 @@ def test_scheduled_interview_takes_overlapping_slots(client):
     assert datetime(2026, 10, 22, 16, 0) in slots
 
 
-def test_book_cancel_and_rebook(client):
+def test_book_only_after_training(client):
     v = create_volunteer(client)
+    slot = client.get("/interviews/slots").json()["slots"][0]
+    r = client.post(f"/volunteers/{v}/interviews/book", json={"starts_at": slot})
+    assert r.status_code == 409
+    assert "обучение" in r.json()["detail"]
+
+
+def test_book_cancel_and_rebook(client):
+    v = trained_volunteer(client)
     r = client.get("/interviews/slots").json()
     assert r["minutes"] == 30
     first, second = r["slots"][0], r["slots"][1]
@@ -63,7 +77,7 @@ def test_book_cancel_and_rebook(client):
 
 
 def test_cannot_book_taken_or_off_grid_time(client):
-    a, b = create_volunteer(client), create_volunteer(client)
+    a, b = trained_volunteer(client), trained_volunteer(client)
     slot = client.get("/interviews/slots").json()["slots"][0]
     assert (
         client.post(f"/volunteers/{a}/interviews/book", json={"starts_at": slot}).status_code == 200

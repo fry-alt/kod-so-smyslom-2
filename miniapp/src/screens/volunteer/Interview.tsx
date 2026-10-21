@@ -1,4 +1,4 @@
-// Собеседование: волонтёр сам выбирает день и время видеозвонка с координатором,
+// Собеседование — после обучения: волонтёр сам выбирает день и время видеозвонка с координатором,
 // видит свою запись, может перенести или отменить её и войти в звонок.
 // Свободное время отдаёт бэкенд (будни 10:00–18:00 по Москве, занятое не показывается).
 import { useState } from "react";
@@ -16,10 +16,14 @@ export default function Interview() {
     () => (id ? backend.interviews(id) : Promise.resolve([])),
     [id],
   );
+  // записаться можно после обучения — статус берём из анкеты
+  const { data: me } = useLoad(() => (id ? backend.get(id) : Promise.resolve(null)), [id]);
   const [notice, setNotice] = useState("");
 
   const upcoming = nextCall(list ?? []);
-  const passed = (list ?? []).some((i) => i.status === "done");
+  const trained = !!me && ["trained", "approved", "active"].includes(me.status);
+  // как в пути на «Я»: допуск тоже значит, что знакомство уже было (до видеозвонков — без системы)
+  const passed = (list ?? []).some((i) => i.status === "done") || (!!me && ["approved", "active"].includes(me.status));
 
   function done(text: string) {
     setNotice(text);
@@ -29,10 +33,11 @@ export default function Interview() {
 
   let main;
   if (!id) main = <NeedForm />;
-  else if (loading && !list) main = <Loading />;
+  else if ((loading && !list) || !me) main = <Loading />;
   else if (error) main = <ErrorBox text={error} onRetry={reload} />;
   else if (upcoming) main = <Booked i={upcoming} onChange={done} />;
   else if (passed) main = <Passed />;
+  else if (!trained) main = <NeedTraining />;
   else main = <SlotPicker volunteerId={id} onBooked={done} />;
 
   return (
@@ -72,7 +77,24 @@ function NeedForm() {
   );
 }
 
-/** Пройдено — дальше обучение. */
+/** Сначала обучение: короткий курс и тест, потом запись на звонок. */
+function NeedTraining() {
+  return (
+    <Card className="flex flex-col items-start gap-3 sm:p-6">
+      <span className="flex size-12 items-center justify-center rounded-full bg-logo-cyan text-2xl" aria-hidden="true">
+        🎓
+      </span>
+      <h2 className="font-display text-xl font-semibold">Сначала — обучение</h2>
+      <p className="text-hint">
+        Несколько коротких текстов о наших подопечных и правилах фонда, в конце — тест. Как только пройдёте, здесь
+        откроется запись на собеседование.
+      </p>
+      <Button onClick={() => navigate("/training")}>Пройти обучение</Button>
+    </Card>
+  );
+}
+
+/** Пройдено — дальше допуск координатора. */
 function Passed() {
   return (
     <Card className="flex flex-col items-start gap-3 sm:p-6">
@@ -80,8 +102,11 @@ function Passed() {
         ✓
       </span>
       <h2 className="font-display text-xl font-semibold">Собеседование пройдено</h2>
-      <p className="text-hint">Спасибо за разговор! Следующий шаг — короткое обучение о наших подопечных и правилах фонда.</p>
-      <Button onClick={() => navigate("/training")}>Перейти к обучению</Button>
+      <p className="text-hint">
+        Спасибо за разговор! Координатор посмотрит итоги и допустит вас к занятиям — обычно это 1–2 дня. А пока можно
+        присмотреть, куда пойти.
+      </p>
+      <Button onClick={() => navigate("/opportunities")}>Куда можно пойти</Button>
     </Card>
   );
 }

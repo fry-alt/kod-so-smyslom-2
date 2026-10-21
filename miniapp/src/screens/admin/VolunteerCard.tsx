@@ -7,6 +7,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { Note, Role, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
 import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
+import { navigate } from "../../router";
 import { Badge, Button, Card, Contact, Empty, ErrorBox, errorText, inputClass, Link, Loading, useLoad } from "../../ui";
 import InterviewBlock from "./interview/InterviewBlock";
 
@@ -47,7 +48,11 @@ export default function VolunteerCard(props: { id: number }) {
               <span className="text-hint">Анкета от {formatDate(v.created_at, false)}</span>
             </div>
           </div>
-          <Contact contact={v.contact} />
+          <div className="flex flex-wrap items-center gap-3">
+            <Contact contact={v.contact} />
+            {/* переписка на сайте: волонтёр ответит из личного кабинета */}
+            <Button onClick={() => navigate(`/admin/messages/${v.id}`)}>Написать</Button>
+          </div>
 
           <div className="grid gap-5 lg:grid-cols-5">
             {/* на телефоне управление — сверху, на ноутбуке — справа */}

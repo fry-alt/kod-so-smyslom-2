@@ -1,4 +1,5 @@
 // Боковая панель координатора в звонке (T-69): «План» — вопросы от AI, «Итог» — оценки и решение.
+// После звонка — не панель, а широкая колонка по центру страницы: итог крупно, вопросы — свёрнутым блоком сверху.
 // Открывается по ссылке из кабинета: /call/<token>?as=coordinator&interview=<id>&volunteer=<id>.
 // Имя волонтёра здесь не показываем — как и на всей странице звонка.
 import { useEffect, useState } from "react";
@@ -7,6 +8,7 @@ import type { Interview, Role } from "../api";
 import { backend } from "../backend";
 import Plan from "../screens/admin/interview/Plan";
 import ResultForm, { ResultSummary } from "../screens/admin/interview/ResultForm";
+import { LinkButton } from "../screens/admin/parts";
 import { Button, Loading, useLoad } from "../ui";
 
 type Tab = "plan" | "result";
@@ -17,6 +19,29 @@ export default function CoordinatorPanel(props: { interviewId: number; volunteer
   useEffect(() => {
     if (props.ended) setTab("result");
   }, [props.ended]);
+
+  if (props.ended)
+    return (
+      <div className="flex flex-col gap-6">
+        <details className="group rounded-[2rem] bg-surface">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 rounded-[2rem] px-5 py-3 text-lg font-semibold md:px-8 [&::-webkit-details-marker]:hidden">
+            Вопросы собеседования
+            <span aria-hidden className="text-hint transition group-open:rotate-180">
+              ▾
+            </span>
+          </summary>
+          <div className="px-5 pb-5 md:px-8 md:pb-8">
+            <Plan volunteerId={props.volunteerId} />
+          </div>
+        </details>
+        <section aria-labelledby="result-title" className="flex flex-col gap-5 rounded-[2rem] bg-surface p-5 md:p-8">
+          <h2 id="result-title" className="font-display text-2xl leading-tight font-semibold md:text-3xl">
+            Итог собеседования
+          </h2>
+          <Result interviewId={props.interviewId} volunteerId={props.volunteerId} ended />
+        </section>
+      </div>
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -45,7 +70,8 @@ export default function CoordinatorPanel(props: { interviewId: number; volunteer
   );
 }
 
-function Result(props: { interviewId: number; volunteerId: number }) {
+/** ended — звонок завершён: после сохранения можно уйти в карточку волонтёра или в кабинет (во время звонка — нельзя). */
+function Result(props: { interviewId: number; volunteerId: number; ended?: boolean }) {
   const { data, loading } = useLoad(
     () =>
       Promise.all([
@@ -70,8 +96,14 @@ function Result(props: { interviewId: number; volunteerId: number }) {
           ✓ Итог сохранён — он виден в карточке волонтёра
         </p>
         <ResultSummary result={result} roles={roles} />
-        <div>
-          <Button variant="secondary" onClick={() => setEditing(true)}>
+        <div className="flex flex-wrap gap-2">
+          {props.ended && <LinkButton to={`/admin/volunteers/${props.volunteerId}`}>Открыть карточку волонтёра</LinkButton>}
+          {props.ended && (
+            <LinkButton to="/admin" variant="secondary">
+              В кабинет фонда
+            </LinkButton>
+          )}
+          <Button variant={props.ended ? "ghost" : "secondary"} onClick={() => setEditing(true)}>
             Изменить
           </Button>
         </div>
