@@ -12,8 +12,8 @@ import secrets
 from sqlmodel import Session, select
 
 from app.config import get_settings
-from app.models import Account
-from app.schemas import AccountOut, AuthOut, LoginIn, RegisterIn
+from app.models import Account, AccountLook
+from app.schemas import AccountOut, AuthOut, LoginIn, Look, RegisterIn
 
 ITERATIONS = 200_000
 
@@ -92,3 +92,19 @@ def link_volunteer(session: Session, account: Account, volunteer_id: int) -> Non
     account.volunteer_id = volunteer_id
     session.add(account)
     session.commit()
+
+
+def get_look(session: Session, account: Account) -> Look:
+    """Оформление кабинета; если человек ещё ничего не выбирал — по умолчанию."""
+    row = session.get(AccountLook, account.id)
+    return Look.model_validate(row, from_attributes=True) if row else Look()
+
+
+def save_look(session: Session, account: Account, look: Look) -> Look:
+    look = look.model_copy(update={"nickname": look.nickname.strip()})
+    row = session.get(AccountLook, account.id) or AccountLook(account_id=account.id)
+    for key, value in look.model_dump().items():
+        setattr(row, key, value)
+    session.add(row)
+    session.commit()
+    return look

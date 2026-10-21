@@ -1,6 +1,6 @@
 // Единая точка входа к бэкенду для экранов: настоящий API или моки (VITE_MOCK=1).
 // Экраны импортируют `backend` и `chatApi` отсюда, а не напрямую из api.ts / mock.ts.
-import { api, authApi, TOKEN_KEY, volunteersApi, type Account, type AuthOut } from "./api";
+import { api, authApi, TOKEN_KEY, volunteersApi, type Account, type AuthOut, type Look } from "./api";
 import { mockApi, mockAuthApi, mockChatApi } from "./mock";
 
 export const USE_MOCK = import.meta.env.VITE_MOCK === "1";
@@ -69,8 +69,41 @@ export function logout() {
   try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(ACCOUNT_KEY);
+    localStorage.removeItem(LOOK_KEY);
   } catch {
     /* приватный режим */
   }
   setVolunteerId(null);
+}
+
+// ===== Оформление кабинета =====
+// С аккаунтом — хранится на сервере (одинаково на телефоне и компьютере), копия — в localStorage,
+// чтобы шапка рисовалась сразу. Без аккаунта (вошли из Telegram) — только на этом устройстве.
+const LOOK_KEY = "look";
+
+export const DEFAULT_LOOK: Look = { avatar: "", color: "blue", cover: "sky", stickers: [], nickname: "" };
+
+export function getLook(): Look {
+  try {
+    return { ...DEFAULT_LOOK, ...JSON.parse(localStorage.getItem(LOOK_KEY) ?? "{}") };
+  } catch {
+    return DEFAULT_LOOK;
+  }
+}
+
+function keepLook(look: Look): Look {
+  try {
+    localStorage.setItem(LOOK_KEY, JSON.stringify(look));
+  } catch {
+    /* приватный режим */
+  }
+  return look;
+}
+
+export async function loadLook(): Promise<Look> {
+  return getAccount() ? keepLook(await auth.look()) : getLook();
+}
+
+export async function saveLook(look: Look): Promise<Look> {
+  return keepLook(getAccount() ? await auth.saveLook(look) : look);
 }
