@@ -489,3 +489,41 @@ class DashboardAnalytics(BaseModel):
     weeks: list[WeekRow]  # 12 недель, последняя — текущая
     top: list[TopVolunteer]  # 5 по часам за 12 недель
     dormant: list[Dormant]  # допущены, но не участвовали 45+ дней или ни разу
+
+
+# ===== Вход на сайт по почте и паролю =====
+
+AccountRole = Literal["volunteer", "coordinator"]
+
+
+class RegisterIn(BaseModel):
+    """POST /auth/register."""
+
+    email: str = Field(min_length=3, max_length=200, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    password: str = Field(min_length=6, max_length=200)
+    role: AccountRole = "volunteer"
+    code: str = Field(default="", max_length=100, description="код фонда — нужен координатору")
+
+
+class LoginIn(BaseModel):
+    """POST /auth/login."""
+
+    email: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
+    role: AccountRole = "volunteer"
+
+
+class AccountOut(BaseModel):
+    """GET /auth/me — кто вошёл."""
+
+    id: int
+    email: str
+    role: AccountRole
+    volunteer_id: int | None = None  # None — анкета ещё не заполнена
+
+
+class AuthOut(BaseModel):
+    """Ответ на регистрацию и вход: ключ для заголовка Authorization: Bearer <token>."""
+
+    token: str
+    account: AccountOut

@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session
 
+from app.api.auth import current_account
 from app.db import get_session
-from app.models import Volunteer
+from app.models import Account, Volunteer
 from app.schemas import (
     Note,
     NoteIn,
@@ -12,7 +13,7 @@ from app.schemas import (
     VolunteerStatus,
     VolunteerUpdate,
 )
-from app.services import hours, volunteers
+from app.services import accounts, hours, volunteers
 
 router = APIRouter(prefix="/volunteers", tags=["volunteers"])
 
@@ -25,9 +26,16 @@ def _get_or_404(session: Session, volunteer_id: int) -> Volunteer:
 
 
 @router.post("", response_model=VolunteerOut)
-def create(data: VolunteerIn, session: Session = Depends(get_session)) -> VolunteerOut:
-    """Анкета волонтёра."""
-    return volunteers.to_out(session, volunteers.create(session, data))
+def create(
+    data: VolunteerIn,
+    session: Session = Depends(get_session),
+    account: Account | None = Depends(current_account),
+) -> VolunteerOut:
+    """Анкета волонтёра. Если человек вошёл на сайт — анкета привязывается к его аккаунту."""
+    volunteer = volunteers.create(session, data)
+    if account is not None and volunteer.id is not None:
+        accounts.link_volunteer(session, account, volunteer.id)
+    return volunteers.to_out(session, volunteer)
 
 
 @router.get("", response_model=list[VolunteerOut])

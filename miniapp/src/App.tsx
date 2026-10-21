@@ -1,15 +1,18 @@
 // Одно приложение — две части:
-//   /        — волонтёр (сайт и Telegram Mini App): приветствие → анкета → обучение → статус
-//   /admin   — кабинет фонда (ноутбук): сводка, умный поиск, база, карточка, возможности, аналитика
+//   /        — лендинг; /login — регистрация и вход по почте (волонтёр или координатор)
+//   /me      — личный кабинет волонтёра: анкета, путь, занятия, обучение, часы (сайт и Telegram Mini App)
+//   /admin   — кабинет фонда (ноутбук, только после входа координатора): сводка, умный поиск, база, аналитика
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
 import type { ReactNode } from "react";
 
-import { backend, getVolunteerId, USE_MOCK } from "./backend";
+import { backend, getAccount, getVolunteerId, logout, USE_MOCK } from "./backend";
 import Footer from "./Footer";
 import CallScreen from "./call/CallScreen";
 import CoordinatorPanel from "./call/CoordinatorPanel";
 import { match, navigate, usePath } from "./router";
+import { tg } from "./telegram";
 import { Button, Link, useLoad } from "./ui";
+import Auth from "./screens/Auth";
 import Analytics from "./screens/admin/Analytics";
 import AdminOpportunities from "./screens/admin/Opportunities";
 import OpportunityCard from "./screens/admin/OpportunityCard";
@@ -21,7 +24,6 @@ import Volunteers from "./screens/admin/Volunteers";
 import Ask from "./screens/volunteer/Ask";
 import Form from "./screens/volunteer/Form";
 import History from "./screens/volunteer/History";
-import Login from "./screens/volunteer/Login";
 import Me from "./screens/volunteer/Me";
 import Opportunities from "./screens/volunteer/Opportunities";
 import Training from "./screens/volunteer/Training";
@@ -29,13 +31,15 @@ import Welcome from "./screens/volunteer/Welcome";
 
 type Route = [pattern: string, render: (params: Record<string, string>) => ReactNode];
 
+/** Анкета и кабинет — после регистрации. В Telegram Mini App можно и без неё: человека узнаём по Telegram. */
+const needsAccount = () => !getAccount() && !getVolunteerId() && !tg?.initData;
+
 const VOLUNTEER_ROUTES: Route[] = [
-  // повторный заход: анкета уже отправлена — сразу статус
-  ["/", () => (getVolunteerId() ? <Me /> : <Welcome />)],
-  ["/form", () => <Form />],
+  ["/", () => <Welcome />],
+  ["/form", () => (needsAccount() ? <Auth /> : <Form />)],
   ["/training", () => <Training />],
-  ["/me", () => <Me />],
-  ["/login", () => <Login />],
+  ["/me", () => (needsAccount() ? <Auth /> : <Me />)],
+  ["/login", () => <Auth mode={new URLSearchParams(location.search).get("mode") === "login" ? "login" : "register"} />],
   ["/opportunities", () => <Opportunities />],
   ["/history", () => <History />],
   ["/ask", () => <Ask />],
@@ -77,33 +81,78 @@ export default function App() {
     return <CallScreen token={call.token} sidePanel={panel} />;
   }
   if (path === "/admin" || path.startsWith("/admin/")) {
+    // кабинет фонда — только координатору; остальным — вход с выбранной ролью «координатор»
+    if (getAccount()?.role !== "coordinator") {
+      return (
+        <VolunteerLayout path="/login">
+          <Auth mode="login" role="coordinator" />
+        </VolunteerLayout>
+      );
+    }
     return <AdminLayout path={path}>{render(ADMIN_ROUTES, path) ?? <NotFound home="/admin" />}</AdminLayout>;
   }
   return <VolunteerLayout path={path}>{render(VOLUNTEER_ROUTES, path) ?? <NotFound home="/" />}</VolunteerLayout>;
 }
 
 function VolunteerLayout(props: { path: string; children: ReactNode }) {
-  // стартовый экран для новичка — широкий (две колонки на компьютере), остальные — узкие, как в телефоне
-  const wide = props.path === "/" && !getVolunteerId();
+  // лендинг, вход и кабинет — широкие (колонки на компьютере), остальные — узкие, как в телефоне
+  const wide = ["/", "/login", "/me"].includes(props.path) || (props.path === "/form" && needsAccount());
+  const auth = props.path === "/login" || needsAccount() && ["/me", "/form"].includes(props.path);
   return (
     <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 pb-24 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl pb-10"}`}>
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <Link to="/" className="flex items-center gap-2.5 font-display text-lg font-semibold whitespace-nowrap">
-          <img src="/logo.svg" alt="Дети Марии" className="h-9 w-auto md:h-11" />
-        </Link>
-        <AccountNav />
+        <Logo />
+        {!auth && <AccountNav path={props.path} />}
       </header>
       <MockBanner />
       <main>{props.children}</main>
-      <Footer />
+      {/* на странице входа подвала нет — ничего не отвлекает от формы */}
+      {!auth && <Footer />}
     </div>
   );
 }
 
-/** Справа в шапке: «Войти» — или имя волонтёра и «Личный кабинет», если анкета уже есть на этом устройстве. */
-function AccountNav() {
+/** Логотип всегда ведёт на лендинг — и с сайта, и из кабинета фонда. */
+function Logo(props: { className?: string }) {
+  return (
+    <Link to="/" className="flex shrink-0 items-center">
+      <img src="/logo.svg" alt="Дети Марии — на главную" className={props.className ?? "h-9 w-auto md:h-11"} />
+    </Link>
+  );
+}
+
+/** Справа в шапке: «Войти» — или имя и вход в свой кабинет (волонтёра или фонда). */
+function AccountNav(props: { path: string }) {
+  const account = getAccount();
   const id = getVolunteerId();
   const { data: me } = useLoad(() => (id ? backend.get(id) : Promise.resolve(null)), [id]);
+  if (account && props.path === "/me") {
+    return (
+      <Button
+        variant="secondary"
+        onClick={() => {
+          logout();
+          navigate("/");
+        }}
+      >
+        Выйти
+      </Button>
+    );
+  }
+  if (account?.role === "coordinator") {
+    return (
+      <Button variant="secondary" onClick={() => navigate("/admin")}>
+        Кабинет фонда
+      </Button>
+    );
+  }
+  if (account && !me) {
+    return (
+      <Button variant="secondary" onClick={() => navigate("/me")}>
+        Личный кабинет
+      </Button>
+    );
+  }
   if (!id || !me) {
     return (
       <Button variant="secondary" onClick={() => navigate("/login")}>
@@ -126,10 +175,10 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
     <div className="admin min-h-screen">
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Link to="/admin" className="flex items-center gap-3 font-semibold">
-            <img src="/logo.svg" alt="Дети Марии" className="h-9 w-auto" />
+          <div className="flex items-center gap-3 font-semibold">
+            <Logo className="h-9 w-auto" />
             <span className="text-hint">кабинет фонда</span>
-          </Link>
+          </div>
           <nav className="flex flex-wrap gap-4">
             <NavLink to="/admin" path={props.path} exact>
               Сводка
@@ -147,12 +196,38 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
               Аналитика
             </NavLink>
           </nav>
+          <CoordinatorMenu />
         </div>
       </header>
       <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
         <MockBanner />
         {props.children}
       </main>
+    </div>
+  );
+}
+
+/** Справа в шапке кабинета фонда: кто вошёл и «Выйти». */
+function CoordinatorMenu() {
+  const account = getAccount();
+  return (
+    <div className="ml-auto flex items-center gap-3">
+      <span className="flex items-center gap-2" title={account?.email}>
+        <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-full bg-soft font-display font-semibold uppercase">
+          {account?.email[0]}
+        </span>
+        <span className="hidden max-w-[14rem] truncate text-hint lg:inline">{account?.email}</span>
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          logout();
+          navigate("/");
+        }}
+        className="min-h-10 rounded-full border-2 border-line px-4 font-semibold hover:border-accent"
+      >
+        Выйти
+      </button>
     </div>
   );
 }

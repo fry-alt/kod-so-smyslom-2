@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import type { Answers, Availability, Format, Occupation, Region, Regularity, Role, Volunteer } from "../../api";
-import { backend, setVolunteerId } from "../../backend";
+import { backend, getAccount, saveAccount, setVolunteerId } from "../../backend";
 import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY } from "../../labels";
 import { FUND_DOCS } from "../../Footer";
 import { navigate } from "../../router";
@@ -18,7 +18,8 @@ function emptyDraft(): Draft {
   const tgName = [tgUser?.first_name, tgUser?.last_name].filter(Boolean).join(" ");
   return {
     name: tgName,
-    contact: tgUser?.username ? `@${tgUser.username}` : "",
+    // контакт подставляем сам: ник из Telegram или почта, с которой человек зарегистрировался
+    contact: tgUser?.username ? `@${tgUser.username}` : (getAccount()?.email ?? ""),
     consent: false,
     answers: {
       about: "",
@@ -104,6 +105,9 @@ export default function Form() {
         },
       });
       setVolunteerId(v.id);
+      // бэкенд уже привязал анкету к аккаунту — запоминаем и здесь, чтобы кабинет открылся сразу
+      const account = getAccount();
+      if (account?.role === "volunteer" && !account.volunteer_id) saveAccount({ ...account, volunteer_id: v.id });
       try {
         localStorage.removeItem(DRAFT_KEY);
       } catch {
@@ -340,7 +344,7 @@ function Thanks(props: { volunteer: Volunteer }) {
         </Card>
       ) : (
         <Card>
-          <p className="text-hint">Мы ещё разбираем вашу анкету — подходящие задачи появятся в разделе «Мой статус».</p>
+          <p className="text-hint">Мы ещё разбираем вашу анкету — подходящие задачи появятся в личном кабинете.</p>
         </Card>
       )}
       <p>Пока можно познакомиться с фондом и пройти короткое обучение — оно нужно до первого занятия.</p>
@@ -348,7 +352,7 @@ function Thanks(props: { volunteer: Volunteer }) {
         Пройти обучение
       </Button>
       <Button wide variant="secondary" onClick={() => navigate("/me")}>
-        Мой статус
+        В личный кабинет
       </Button>
     </div>
   );

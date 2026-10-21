@@ -3,7 +3,9 @@
 // волонтёры дополнительно сохраняются в localStorage, чтобы после перезагрузки работал «Мой статус».
 // Сбросить демо-данные: localStorage.removeItem("mock_volunteers").
 import type {
+  Account,
   AskResponse,
+  AuthOut,
   Availability,
   Candidate,
   CallInfo,
@@ -29,8 +31,10 @@ import type {
   TrainingModule,
   Volunteer,
   VolunteerIn,
+  authApi,
   volunteersApi,
 } from "./api";
+import { TOKEN_KEY } from "./api";
 
 /** Имитация задержки сети/LLM, чтобы были видны состояния загрузки. */
 const wait = <T>(value: T, ms = 400): Promise<T> =>
@@ -592,6 +596,7 @@ export const mockApi: typeof volunteersApi = {
     };
     volunteers.push(v);
     save();
+    linkToAccount(v.id);
     return wait(v, 1500); // LLM «думает»
   },
   get: (id) => (findVolunteer(id) ? wait(findVolunteer(id)!) : notFound("Волонтёр")),
@@ -756,4 +761,82 @@ export const mockChatApi = {
         : "В документах фонда ответа на этот вопрос нет. Напишите координатору.",
       sources: [],
     }, 800),
+};
+
+// ===== Вход по почте и паролю =====
+// Аккаунты живут в localStorage (mock_accounts); пароль в моках хранится как есть — это только демо в браузере.
+// Сбросить: localStorage.removeItem("mock_accounts").
+
+type MockAccount = Account & { password: string; token: string };
+const ACCOUNTS_KEY = "mock_accounts";
+
+function loadAccounts(): MockAccount[] {
+  try {
+    return JSON.parse(localStorage.getItem(ACCOUNTS_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveAccounts(list: MockAccount[]) {
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(list));
+  } catch {
+    /* приватный режим — аккаунт живёт до перезагрузки */
+  }
+}
+
+function currentAccount(list: MockAccount[]): MockAccount | undefined {
+  let token: string | null = null;
+  try {
+    token = localStorage.getItem(TOKEN_KEY);
+  } catch {
+    /* без входа */
+  }
+  return list.find((a) => a.token === token);
+}
+
+function authOut(a: MockAccount): AuthOut {
+  return { token: a.token, account: { id: a.id, email: a.email, role: a.role, volunteer_id: a.volunteer_id } };
+}
+
+/** Как на бэкенде: анкета из аккаунта волонтёра становится его анкетой. */
+function linkToAccount(volunteerId: number) {
+  const list = loadAccounts();
+  const a = currentAccount(list);
+  if (a && a.role === "volunteer" && a.volunteer_id === null) {
+    a.volunteer_id = volunteerId;
+    saveAccounts(list);
+  }
+}
+
+export const mockAuthApi: typeof authApi = {
+  register: (data) => {
+    const list = loadAccounts();
+    const email = data.email.trim().toLowerCase();
+    if (list.some((a) => a.email === email)) return Promise.reject(new Error("Эта почта уже зарегистрирована — войдите"));
+    const a: MockAccount = {
+      id: list.length + 1,
+      email,
+      role: data.role,
+      volunteer_id: null,
+      password: data.password,
+      token: `mock-${Date.now()}`,
+    };
+    saveAccounts([...list, a]);
+    return wait(authOut(a), 600);
+  },
+  login: (data) => {
+    const a = loadAccounts().find((x) => x.email === data.email.trim().toLowerCase());
+    if (!a || a.password !== data.password) return Promise.reject(new Error("Неверная почта или пароль"));
+    if (a.role !== data.role) {
+      const who = a.role === "coordinator" ? "координатор фонда" : "волонтёр";
+      return Promise.reject(new Error(`Эта почта зарегистрирована как ${who} — выберите «${who}» и войдите ещё раз`));
+    }
+    return wait(authOut(a), 600);
+  },
+  me: () => {
+    const a = currentAccount(loadAccounts());
+    return a ? wait(authOut(a).account, 200) : Promise.reject(new Error("Войдите заново"));
+  },
 };
