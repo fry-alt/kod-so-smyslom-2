@@ -2,7 +2,7 @@
 date: 2026-10-21
 author: fry-alt
 task: T-94 (#94)
-pr: будет добавлен после открытия PR
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/95
 areas: [интерфейс]
 ---
 
