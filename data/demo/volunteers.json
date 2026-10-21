@@ -1,0 +1,602 @@
+[
+  {
+    "name": "Анна Демидова",
+    "contact": "+7 900 000-00-01",
+    "answers": {
+      "about": "Учусь заочно на педагога начальных классов, днём свободна, подрабатываю репетитором.",
+      "skills": "Рисую акварелью, умею занять группу детей, делаю поделки из бумаги.",
+      "wishes": "Хочу регулярно помогать на занятиях с детьми, быть рядом с ребятами.",
+      "experience": "Три лета работала вожатой в детском лагере, в том числе с детьми из детского дома.",
+      "availability": ["weekday_morning", "weekday_day", "weekend"],
+      "occupation": "student",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Кирилл Демченко",
+    "contact": "@demo_kirill",
+    "answers": {
+      "about": "Студент третьего курса, учусь очно на экономиста, вечером и в выходные свободен.",
+      "skills": "Фотографирую на свою камеру, в основном репортажи и концерты.",
+      "wishes": "Готов поснимать мероприятия фонда.",
+      "experience": "Снимал студенческие праздники.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "student",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Мария Тестова",
+    "contact": "maria.testova@example.com",
+    "answers": {
+      "about": "Учусь заочно на клинического психолога, работаю в первой половине недели неполный день.",
+      "skills": "Психология, умею выслушать и поддержать, рисую.",
+      "wishes": "Хочу работать со взрослыми с ментальными особенностями, сопровождать на занятиях.",
+      "experience": "Учебная практика в психоневрологическом интернате, полгода волонтёрила там же.",
+      "availability": ["weekday_morning", "weekday_day"],
+      "occupation": "student",
+      "region": "moscow_region",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Денис Примеров",
+    "contact": "+7 900 000-00-04",
+    "answers": {
+      "about": "Учусь заочно на дизайнера, подрабатываю съёмкой товаров для маркетплейсов.",
+      "skills": "Предметная съёмка, свет, обработка фото в Lightroom, своя камера и софтбоксы.",
+      "wishes": "Могу снять изделия мастерских для каталога или сайта.",
+      "experience": "Волонтёрского опыта нет.",
+      "availability": ["weekday_morning", "weekend"],
+      "occupation": "student",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Алина Образцова",
+    "contact": "@demo_alina",
+    "answers": {
+      "about": "Студентка дизайн-колледжа, учусь очно.",
+      "skills": "Иллюстрация, рисую в Procreate, делаю открытки и картинки для соцсетей.",
+      "wishes": "Нарисовать что-нибудь для фонда: открытки, афиши.",
+      "experience": "Рисовала афиши для школьного театра.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "student",
+      "region": "moscow",
+      "formats": ["online", "offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Тимур Демоев",
+    "contact": "+7 900 000-00-06",
+    "answers": {
+      "about": "Учусь заочно в колледже на технолога общественного питания, работаю помощником повара в кафе.",
+      "skills": "Готовлю, пеку осетинские пироги, могу показать, как работать с тестом.",
+      "wishes": "Помогать на кулинарных мастер-классах.",
+      "experience": "Нет.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "student",
+      "region": "north_ossetia",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Полина Шаблонова",
+    "contact": "polina.shablonova@example.com",
+    "answers": {
+      "about": "Учусь заочно на дефектолога, работаю ассистентом в частном центре по вечерам.",
+      "skills": "Дефектология, АВА-терапия, сенсорные игры, терпение.",
+      "wishes": "Регулярно заниматься с детьми с особенностями развития.",
+      "experience": "Два года занимаюсь с детьми с аутизмом, практика в коррекционной школе.",
+      "availability": ["weekday_morning", "weekday_day"],
+      "occupation": "student",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Егор Макетов",
+    "contact": "@demo_egor",
+    "answers": {
+      "about": "Студент-первокурсник, учусь очно на инженера.",
+      "skills": "Снимаю и монтирую ролики на телефон для своего канала.",
+      "wishes": "Сделать ролик про фонд, поснимать на мероприятии.",
+      "experience": "Нет.",
+      "availability": ["weekend"],
+      "occupation": "student",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Софья Пробная",
+    "contact": "+7 900 000-00-09",
+    "answers": {
+      "about": "Учусь заочно на филолога, живу в Ярославле.",
+      "skills": "Пишу тексты, знаю английский, увлекаюсь валянием из шерсти — делаю игрушки.",
+      "wishes": "Помочь с текстами или на занятиях по рукоделию.",
+      "experience": "Вела кружок валяния в библиотеке для школьников.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "student",
+      "region": "yaroslavl",
+      "formats": ["offline", "online"],
+      "regularity": "any"
+    }
+  },
+  {
+    "name": "Артём Фиктивный",
+    "contact": "@demo_artem",
+    "answers": {
+      "about": "Учусь заочно на программиста, работаю в IT.",
+      "skills": "Делаю сайты, настраиваю компьютеры и технику.",
+      "wishes": "Помочь онлайн с сайтом или техникой.",
+      "experience": "Нет.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "student",
+      "region": "moscow_region",
+      "formats": ["online"],
+      "regularity": "any"
+    }
+  },
+  {
+    "name": "Вероника Глинова",
+    "contact": "+7 900 000-00-11",
+    "answers": {
+      "about": "Учусь заочно в художественном колледже на отделении керамики, в будни работаю.",
+      "skills": "Лепка, керамика, гончарный круг, роспись глазурями.",
+      "wishes": "Помогать на керамических мастерских, показывать, как работать с глиной.",
+      "experience": "Ассистировала педагогу в детской гончарной студии.",
+      "availability": ["weekend"],
+      "occupation": "student",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Илья Тестовый",
+    "contact": "@demo_ilya",
+    "answers": {
+      "about": "Студент, учусь очно, занимаюсь спортом.",
+      "skills": "Физически сильный, могу носить, собирать мебель.",
+      "wishes": "Помочь с погрузкой, переездом, установкой.",
+      "experience": "Нет.",
+      "availability": ["weekday_evening"],
+      "occupation": "student",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Дарья Демо",
+    "contact": "daria.demo@example.com",
+    "answers": {
+      "about": "Учусь заочно на музыкального педагога, днём работаю в музыкальной школе.",
+      "skills": "Играю на гитаре и фортепиано, пою, веду музыкальные занятия.",
+      "wishes": "Музыкальные занятия с детьми и подростками.",
+      "experience": "Веду хор в музыкальной школе.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "student",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Ксения Примерова",
+    "contact": "@demo_ksenia",
+    "answers": {
+      "about": "Учусь на журфаке очно, веду свой блог про книги.",
+      "skills": "SMM, пишу посты, делаю сторис и рилсы, разбираюсь в Telegram и ВКонтакте.",
+      "wishes": "Постоянно вести соцсети фонда удалённо.",
+      "experience": "Вела соцсети студенческого совета.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "student",
+      "region": "moscow",
+      "formats": ["online"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Руслан Образцов",
+    "contact": "+7 900 000-00-15",
+    "answers": {
+      "about": "Учусь заочно, работаю курьером во Владикавказе.",
+      "skills": "Фото на телефон, вожу машину, есть своя.",
+      "wishes": "Помочь с доставкой или поездками.",
+      "experience": "Нет.",
+      "availability": ["weekend"],
+      "occupation": "student",
+      "region": "north_ossetia",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Галина Петровна Демидова",
+    "contact": "+7 900 000-00-16",
+    "answers": {
+      "about": "На пенсии, 35 лет работала учителем труда в школе.",
+      "skills": "Шитьё, вязание, кройка, умею объяснить детям и подросткам.",
+      "wishes": "Хочу регулярно заниматься с ребятами, учить шить.",
+      "experience": "Всю жизнь с детьми, вела кружок шитья в доме творчества.",
+      "availability": ["weekday_morning", "weekday_day"],
+      "occupation": "pensioner",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Валентина Тестова",
+    "contact": "+7 900 000-00-17",
+    "answers": {
+      "about": "Пенсионерка, живу в Подмосковье, в будни сижу с внуками.",
+      "skills": "Валяние из шерсти, лоскутное шитьё.",
+      "wishes": "Помогать на мастерских по выходным.",
+      "experience": "Нет.",
+      "availability": ["weekend"],
+      "occupation": "pensioner",
+      "region": "moscow_region",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Николай Макетов",
+    "contact": "+7 900 000-00-18",
+    "answers": {
+      "about": "На пенсии, бывший водитель автобуса, живу в Подмосковье.",
+      "skills": "Вожу машину 40 лет, есть свой минивэн на 7 мест, руки на месте — чиню всё.",
+      "wishes": "Могу возить людей и грузы, помочь с ремонтом.",
+      "experience": "Возил ветеранов на праздники от совета ветеранов.",
+      "availability": ["weekday_morning", "weekday_day", "weekend"],
+      "occupation": "pensioner",
+      "region": "moscow_region",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Людмила Шаблонова",
+    "contact": "+7 900 000-00-19",
+    "answers": {
+      "about": "Пенсионерка из Ярославля, бывший технолог текстильной фабрики.",
+      "skills": "Валяние, вышивка, ткачество, вяжу.",
+      "wishes": "Хочу помогать на занятиях по рукоделию.",
+      "experience": "Веду кружок валяния в местном ДК.",
+      "availability": ["weekday_morning", "weekday_day", "weekend"],
+      "occupation": "pensioner",
+      "region": "yaroslavl",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Тамара Фиктивная",
+    "contact": "+7 900 000-00-20",
+    "answers": {
+      "about": "На пенсии, живу во Владикавказе, люблю готовить для большой семьи.",
+      "skills": "Кулинария, осетинские пироги, выпечка.",
+      "wishes": "Научить ребят готовить, помочь на кулинарных занятиях.",
+      "experience": "Пекла пироги для благотворительной ярмарки при храме.",
+      "availability": ["weekend"],
+      "occupation": "pensioner",
+      "region": "north_ossetia",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Виктор Пробный",
+    "contact": "+7 900 000-00-21",
+    "answers": {
+      "about": "Пенсионер, инженер-конструктор.",
+      "skills": "Столярка, ремонт, собрать и починить мебель, электрика.",
+      "wishes": "Помочь в мастерской с ремонтом и оборудованием.",
+      "experience": "Нет.",
+      "availability": ["weekday_morning", "weekday_day"],
+      "occupation": "pensioner",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "any"
+    }
+  },
+  {
+    "name": "Ирина Демо",
+    "contact": "irina.demo@example.com",
+    "answers": {
+      "about": "На пенсии, 30 лет работала дефектологом и логопедом.",
+      "skills": "Дефектология, логопедия, коррекционная педагогика.",
+      "wishes": "Работать со взрослыми и подростками с ментальными особенностями.",
+      "experience": "Работала в коррекционной школе и в центре для взрослых с ментальной инвалидностью.",
+      "availability": ["weekday_morning", "weekday_day", "weekend"],
+      "occupation": "pensioner",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Ольга Глинова",
+    "contact": "+7 900 000-00-23",
+    "answers": {
+      "about": "На пенсии, последние десять лет занимаюсь керамикой в студии.",
+      "skills": "Лепка, ручная керамика, глазури.",
+      "wishes": "Помогать на керамических мастерских.",
+      "experience": "Помогала в студии на детских занятиях.",
+      "availability": ["weekday_day", "weekend"],
+      "occupation": "pensioner",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Борис Примеров",
+    "contact": "+7 900 000-00-24",
+    "answers": {
+      "about": "Пенсионер, фотолюбитель с 40-летним стажем.",
+      "skills": "Фотография, своя зеркалка и штатив, снимаю натюрморты и предметы.",
+      "wishes": "Поснимать работы подопечных, мероприятия.",
+      "experience": "Снимал выставки в районной библиотеке.",
+      "availability": ["weekday_morning"],
+      "occupation": "pensioner",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Светлана Образцова",
+    "contact": "+7 900 000-00-25",
+    "answers": {
+      "about": "Пенсионерка, бывший бухгалтер, подрабатываю днём.",
+      "skills": "Учёт, таблицы, аккуратность.",
+      "wishes": "Помочь с документами или бухгалтерией.",
+      "experience": "Нет.",
+      "availability": ["weekday_evening"],
+      "occupation": "pensioner",
+      "region": "moscow",
+      "formats": ["offline", "online"],
+      "regularity": "any"
+    }
+  },
+  {
+    "name": "Максим Монтажов",
+    "contact": "@demo_maxim",
+    "answers": {
+      "about": "Работаю удалённо видеомонтажёром, график свободный.",
+      "skills": "Видеомонтаж в Premiere и DaVinci, цветокоррекция, субтитры, моушн.",
+      "wishes": "Смонтировать ролики для фонда, могу удалённо.",
+      "experience": "Делал ролик для приюта животных.",
+      "availability": ["weekday_morning", "weekday_day", "weekday_evening"],
+      "occupation": "remote",
+      "region": "moscow",
+      "formats": ["online", "offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Елена Тестовая",
+    "contact": "elena.test@example.com",
+    "answers": {
+      "about": "SMM-менеджер на удалёнке, живу в Подмосковье.",
+      "skills": "Веду соцсети, контент-план, тексты, Canva.",
+      "wishes": "Постоянно помогать фонду с соцсетями.",
+      "experience": "Вела соцсети благотворительного забега.",
+      "availability": ["weekday_evening"],
+      "occupation": "remote",
+      "region": "moscow_region",
+      "formats": ["online"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Анастасия Макетова",
+    "contact": "+7 900 000-00-28",
+    "answers": {
+      "about": "Переводчик-фрилансер, работаю из дома.",
+      "skills": "Английский язык (C2), письменный и устный перевод, деловая переписка.",
+      "wishes": "Переводить письма и документы для фонда.",
+      "experience": "Переводила для международного фестиваля.",
+      "availability": ["weekday_morning", "weekday_day"],
+      "occupation": "remote",
+      "region": "moscow",
+      "formats": ["offline", "online"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Павел Шаблонов",
+    "contact": "@demo_pavel",
+    "answers": {
+      "about": "Фотограф, работаю на себя, будни утром обычно свободны.",
+      "skills": "Свадебная и предметная фотосъёмка, свет, своя техника.",
+      "wishes": "Снимать мероприятия и работы для каталога.",
+      "experience": "Снимал благотворительный концерт.",
+      "availability": ["weekday_morning", "weekday_day"],
+      "occupation": "remote",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Юлия Фиктивная",
+    "contact": "julia.fict@example.com",
+    "answers": {
+      "about": "Психолог, консультирую онлайн.",
+      "skills": "Консультирование, поддержка подростков.",
+      "wishes": "Поддержать выпускников детских домов онлайн.",
+      "experience": "Консультировала в кризисном центре.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "remote",
+      "region": "moscow",
+      "formats": ["online"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Сергей Пробный",
+    "contact": "@demo_sergey",
+    "answers": {
+      "about": "Дизайнер на удалёнке.",
+      "skills": "Графический дизайн, вёрстка, презентации.",
+      "wishes": "Помочь с дизайном отчётов и презентаций.",
+      "experience": "Нет.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "remote",
+      "region": "moscow",
+      "formats": ["online"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Наталья Демидова",
+    "contact": "+7 900 000-00-32",
+    "answers": {
+      "about": "Иллюстратор, работаю из дома в Ярославле.",
+      "skills": "Рисование, живопись, иллюстрация.",
+      "wishes": "Вести занятия по рисованию.",
+      "experience": "Вела арт-кружок для детей.",
+      "availability": ["weekday_morning", "weekday_day"],
+      "occupation": "remote",
+      "region": "yaroslavl",
+      "formats": ["offline", "online"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Дмитрий Демо",
+    "contact": "+7 900 000-00-33",
+    "answers": {
+      "about": "Работаю удалённо, живу в Подмосковье, в выходные свободен.",
+      "skills": "Есть своя машина (универсал), вожу аккуратно.",
+      "wishes": "Отвезти людей или вещи куда нужно.",
+      "experience": "Развозил гуманитарную помощь.",
+      "availability": ["weekend"],
+      "occupation": "remote",
+      "region": "moscow_region",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Алексей Тестов",
+    "contact": "+7 900 000-00-34",
+    "answers": {
+      "about": "Работаю в офисе пять дней в неделю.",
+      "skills": "Вожу машину, есть своя, мелкий ремонт.",
+      "wishes": "Помочь в выходные.",
+      "experience": "Нет.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "employed",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Марина Образцова",
+    "contact": "marina.obr@example.com",
+    "answers": {
+      "about": "Работаю бухгалтером, по субботам хожу на керамику.",
+      "skills": "Лепка из глины, керамика, работа на гончарном круге.",
+      "wishes": "Помогать на керамических мастерских по субботам.",
+      "experience": "Нет.",
+      "availability": ["weekend"],
+      "occupation": "employed",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "regular"
+    }
+  },
+  {
+    "name": "Олег Примеров",
+    "contact": "@demo_oleg",
+    "answers": {
+      "about": "Юрист, работаю в компании.",
+      "skills": "Английский язык, юридические документы.",
+      "wishes": "Перевести или проверить документы вечером.",
+      "experience": "Нет.",
+      "availability": ["weekday_evening"],
+      "occupation": "employed",
+      "region": "moscow",
+      "formats": ["online"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Екатерина Макетова",
+    "contact": "+7 900 000-00-37",
+    "answers": {
+      "about": "Кондитер во Владикавказе, работаю в будни.",
+      "skills": "Кулинария, торты, выпечка, украшение десертов.",
+      "wishes": "Провести кулинарный мастер-класс.",
+      "experience": "Проводила мастер-классы в кулинарной студии.",
+      "availability": ["weekend"],
+      "occupation": "employed",
+      "region": "north_ossetia",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Миша Школьников",
+    "contact": "@demo_misha",
+    "answers": {
+      "about": "Учусь в 10 классе.",
+      "skills": "Снимаю на телефон, монтирую короткие видео.",
+      "wishes": "Нужны волонтёрские часы, могу поснимать.",
+      "experience": "Нет.",
+      "availability": ["weekend"],
+      "occupation": "schoolkid",
+      "region": "moscow",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Лиза Ученикова",
+    "contact": "@demo_liza",
+    "answers": {
+      "about": "Учусь в 11 классе, увлекаюсь монтажом.",
+      "skills": "Монтаж видео в CapCut и Premiere, субтитры, музыка к роликам.",
+      "wishes": "Смонтировать ролик для фонда удалённо.",
+      "experience": "Монтировала ролики для школьных мероприятий.",
+      "availability": ["weekday_evening", "weekend"],
+      "occupation": "schoolkid",
+      "region": "moscow_region",
+      "formats": ["online"],
+      "regularity": "episodic"
+    }
+  },
+  {
+    "name": "Ваня Школьный",
+    "contact": "@demo_vanya",
+    "answers": {
+      "about": "Школьник из Ярославля, 9 класс.",
+      "skills": "Фотографирую на телефон.",
+      "wishes": "Помочь на мероприятии.",
+      "experience": "Нет.",
+      "availability": ["weekend"],
+      "occupation": "schoolkid",
+      "region": "yaroslavl",
+      "formats": ["offline"],
+      "regularity": "episodic"
+    }
+  }
+]
