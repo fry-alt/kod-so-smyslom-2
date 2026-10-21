@@ -116,7 +116,13 @@ def test_unknown_module_and_volunteer(client, llm, volunteer_id):
 
 def test_statuses_and_score(client, llm, volunteer_id):
     r = submit(client, volunteer_id, "01-about", CORRECT)
-    assert r == {"score": 100, "passed": True, "correct": [True] * 5, "status": "training"}
+    assert r == {
+        "score": 100,
+        "passed": True,
+        "correct": [True] * 5,
+        "correct_answers": CORRECT,
+        "status": "training",
+    }
 
     r = submit(client, volunteer_id, "02-safety", [*CORRECT[:3], *WRONG[3:]])
     assert (r["score"], r["passed"], r["status"]) == (60, False, "training")

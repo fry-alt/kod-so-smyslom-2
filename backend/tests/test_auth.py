@@ -44,7 +44,7 @@ def test_register_login_and_me(client):
     assert client.get("/auth/me", headers=bearer("not-a-token")).status_code == 401
 
 
-def test_wrong_password_duplicate_email_and_wrong_role(client):
+def test_wrong_password_duplicate_email_and_role_is_derived_from_account(client):
     register(client)
     again = {"email": "anna@example.ru", "password": "secret1"}
     assert client.post("/auth/register", json=again).status_code == 400
@@ -59,8 +59,8 @@ def test_wrong_password_duplicate_email_and_wrong_role(client):
         "/auth/login",
         json={"email": "anna@example.ru", "password": "secret1", "role": "coordinator"},
     )
-    assert role.status_code == 401
-    assert "волонтёр" in role.json()["detail"]
+    assert role.status_code == 200
+    assert role.json()["account"]["role"] == "volunteer"
 
 
 def test_validates_email_and_password(client):
