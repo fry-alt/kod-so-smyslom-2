@@ -1,82 +1,114 @@
-# Архитектура
+# Архитектура: умный поиск волонтёров «Дети Марии»
+
+Ядро — **умный поиск потенциальных волонтёров** для координатора фонда. Анкета наполняет базу,
+обучение отмечает готовность, поиск находит нужных людей по запросу обычными словами.
+Кейс и решения — [CASE.md](CASE.md), контракт API — `backend/app/schemas.py`.
 
 ## Компоненты
 
 ```mermaid
 flowchart LR
-    U1([Пользователь в Telegram]) --> BOT[bot<br/>aiogram 3]
-    U2([Пользователь Mini App]) --> MA[miniapp<br/>React + Caddy :8080]
-    U3([Жюри / сотрудник НКО]) --> WEB[web<br/>Streamlit :8501]
-
-    BOT -- HTTP --> API
-    MA -- "/api/* (проксирует Caddy)" --> API
-    WEB -- HTTP --> API
+    V([Волонтёр<br/>сайт или Telegram]) --> FE
+    K([Координатор фонда<br/>браузер]) --> FE
+    FE["miniapp/ — одно React-приложение<br/>/ — анкета, обучение, статус<br/>/admin — умный поиск, база, карточка"]
+    BOT[bot/ — кнопка Mini App,<br/>вопросы о фонде] -- HTTP --> API
+    FE -- "/api/* (Caddy)" --> API
 
     subgraph backend [backend — FastAPI :8000]
-        API[api/*] --> SVC[services/case.py]
-        API --> RAG[rag/<br/>ingest · retrieve · answer]
-        SVC --> LLM[llm/client.py<br/>chat · chat_json · stream · embed]
-        RAG --> LLM
-        API --> DB[(SQLite<br/>журнал обращений)]
-        RAG --> VDB[(Chroma<br/>data/chroma)]
+        API[api/*] --> VOL[services/volunteers.py<br/>анкета, профиль, статусы, заметки]
+        API --> SRCH[services/search.py<br/>умный поиск]
+        API --> TRN[services/training.py<br/>материалы, тест]
+        API --> RAG[rag/ — вопросы о фонде]
+        VOL --> DB[(SQLite<br/>волонтёры, заметки, тесты)]
+        VOL --> IDX[(Chroma: volunteers_*<br/>только ответы анкеты)]
+        SRCH --> IDX
+        SRCH --> DB
+        VOL & SRCH & TRN & RAG --> LLM[llm/client.py<br/>chat_json · embed]
+        RAG --> DOCS[(Chroma: docs_*<br/>документы фонда)]
     end
 
-    LLM --> P{LLM_PROVIDER}
-    P --> F[fake — без сети]
-    P --> Y[YandexGPT<br/>AI Studio]
-    P --> G[gpt2giga → GigaChat]
-    P --> O[OpenAI-совместимый]
-    P --> A[Anthropic]
+    LLM --> P{LLM_PROVIDER<br/>fake · yandex · gigachat}
 ```
 
-В проде перед всем стоит Caddy (`deploy/Caddyfile`): `https://DOMAIN/` → Mini App (и `/api` через неё),
-`https://DOMAIN/demo` → Streamlit. Без сервера — `make tunnel` (cloudflared) даёт временный https-адрес.
+| Папка | Что внутри | Чья зона |
+|---|---|---|
+| `backend/app/services/volunteers.py` | анкета → профиль (LLM) → БД + индекс; статусы, часы, заметки | A |
+| `backend/app/services/search.py` | разбор запроса → фильтр → векторный поиск → переранжирование | A |
+| `backend/app/services/training.py` | модули обучения из `data/training/*.md`, генерация и проверка теста | A |
+| `backend/app/api/volunteers.py`, `search.py`, `training.py`, `roles.py` | HTTP-обёртки, без логики | A |
+| `backend/app/llm/prompts/` | `profile.md`, `search_query.md`, `rerank.md`, `quiz.md` | A |
+| `data/roles.json`, `data/training/`, `data/demo/volunteers.json` | роли фонда, учебные тексты, 40 вымышленных анкет | A |
+| `miniapp/src/` | экраны волонтёра и `/admin`, клиент `api.ts` | B |
+| `deploy/`, `docker/`, `bot/` | деплой, https, бот | B |
 
-## Потоки данных
-
-### Вопрос по документам (RAG)
+## Умный поиск (главный поток)
 
 ```mermaid
 sequenceDiagram
-    participant C as Клиент (бот / Mini App / web)
-    participant A as POST /documents/ask
-    participant R as rag.retrieve
-    participant V as Chroma
+    participant K as Координатор (/admin)
+    participant S as POST /search
     participant L as LLM
-    C->>A: {"question": "..."}
-    A->>R: вопрос
-    R->>L: embed(вопрос, kind=query)
-    R->>V: top_k ближайших фрагментов
-    V-->>R: фрагменты + сходство
-    alt нет фрагментов выше RAG_MIN_SCORE
-        A-->>C: found=false, «в документах нет ответа»
-    else есть
-        A->>L: chat_json(промпт rag_answer + фрагменты, RagAnswer)
-        L-->>A: {"found", "answer", "sources": [1, 3]}
-        A-->>C: ответ + цитаты источников
+    participant DB as SQLite
+    participant I as Chroma volunteers_*
+    K->>S: {"query": "фотограф на четверг утром, разово"}
+    S->>L: chat_json(search_query.md) → ParsedQuery
+    Note over S: skills=[фото], availability=[weekday_morning], kind=episodic
+    S->>DB: жёсткий фильтр: статус ≠ paused, есть пересечение по времени
+    S->>L: embed(запрос + теги, kind=query)
+    S->>I: ближайшие 20 среди отфильтрованных id
+    S->>L: chat_json(rerank.md, запрос + 20 обезличенных профилей) → оценка 0–100 + причина
+    alt LLM недоступен или вернул мусор
+        S->>S: оценка = сходство векторов + пересечение навыков, причина «оценка без AI»
     end
+    S->>DB: имена и контакты по id (в LLM они не уходили)
+    S-->>K: SearchResponse: как понял запрос + топ кандидатов
 ```
 
-### Загрузка документа
+Почему так:
+- **Время — жёсткий фильтр, а не «пожелание» для LLM.** Фонду в первую очередь нужны люди в будни днём;
+  галочки времени в анкете надёжнее любого извлечения из текста.
+- **Векторы отбирают, LLM объясняет.** Эмбеддинги быстро сужают базу до 20, LLM ставит оценку и пишет
+  «почему подходит» — это координатор и видит. Один вызов LLM на запрос, не на каждого кандидата.
+- **Без LLM поиск всё равно работает** (фолбэк) — демо не падает из-за сети или лимитов.
 
-`POST /documents/upload` (или файл в бот) → `data/uploads/` → `rag.ingest.read_text` (PDF/DOCX/XLSX/CSV/TXT/MD)
-→ `split_text` (абзацы → чанки ≤ CHUNK_SIZE) → `embed(kind=doc)` → Chroma (`source`, `chunk` в метаданных).
-Повторная загрузка файла с тем же именем заменяет его чанки.
+## Анкета → профиль
 
-### Mini App и авторизация
+`POST /volunteers` → `services/volunteers.create()`:
+1. Сохранить волонтёра в SQLite (имя, контакт, `telegram_id`, ответы), статус `new`.
+2. `chat_json(profile.md, ответы + список ролей из data/roles.json)` → `Profile` (навыки, интересы, подходящие роли, резюме).
+3. Текст для индекса = ответы + теги профиля (**без имени и контакта**) → `embed(kind=doc)` → Chroma `volunteers_<провайдер>`, id = id волонтёра, в метаданных — время и статус.
+4. Ошибка LLM не блокирует анкету: профиль пустой, флаг `profile_ready=false`, переиндексация позже.
 
-Telegram открывает Mini App с подписанной строкой `initData`. Фронт шлёт её в заголовке
-`X-Telegram-Init-Data`, бэкенд проверяет HMAC токеном бота (`api/telegram_auth.py`).
-С `TELEGRAM_AUTH_REQUIRED=true` запросы без валидного initData отклоняются (401).
+## Обучение
 
-## Почему так
+- Модули — markdown-файлы в `data/training/` (контент даёт фонд, сейчас черновики).
+- `GET /training/{module_id}/quiz` — LLM генерирует 5 вопросов с вариантами по тексту модуля, результат
+  кэшируется в БД (правильные ответы на клиент не уходят).
+- `POST /training/submit` — проверка, балл в процентах, при ≥ 70% по всем модулям статус → `trained`.
 
-- **Один слой LLM на OpenAI SDK** — YandexGPT, GigaChat (через gpt2giga), vLLM/Ollama/OpenRouter
-  отличаются только `base_url`, ключом и именем модели. Код промптов и сервисов не меняется.
-- **`fake`-провайдер** — всё (включая CI и демо интерфейса) работает без ключей; эмбеддинги fake —
-  хешированный «мешок слов», поэтому поиск по документам честно работает и без сети.
-- **Бот и фронты — только через HTTP к бэкенду** — одна точка для логики, логов и ключей.
-- **Caddy внутри контейнера miniapp** — фронт всегда ходит на относительный `/api`: нет CORS
-  и разных адресов для локалки, туннеля и прода.
-- **Коллекция Chroma на каждый бэкенд эмбеддингов** (`docs_fake`, `docs_yandex`, …) — векторы
-  разной размерности не смешиваются; после смены провайдера — `make ingest`.
+## Статусы волонтёра
+
+```
+new (анкета) → training (начал обучение) → trained (тест сдан) → approved (допущен координатором) → active
+                                                                         ↘ paused (в любой момент)
+```
+Переходы `approved`, `active`, `paused` делает только координатор; `training` и `trained` — система.
+
+## Персональные данные
+
+| Данные | Где хранятся | Уходят в LLM / индекс |
+|---|---|---|
+| Имя, контакт, `telegram_id` | SQLite | **нет** |
+| Ответы анкеты, время, род занятий | SQLite | да (фонд разрешил, обезличено) |
+| Заметки координатора | SQLite | **нет** (могут содержать истории о подопечных) |
+
+## Остальное (из шаблона)
+
+- **Один слой LLM** (`app.llm.client.get_llm()`) — YandexGPT, GigaChat, OpenAI-совместимые отличаются
+  только `.env`. `fake` работает без сети: CI и интерфейс не зависят от ключей.
+- **Коллекция Chroma на каждый бэкенд эмбеддингов** (`docs_fake`, `volunteers_yandex`, …) — после смены
+  провайдера переиндексировать: `make ingest` для документов, `make seed` для анкет.
+- **Mini App и сайт — один код.** В Telegram вход по `initData` (заголовок `X-Telegram-Init-Data`,
+  проверка в `api/telegram_auth.py`), в браузере — `volunteer_id` после анкеты в localStorage.
+- **Caddy внутри контейнера miniapp** — фронт всегда ходит на относительный `/api`: нет CORS и разных адресов.
+  В проде: `https://DOMAIN/` → приложение, `/admin` → кабинет фонда.

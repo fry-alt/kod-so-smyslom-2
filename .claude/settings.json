@@ -15,8 +15,19 @@
       "Bash(uv run pytest:*)",
       "Bash(uv run ruff:*)",
       "Bash(npm run build)",
-      "Bash(npm run typecheck)"
+      "Bash(npm run typecheck)",
+      "Bash(git pull)",
+      "Bash(git status)",
+      "Bash(git log:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh api user:*)"
     ],
-    "deny": ["Read(./.env)"]
+    "deny": [
+      "Read(./.env)"
+    ]
   }
 }

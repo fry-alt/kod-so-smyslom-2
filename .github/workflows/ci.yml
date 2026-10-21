@@ -6,6 +6,26 @@ on:
   pull_request:
 
 jobs:
+  # Каждый PR добавляет заметку в docs/changes/ — так напарник видит, кто что поменял (docs/WORKFLOW.md).
+  change-note:
+    name: Заметка в docs/changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Есть новая заметка
+        run: |
+          notes=$(git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- docs/changes/ \
+            | grep -E '^docs/changes/[0-9]{4}-[0-9]{2}-[0-9]{2}-[^/]+\.md$' || true)
+          if [ -z "$notes" ]; then
+            echo "::error::Добавь заметку: docs/changes/ГГГГ-ММ-ДД-<логин>-T-NN-<коротко>.md (шаблон — docs/changes/_TEMPLATE.md)"
+            exit 1
+          fi
+          echo "Заметки в этом PR:"
+          echo "$notes"
+
   python:
     name: Python — lint, тесты, smoke
     runs-on: ubuntu-latest
