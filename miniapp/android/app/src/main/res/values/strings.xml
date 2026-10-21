@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Дети Марии</string>
+    <string name="title_activity_main">Дети Марии</string>
+    <string name="package_name">ru.detimarii.volunteers</string>
+    <string name="custom_url_scheme">ru.detimarii.volunteers</string>
+</resources>

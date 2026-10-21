@@ -23,6 +23,9 @@ body {
   @apply bg-page text-ink antialiased;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   line-height: 1.5;
+  /* Вырезы и системные панели: в Android-приложении (T-19) и в PWA на iPhone страница идёт до краёв экрана
+     (viewport-fit=cover). В обычном браузере и в Telegram отступы равны нулю. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* Кабинет фонда открывают на ноутбуке — там шрифт чуть компактнее, но не меньше 16px. */

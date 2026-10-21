@@ -1,0 +1,44 @@
+name: Android APK
+
+# Собирает Android-приложение (T-19) из miniapp/ через Capacitor. На машине разработчика Java и Android SDK не нужны:
+# APK появляется во вкладке Actions → этот запуск → Artifacts → «deti-marii-apk».
+on:
+  push:
+    branches: [main]
+    paths: ["miniapp/**", ".github/workflows/android.yml"]
+  pull_request:
+    paths: ["miniapp/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    name: Сборка APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: miniapp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: miniapp/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - run: npm ci
+      - name: Сайт → Android-проект (API — прод, см. vite.config.ts)
+        run: npm run build:android
+      - name: APK (debug-подпись — ставится на телефон напрямую, не для Google Play)
+        working-directory: miniapp/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deti-marii-apk
+          path: miniapp/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30

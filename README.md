@@ -18,6 +18,18 @@
 Сайт ставится на телефон как приложение: «Поделиться → На экран Домой» (iOS) или «Установить приложение» (Android).
 Все данные в демо вымышленные.
 
+### Android-приложение (APK)
+
+То же приложение волонтёра, собранное в APK через [Capacitor](https://capacitorjs.com): ходит в тот же бэкенд, что и сайт.
+
+1. Скачать: [Actions → Android APK](https://github.com/fry-alt/kod-so-smyslom-2/actions/workflows/android.yml) →
+   последний зелёный запуск → внизу **Artifacts → deti-marii-apk** (zip с `app-debug.apk`; нужен вход в GitHub).
+2. На телефоне открыть `app-debug.apk` и разрешить установку из этого источника.
+
+Собрать самому: `cd miniapp && npm run build:android`, затем открыть папку `miniapp/android` в Android Studio
+(или `./gradlew assembleDebug`, нужны JDK 21 и Android SDK). Адрес бэкенда — `PROD_API` в `miniapp/vite.config.ts`.
+iOS-версию можно собрать так же (`npx cap add ios`), но для этого нужен Mac с Xcode.
+
 ## Запуск за 3 команды
 
 ```bash

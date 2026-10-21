@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Цвета фонда — те же, что в miniapp/src/index.css. -->
+<resources>
+    <color name="colorPrimary">#E0672B</color>
+    <color name="colorPrimaryDark">#C2561F</color>
+    <color name="colorAccent">#E0672B</color>
+    <color name="splash_background">#FFFAF5</color>
+</resources>
