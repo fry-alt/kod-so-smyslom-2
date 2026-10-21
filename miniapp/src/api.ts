@@ -38,6 +38,10 @@ export type Availability = "weekday_morning" | "weekday_day" | "weekday_evening"
 export type Occupation = "student" | "pensioner" | "remote" | "employed" | "schoolkid" | "other";
 export type VolunteerStatus = "new" | "training" | "trained" | "approved" | "active" | "paused";
 export type RoleKind = "regular" | "episodic";
+export type Region = "moscow" | "moscow_region" | "yaroslavl" | "north_ossetia" | "other";
+export type Format = "offline" | "online";
+export type Regularity = "regular" | "episodic" | "any";
+export type ParticipationStatus = "responded" | "invited" | "confirmed" | "attended" | "declined";
 
 export type Answers = {
   about: string;
@@ -46,6 +50,9 @@ export type Answers = {
   experience: string;
   availability: Availability[];
   occupation: Occupation;
+  region: Region;
+  formats: Format[];
+  regularity: Regularity;
 };
 export type Profile = {
   skills: string[];
@@ -77,17 +84,22 @@ export type Role = {
   skills: string[];
   availability: Availability[];
   kind: RoleKind;
+  format: Format;
+  regions: Region[];
 };
 export type SearchRequest = {
   query: string;
   role_code?: string | null;
+  opportunity_id?: number | null;
   statuses?: VolunteerStatus[];
   limit?: number;
 };
 export type ParsedQuery = {
   skills: string[];
   availability: Availability[];
-  kind: RoleKind | "any";
+  kind: Regularity;
+  region: Region | null;
+  format: Format | null;
   notes: string;
 };
 export type Candidate = {
@@ -98,7 +110,7 @@ export type Candidate = {
   ai: boolean;
 };
 export type SearchResponse = { parsed: ParsedQuery; candidates: Candidate[]; total_checked: number };
-export type TrainingModule = { id: string; title: string; text: string };
+export type TrainingModule = { id: string; title: string; text: string; required: boolean };
 export type Quiz = { module_id: string; questions: { question: string; options: string[] }[] };
 export type QuizSubmit = { volunteer_id: number; module_id: string; answers: number[] };
 export type QuizResult = {
@@ -106,6 +118,34 @@ export type QuizResult = {
   passed: boolean;
   correct: boolean[];
   status: VolunteerStatus;
+};
+
+export type OpportunityIn = {
+  title: string;
+  description: string;
+  role_code?: string | null;
+  starts_at: string;
+  region: Region;
+  format: Format;
+  place: string;
+  slots: number;
+  hours: number;
+};
+export type Opportunity = OpportunityIn & {
+  id: number;
+  taken: number;
+  recommended: boolean;
+  my_status: ParticipationStatus | null;
+};
+export type Participation = {
+  id: number;
+  opportunity_id: number;
+  opportunity_title: string;
+  volunteer_id: number;
+  volunteer_name: string;
+  status: ParticipationStatus;
+  hours: number;
+  created_at: string;
 };
 
 async function request<T>(method: "GET" | "PATCH", path: string, body?: unknown): Promise<T> {
@@ -128,7 +168,20 @@ export const volunteersApi = {
   training: () => request<TrainingModule[]>("GET", "/training"),
   quiz: (moduleId: string) => request<Quiz>("GET", `/training/${moduleId}/quiz`),
   submitQuiz: (data: QuizSubmit) => post<QuizResult>("/training/submit", data),
+  opportunities: (volunteerId?: number) =>
+    request<Opportunity[]>("GET", "/opportunities" + (volunteerId ? `?volunteer_id=${volunteerId}` : "")),
+  respond: (opportunityId: number, volunteerId: number) =>
+    post<Participation>(`/opportunities/${opportunityId}/respond`, { volunteer_id: volunteerId }),
+  myParticipations: (volunteerId: number) =>
+    request<Participation[]>("GET", `/volunteers/${volunteerId}/participations`),
   // координатор (/admin)
+  createOpportunity: (data: OpportunityIn) => post<Opportunity>("/opportunities", data),
+  participants: (opportunityId: number) =>
+    request<Participation[]>("GET", `/opportunities/${opportunityId}/participants`),
+  invite: (opportunityId: number, volunteerIds: number[]) =>
+    post<Participation[]>(`/opportunities/${opportunityId}/invite`, { volunteer_ids: volunteerIds }),
+  updateParticipation: (id: number, status: ParticipationStatus) =>
+    request<Participation>("PATCH", `/participations/${id}`, { status }),
   search: (data: SearchRequest) => post<SearchResponse>("/search", data),
   list: (status?: VolunteerStatus) =>
     request<Volunteer[]>("GET", "/volunteers" + (status ? `?status=${status}` : "")),

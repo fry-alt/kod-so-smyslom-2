@@ -92,6 +92,10 @@ Availability = Literal["weekday_morning", "weekday_day", "weekday_evening", "wee
 Occupation = Literal["student", "pensioner", "remote", "employed", "schoolkid", "other"]
 VolunteerStatus = Literal["new", "training", "trained", "approved", "active", "paused"]
 RoleKind = Literal["regular", "episodic"]
+Region = Literal["moscow", "moscow_region", "yaroslavl", "north_ossetia", "other"]
+Format = Literal["offline", "online"]
+Regularity = Literal["regular", "episodic", "any"]
+ParticipationStatus = Literal["responded", "invited", "confirmed", "attended", "declined"]
 
 
 class Answers(BaseModel):
@@ -105,6 +109,9 @@ class Answers(BaseModel):
     )
     availability: list[Availability] = Field(default_factory=list, description="когда свободен")
     occupation: Occupation = "other"
+    region: Region = "moscow"
+    formats: list[Format] = Field(default_factory=lambda: ["offline"], description="очно / онлайн")
+    regularity: Regularity = Field(default="any", description="постоянно или разово")
 
 
 class Profile(BaseModel):
@@ -169,6 +176,8 @@ class Role(BaseModel):
     skills: list[str]
     availability: list[Availability]
     kind: RoleKind
+    format: Format = "offline"
+    regions: list[Region] = Field(default_factory=list, description="пусто — любой регион")
 
 
 class SearchRequest(BaseModel):
@@ -176,6 +185,7 @@ class SearchRequest(BaseModel):
 
     query: str = Field(default="", max_length=1000)
     role_code: str | None = Field(default=None, description="искать под роль из справочника")
+    opportunity_id: int | None = Field(default=None, description="подобрать под возможность")
     statuses: list[VolunteerStatus] = Field(
         default_factory=list, description="пусто — все, кроме paused"
     )
@@ -187,7 +197,9 @@ class ParsedQuery(BaseModel):
 
     skills: list[str] = Field(description="нужные навыки короткими тегами")
     availability: list[Availability] = Field(description="когда нужен волонтёр; пусто — неважно")
-    kind: Literal["regular", "episodic", "any"] = Field(description="разовая или постоянная помощь")
+    kind: Regularity = Field(description="разовая или постоянная помощь")
+    region: Region | None = Field(default=None, description="где нужен волонтёр; None — неважно")
+    format: Format | None = Field(default=None, description="очно или онлайн; None — неважно")
     notes: str = Field(description="что ещё важно в запросе, одна фраза; '' если нечего")
 
 
@@ -209,6 +221,7 @@ class TrainingModule(BaseModel):
     id: str  # имя файла без .md
     title: str
     text: str  # markdown
+    required: bool = True  # обязательный модуль; дополнительные на статус не влияют
 
 
 class QuizQuestion(BaseModel):
@@ -233,3 +246,58 @@ class QuizResult(BaseModel):
     passed: bool
     correct: list[bool]
     status: VolunteerStatus  # статус волонтёра после проверки
+
+
+# ---------- Каталог возможностей и учёт участия ----------
+
+
+class OpportunityIn(BaseModel):
+    """Задача или мероприятие фонда — POST /opportunities (координатор)."""
+
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=4000)
+    role_code: str | None = None  # роль из data/roles.json, по ней строится подбор
+    starts_at: datetime
+    region: Region = "moscow"
+    format: Format = "offline"
+    place: str = Field(default="", max_length=300)
+    slots: int = Field(default=1, ge=1, description="сколько волонтёров нужно")
+    hours: float = Field(default=3, gt=0, description="сколько часов начислить за участие")
+
+
+class OpportunityOut(OpportunityIn):
+    id: int
+    taken: int = 0  # confirmed + attended
+    recommended: bool = False  # подходит волонтёру (если передан volunteer_id)
+    my_status: ParticipationStatus | None = None  # статус участия этого волонтёра
+
+
+class Participation(BaseModel):
+    """Отклик или приглашение волонтёра на возможность."""
+
+    id: int
+    opportunity_id: int
+    opportunity_title: str
+    volunteer_id: int
+    volunteer_name: str
+    status: ParticipationStatus
+    hours: float = 0  # начислено после attended
+    created_at: datetime
+
+
+class RespondIn(BaseModel):
+    """POST /opportunities/{id}/respond — волонтёр откликается."""
+
+    volunteer_id: int
+
+
+class InviteIn(BaseModel):
+    """POST /opportunities/{id}/invite — координатор приглашает найденных поиском."""
+
+    volunteer_ids: list[int] = Field(min_length=1, max_length=50)
+
+
+class ParticipationUpdate(BaseModel):
+    """PATCH /participations/{id} — подтвердить, отметить участие (начисляет часы), отказать."""
+
+    status: ParticipationStatus
