@@ -2,7 +2,7 @@
 date: 2026-10-21
 author: fry-alt
 task: T-89 (#89)
-pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/91
 areas: [интерфейс]
 ---
 
