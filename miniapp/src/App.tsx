@@ -126,19 +126,8 @@ function AccountNav(props: { path: string }) {
   const account = getAccount();
   const id = getVolunteerId();
   const { data: me } = useLoad(() => (id ? backend.get(id) : Promise.resolve(null)), [id]);
-  if (account && props.path === "/me") {
-    return (
-      <Button
-        variant="secondary"
-        onClick={() => {
-          logout();
-          navigate("/");
-        }}
-      >
-        Выйти
-      </Button>
-    );
-  }
+  // в самом кабинете шапка пустая: «Выйти из кабинета» — внизу, под разделами
+  if (account && props.path === "/me") return null;
   if (account?.role === "coordinator") {
     return (
       <Button variant="secondary" onClick={() => navigate("/admin")}>
