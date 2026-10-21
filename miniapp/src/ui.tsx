@@ -132,8 +132,12 @@ export function Chips<T extends string>(props: {
             role={props.multiple ? "checkbox" : "radio"}
             aria-checked={on}
             onClick={() => toggle(k)}
-            className={`min-h-12 rounded-2xl border px-4 py-2 transition ${
-              on ? "border-accent bg-accent text-accent-text" : "border-line bg-page"
+            {...flairHandlers}
+            // не выбран — при наведении заливается зелёным; выбран — белым
+            className={`btn-flair min-h-12 rounded-full border px-5 py-2 ${
+              on
+                ? "border-accent bg-accent text-accent-text [--flair:var(--p-page)] [--flair-text:var(--p-ink)]"
+                : "border-line bg-page [--flair:var(--p-accent)] [--flair-text:var(--p-accent-text)] hover:border-accent"
             }`}
           >
             {props.multiple && (on ? "✓ " : "")}
