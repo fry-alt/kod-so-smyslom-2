@@ -1,6 +1,6 @@
 // «Спросить о фонде»: вопросы по документам фонда (RAG) и чат — перенесено из демо шаблона.
 // Доработка — в задаче T-18.
-import { useState, type FormEvent } from "react";
+import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import type { AskResponse, ChatMessage } from "../../api";
 import { chatApi } from "../../backend";
@@ -62,12 +62,7 @@ function AskPanel() {
   return (
     <section className="flex flex-col gap-3">
       <form onSubmit={submit} className="flex flex-col gap-3">
-        <input
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Как стать волонтёром?"
-          className={inputClass}
-        />
+        <GrowingTextarea value={question} onChange={setQuestion} placeholder="Как стать волонтёром?" />
         <Button type="submit" loading={loading} wide>
           Спросить
         </Button>
@@ -130,13 +125,8 @@ function ChatPanel() {
         ))}
       </div>
       {error && <ErrorBox text={error} />}
-      <form onSubmit={submit} className="sticky bottom-0 flex gap-2 bg-page py-2">
-        <input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Сообщение"
-          className={inputClass}
-        />
+      <form onSubmit={submit} className="sticky bottom-0 flex items-end gap-2 bg-page py-2">
+        <GrowingTextarea value={message} onChange={setMessage} placeholder="Сообщение" />
         <Button type="submit" loading={loading}>
           ➤
         </Button>
@@ -144,3 +134,38 @@ function ChatPanel() {
     </section>
   );
 }
+
+/** Поле, которое растёт вниз по мере набора (до ~6 строк, дальше — прокрутка).
+ *  Enter — отправить, Shift+Enter — новая строка. */
+function GrowingTextarea(props: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
+    el.style.overflowY = el.scrollHeight > MAX_TEXTAREA_HEIGHT ? "auto" : "hidden";
+  }, [props.value]);
+
+  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      e.currentTarget.form?.requestSubmit();
+    }
+  }
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={props.value}
+      onChange={(e) => props.onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+      placeholder={props.placeholder}
+      className={`${inputClass} resize-none leading-normal`}
+    />
+  );
+}
+
+const MAX_TEXTAREA_HEIGHT = 200; // px ≈ 6 строк
