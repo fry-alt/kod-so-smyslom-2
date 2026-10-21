@@ -238,7 +238,8 @@ function Examples(props: { onPick: (q: string) => void }) {
 }
 
 /** Поле и кнопка — одна «тягучая» капля. Пока поле пустое и не в фокусе, кнопка сидит внутри поля;
- *  при фокусе или вводе она «вытекает» наружу, а при наборе в неё капают капли.
+ *  при фокусе или вводе поле «расходится»: большая часть уезжает влево, маленькая остаётся вокруг кнопки.
+ *  При наборе в кнопку капают капли.
  *  Форму (и Enter) обрабатывает родитель. */
 function GooeyComposer(props: {
   value: string;
@@ -279,6 +280,7 @@ function GooeyComposer(props: {
         </defs>
       </svg>
       <div className="goo-shapes" style={{ filter: `url(#${filterId})` }} aria-hidden="true">
+        <span className="goo-sleeve" />
         <span className="goo-field" />
         {open && drip > 0 && <span key={drip} className="goo-drip" />}
         <span className="goo-btn" />
