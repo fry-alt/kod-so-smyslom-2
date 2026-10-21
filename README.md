@@ -23,7 +23,7 @@
 ```bash
 make setup     # uv + npm зависимости, .env из .env.example, git-хуки
 make up        # Docker: backend :8000, Streamlit :8501, Mini App :8080, бот (если есть токен)
-make ingest    # загрузить демо-документы фонда из data/demo
+make ingest    # загрузить документы фонда (data/demo) и учебные тексты (data/training)
 make seed      # загрузить 40 демо-анкет волонтёров (в пустую базу)
 ```
 
@@ -134,7 +134,7 @@ miniapp/             Vite + React + TS + Tailwind, Telegram WebApp SDK
 git clone <repo> kod-so-smyslom-2 && cd kod-so-smyslom-2
 cp .env.example .env   # заполнить: LLM_*, TELEGRAM_BOT_TOKEN, DOMAIN, WEBAPP_URL=https://DOMAIN, STREAMLIT_BASE_PATH=demo
 docker compose --profile prod up -d --build
-bash scripts/ingest.sh data/demo
+bash scripts/ingest.sh data/demo data/training
 ```
 
 DNS-запись `A` домена должна указывать на сервер, порты 80 и 443 должны быть открыты. HTTPS-сертификат Caddy
