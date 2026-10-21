@@ -7,7 +7,7 @@ import type { Candidate, Opportunity, ParsedQuery, Role, SearchRequest, SearchRe
 import { backend } from "../../backend";
 import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
 import { navigate, useSearchParam } from "../../router";
-import { Badge, Button, Card, Chips, Empty, ErrorBox, errorText, inputClass, Link, Loading } from "../../ui";
+import { Badge, Button, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link, Loading } from "../../ui";
 
 const EXAMPLES = [
   "Фотограф на четверг утром, разово",
@@ -367,35 +367,5 @@ function CandidateCard(props: {
           ))}
       </div>
     </Card>
-  );
-}
-
-/** Контакт: скопировать в один клик, для @ника — открыть чат в Telegram. */
-function Contact({ contact }: { contact: string }) {
-  const [copied, setCopied] = useState(false);
-  const username = contact.match(/^@([A-Za-z0-9_]{4,})$/)?.[1] ?? contact.match(/t\.me\/([A-Za-z0-9_]{4,})/)?.[1];
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(contact);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* буфер обмена недоступен — контакт виден на экране */
-    }
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-page px-4 py-2">
-      <span className="font-medium">{contact}</span>
-      <button type="button" onClick={copy} className="text-link hover:underline">
-        {copied ? "Скопировано ✓" : "Копировать"}
-      </button>
-      {username && (
-        <a href={`https://t.me/${username}`} target="_blank" rel="noreferrer" className="text-link hover:underline">
-          Написать в Telegram
-        </a>
-      )}
-    </div>
   );
 }
