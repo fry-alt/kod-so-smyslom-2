@@ -31,12 +31,12 @@ const HOME: Record<CallRole, { to: string; text: string }> = {
   volunteer: { to: "/", text: "На главную" },
 };
 
-/** Боковая панель координатора: получает ended — «звонок завершён», чтобы сразу открыть итог. */
+/** Боковая панель координатора: получает ended — «звонок завершён»; тогда её содержимое — итог по центру страницы. */
 type SidePanel = (ended: boolean) => ReactNode;
 
 /**
  * sidePanel — боковая панель координатора (T-69: «План / Итог», call/CoordinatorPanel.tsx). Показывается только
- * с ?as=coordinator: на ноутбуке справа, на телефоне под звонком.
+ * с ?as=coordinator: на ноутбуке справа, на телефоне под звонком. После «Завершить звонок» — по центру страницы.
  */
 export default function CallScreen(props: { token: string; sidePanel?: SidePanel }) {
   const role: CallRole = useSearchParam("as") === "coordinator" ? "coordinator" : "volunteer";
@@ -115,6 +115,36 @@ function Call(props: { token: string; role: CallRole; info: CallInfo; sidePanel?
       </CallMessage>,
     );
 
+  const rejoin = () => {
+    setEnded(false);
+    setJoined(false);
+    setAttempt((a) => a + 1);
+  };
+
+  // координатор после звонка: видео больше нет — итог и вопросы по центру широкой колонкой, а не в узкой панели
+  if (ended && role === "coordinator" && sidePanel)
+    return (
+      <CallPage>
+        <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 md:mt-6">
+          <div className="flex flex-col gap-3">
+            <p className="font-medium text-accent">Звонок завершён</p>
+            <h1 className="font-display text-[1.8rem] leading-[1.15] font-semibold tracking-tight text-balance md:text-[2.4rem]">
+              Как прошло собеседование?
+            </h1>
+            <p className="text-lg text-hint">Запишите итог, пока всё свежо в памяти. Он сохранится в карточке волонтёра.</p>
+            <button
+              type="button"
+              onClick={rejoin}
+              className="min-h-11 self-start font-semibold text-link underline-offset-4 hover:underline"
+            >
+              ← Вернуться в звонок
+            </button>
+          </div>
+          {sidePanel}
+        </main>
+      </CallPage>
+    );
+
   if (ended)
     return page(
       <CallMessage
@@ -122,9 +152,7 @@ function Call(props: { token: string; role: CallRole; info: CallInfo; sidePanel?
         text={
           role === "volunteer"
             ? "Спасибо, что пришли на собеседование! Координатор напишет вам о следующих шагах."
-            : sidePanel
-              ? "Запишите итог в панели «Итог», пока всё свежо в памяти. Он сохранится в карточке волонтёра."
-              : "Не забудьте отметить собеседование в карточке волонтёра и оставить заметку."
+            : "Не забудьте отметить собеседование в карточке волонтёра и оставить заметку."
         }
       >
         {role === "volunteer" ? (
@@ -134,14 +162,7 @@ function Call(props: { token: string; role: CallRole; info: CallInfo; sidePanel?
         ) : (
           <HomeLink role={role} />
         )}
-        <Button
-          variant="secondary"
-          onClick={() => {
-            setEnded(false);
-            setJoined(false);
-            setAttempt((a) => a + 1);
-          }}
-        >
+        <Button variant="secondary" onClick={rejoin}>
           Вернуться в звонок
         </Button>
       </CallMessage>,
