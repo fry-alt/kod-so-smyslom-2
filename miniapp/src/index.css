@@ -1,17 +1,37 @@
 @import "tailwindcss";
 
-/* Дизайн-токены. В Telegram цвета берутся из темы пользователя (переменные ставит telegram-web-app.js),
-   в обычном браузере — значения по умолчанию: тёплый оранжевый фонда.
-   Классы: bg-page, bg-surface, text-ink, text-hint, text-link, bg-accent, text-accent-text, border-line. */
+/* Палитра «Мята». Все цвета интерфейса берутся только отсюда.
+   page — фон страницы, surface — подложки, soft — мягкий акцент, ink — текст, hint — второстепенный текст,
+   accent — главные кнопки и ссылки, pop и pop-2 — яркие декоративные акценты (иллюстрации и метки). */
+:root {
+  --p-page: #fafcfb;
+  --p-surface: #eef4f1;
+  --p-soft: #d9ece4;
+  --p-ink: #13231d;
+  --p-hint: #55665f;
+  --p-accent: #1b6b55;
+  --p-accent-text: #ffffff;
+  --p-pop: #ffb84d;
+  --p-pop-2: #ff8f70;
+}
+
+/* Токены Tailwind: классы bg-page, bg-surface, bg-soft, text-ink, text-hint, text-link, bg-accent,
+   text-accent-text, bg-pop, bg-pop-2, border-line, font-display. */
 @theme {
-  --color-page: var(--tg-theme-bg-color, #fffaf5);
-  --color-surface: var(--tg-theme-secondary-bg-color, #f6eee6);
-  --color-ink: var(--tg-theme-text-color, #2b211b);
-  --color-hint: var(--tg-theme-hint-color, #7a6a5f);
-  --color-link: var(--tg-theme-link-color, #c2561f);
-  --color-accent: var(--tg-theme-button-color, #e0672b);
-  --color-accent-text: var(--tg-theme-button-text-color, #ffffff);
-  --color-line: color-mix(in srgb, var(--color-ink) 15%, transparent);
+  --color-page: var(--p-page);
+  --color-surface: var(--p-surface);
+  --color-soft: var(--p-soft);
+  --color-ink: var(--p-ink);
+  --color-hint: var(--p-hint);
+  --color-link: var(--p-accent);
+  --color-accent: var(--p-accent);
+  --color-accent-text: var(--p-accent-text);
+  --color-pop: var(--p-pop);
+  --color-pop-2: var(--p-pop-2);
+  --color-line: color-mix(in srgb, var(--p-ink) 14%, transparent);
+
+  --font-sans: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Unbounded", "Onest", system-ui, sans-serif;
 }
 
 /* Базовый шрифт 18px: все размеры Tailwind (rem) масштабируются от него. */
@@ -20,15 +40,170 @@ html {
 }
 
 body {
-  @apply bg-page text-ink antialiased;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.5;
+  @apply bg-page font-sans text-ink antialiased;
+  line-height: 1.55;
   /* Вырезы и системные панели: в Android-приложении (T-19) и в PWA на iPhone страница идёт до краёв экрана
      (viewport-fit=cover). В обычном браузере и в Telegram отступы равны нулю. */
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  transition: background-color 0.3s ease;
+}
+
+:focus-visible {
+  outline: 3px solid var(--p-accent);
+  outline-offset: 3px;
 }
 
 /* Кабинет фонда открывают на ноутбуке — там шрифт чуть компактнее, но не меньше 16px. */
 .admin {
   font-size: 0.95rem;
+}
+
+/* Одно движение на стартовом экране: плитки мастерских появляются по очереди. */
+@keyframes tile-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.tile-in {
+  animation: tile-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-in {
+    animation: none;
+  }
+  body {
+    transition: none;
+  }
+}
+
+/* Сцены «что делают волонтёры» (VolunteerScenes.tsx): короткие спокойные движения по кругу. */
+.anim-spin,
+.anim-bob,
+.anim-bob-late,
+.anim-nod,
+.anim-pulse,
+.anim-talk-a,
+.anim-talk-b,
+.anim-flash {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.anim-spin {
+  animation: spin-mark 1.4s linear infinite;
+}
+@keyframes spin-mark {
+  from {
+    transform: translateX(-14px);
+  }
+  to {
+    transform: translateX(14px);
+  }
+}
+
+.anim-bob {
+  animation: bob 1.6s ease-in-out infinite;
+}
+.anim-bob-late {
+  animation: bob 1.6s ease-in-out 0.4s infinite;
+}
+@keyframes bob {
+  50% {
+    transform: translateY(2.5px);
+  }
+}
+
+.anim-nod {
+  transform-origin: 50% 100%;
+  animation: nod 3.2s ease-in-out infinite;
+}
+@keyframes nod {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0);
+  }
+  70%,
+  85% {
+    transform: rotate(7deg);
+  }
+}
+
+.anim-pulse {
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    transform: scale(1.08) translateY(-2px);
+  }
+}
+
+.anim-talk-a {
+  animation: talk-a 4s ease-in-out infinite;
+}
+.anim-talk-b {
+  animation: talk-b 4s ease-in-out infinite;
+}
+@keyframes talk-a {
+  0%,
+  45% {
+    opacity: 1;
+    transform: none;
+  }
+  55%,
+  95% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes talk-b {
+  0%,
+  45% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  55%,
+  95% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.anim-flash {
+  animation: flash 3.6s ease-out infinite;
+}
+@keyframes flash {
+  0%,
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  74% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  82% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-spin,
+  .anim-bob,
+  .anim-bob-late,
+  .anim-nod,
+  .anim-pulse,
+  .anim-talk-a,
+  .anim-talk-b,
+  .anim-flash {
+    animation: none;
+  }
 }
