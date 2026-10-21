@@ -365,26 +365,26 @@ export default function VolunteerScenes() {
           </li>
         ))}
       </ul>
-      <div className="mb-3 flex justify-end">
+      <div className="relative min-w-0">
         <button
           type="button"
           aria-pressed={paused}
           onClick={() => setPaused((value) => !value)}
-          className="min-h-11 rounded-full border-2 border-line bg-surface px-4 font-semibold hover:border-accent"
+          className="absolute right-2 top-2 z-10 min-h-11 max-w-[calc(100%-1rem)] rounded-full border-2 border-line bg-surface/95 px-4 font-semibold shadow-sm hover:border-accent"
         >
           {paused ? "Продолжить анимацию" : "Остановить анимацию"}
         </button>
-      </div>
-      <div className={`marquee3d tile-in relative h-[26rem] md:h-[34rem] ${paused ? "is-paused" : ""}`} aria-hidden="true">
-        <div className="marquee3d-fade absolute inset-0 overflow-hidden bg-surface">
-          <div className="marquee3d-plane grid grid-cols-3 gap-4">
-            {columns.map((col, c) => (
-              <div key={c} className={`marquee3d-col flex flex-col gap-4 ${c % 2 ? "marquee3d-down" : "marquee3d-up"}`} style={{ animationDuration: `${[44, 52, 48][c]}s` }}>
-                {[...col, ...col, ...col].map((s, i) => (
-                  <SceneCard key={`${s.title}-${i}`} s={s} />
-                ))}
-              </div>
-            ))}
+        <div className={`marquee3d tile-in relative h-[26rem] md:h-[34rem] ${paused ? "is-paused" : ""}`} aria-hidden="true">
+          <div className="marquee3d-fade absolute inset-0 overflow-hidden bg-surface">
+            <div className="marquee3d-plane grid grid-cols-3 gap-4">
+              {columns.map((col, c) => (
+                <div key={c} className={`marquee3d-col flex flex-col gap-4 ${c % 2 ? "marquee3d-down" : "marquee3d-up"}`} style={{ animationDuration: `${[44, 52, 48][c]}s` }}>
+                  {[...col, ...col, ...col].map((s, i) => (
+                    <SceneCard key={`${s.title}-${i}`} s={s} />
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
