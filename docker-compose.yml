@@ -1,7 +1,7 @@
 # Локально:  make up              → backend :8000, web :8501, miniapp :8080, bot (если задан токен)
 # GigaChat:  docker compose --profile gigachat up -d   (+ LLM_PROVIDER=gigachat в .env)
 # Туннель:   make tunnel           → публичный https-адрес для Mini App
-# Сервер:    make deploy           → то же + Caddy с HTTPS (профиль prod)
+# Свой сервер: docker compose --profile prod up -d → то же + Caddy с HTTPS (наш прод — deploy/docker-compose.prod.yml)
 
 # Один Python-образ на backend, bot и web: собирает его backend, остальные переиспользуют
 x-python: &python

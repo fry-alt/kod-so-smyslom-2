@@ -1,0 +1,94 @@
+# Пуш в main → выкладка на сервер (тот же, что у Yapp). Образы собираются на сервере.
+# Сайт: https://deti.201-34-157-90.sslip.io (Mini App и /admin), /demo — Streamlit.
+# Тесты здесь не гоняем: в main попадают только PR с зелёным CI.
+#
+# Repo variables:  DEPLOY_HOST — IP сервера (без него деплой пропускается)
+#                  DOMAIN      — свой домен (необязательно; по умолчанию deti.<ip>.sslip.io)
+# Окружение production (Settings → Environments, только ветка main):
+#   SSH_KEY          — приватный ключ пользователя deploy на сервере
+#   SSH_KNOWN_HOSTS  — отпечаток сервера
+#   APP_ENV          — строки .env для прода: LLM_PROVIDER, ключи LLM, TELEGRAM_BOT_TOKEN и т.п.
+#                      (необязательно; без него всё работает на LLM_PROVIDER=fake)
+#                      Задать: gh secret set APP_ENV --env production < prod.env
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '*.md']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ vars.DEPLOY_HOST != '' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ vars.DOMAIN || format('deti.{0}.sslip.io', vars.DEPLOY_HOST) }}
+    env:
+      HOST: ${{ vars.DEPLOY_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH-доступ
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Конфиг сервера
+        env:
+          DOMAIN: ${{ vars.DOMAIN }}
+          APP_ENV: ${{ secrets.APP_ENV }}
+        run: |
+          umask 077
+          domain="${DOMAIN:-deti.${HOST//./-}.sslip.io}"
+          echo "DOMAIN=$domain" >> "$GITHUB_ENV"
+          # Сначала значения по умолчанию, потом APP_ENV — он их перекрывает.
+          {
+            echo "LLM_PROVIDER=fake"
+            echo "WEBAPP_URL=https://$domain"
+            echo "CORS_ORIGINS=https://$domain"
+            printf '%s\n' "$APP_ENV"
+          } > deploy/.env
+          sed "s/__DOMAIN__/$domain/" deploy/deti.caddy > deploy/deti.caddy.out
+
+      - name: Сборка на сервере
+        run: |
+          # Туда уходит только код из git (без node_modules и .venv); база и индекс в ~/deti/data не трогаются.
+          git archive --format=tar HEAD | ssh deploy@"$HOST" \
+            "rm -rf ~/deti/src && mkdir -p ~/deti/src ~/deti/data && tar -x -C ~/deti/src && cp -r ~/deti/src/data/. ~/deti/data/"
+          scp deploy/docker-compose.prod.yml deploy@"$HOST":deti/docker-compose.yml
+          scp deploy/.env deploy@"$HOST":deti/.env
+          ssh deploy@"$HOST" "cd ~/deti && chmod 600 .env && docker compose build -q"
+
+      - name: Выкладка
+        run: |
+          ssh deploy@"$HOST" "cd ~/deti && docker compose up -d --remove-orphans && docker image prune -f"
+          # Сайт в Caddy от Yapp: его Caddyfile делает `import /etc/caddy/sites/*.caddy` (разово подключает скрипт).
+          # Если конфиг сайта не примется, Caddy оставит прежний — Yapp не пострадает.
+          ssh deploy@"$HOST" 'bash -s' < deploy/attach-to-yapp-caddy.sh
+          scp deploy/deti.caddy.out deploy@"$HOST":/opt/yapp/sites/deti.caddy
+          # Неудачный файл убираем сразу, иначе с ним не поднимется Caddy при следующем перезапуске Yapp.
+          ssh deploy@"$HOST" "docker exec yapp-caddy-1 caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile \
+            || { rm -f /opt/yapp/sites/deti.caddy; exit 1; }"
+
+      - name: Проверка
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "https://$DOMAIN/api/health"; then echo; echo "https://$DOMAIN работает"; exit 0; fi
+            sleep 5
+          done
+          ssh deploy@"$HOST" "cd ~/deti && docker compose ps && docker compose logs --tail=50 && free -m && df -h /"
+          exit 1

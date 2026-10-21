@@ -101,6 +101,19 @@ miniapp/             Vite + React + TS + Tailwind, Telegram WebApp SDK
 
 ## Деплой на сервер
 
+**Каждый мерж в `main` выкладывается сам** (`.github/workflows/deploy.yml`): GitHub Actions собирает образы,
+кладёт их в ghcr.io и поднимает стек на сервере Yapp. Адреса:
+- https://deti.201-34-157-90.sslip.io — сайт и Mini App (`/admin` — кабинет фонда);
+- https://deti.201-34-157-90.sslip.io/api/health — API;
+- https://deti.201-34-157-90.sslip.io/demo — Streamlit.
+
+Ход выкладки — во вкладке Actions → Deploy. Перевыложить `main` вручную: `make deploy`.
+Ключи LLM и токен бота для прода — секрет `APP_ENV` (строки как в `.env`):
+`gh secret set APP_ENV --env production < prod.env`, затем `make deploy`.
+Как устроено и почему на одном сервере с Yapp — в `deploy/docker-compose.prod.yml`.
+
+### Свой сервер
+
 На сервере (Ubuntu с Docker):
 
 ```bash
@@ -111,13 +124,7 @@ bash scripts/ingest.sh data/demo
 ```
 
 DNS-запись `A` домена должна указывать на сервер, порты 80 и 443 должны быть открыты. HTTPS-сертификат Caddy
-получает сам. Адреса:
-- `https://DOMAIN` — Mini App;
-- `https://DOMAIN/api/...` — API;
-- `https://DOMAIN/demo` — Streamlit.
-
-Следующие выкладки делаются с ноутбука: `make deploy`. Для этого в `.env` нужен `DEPLOY_HOST=user@server`.
-Команда выполнит `git pull` и пересоберёт контейнеры.
+получает сам.
 
 ## Правила репозитория
 
