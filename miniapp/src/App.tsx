@@ -117,9 +117,10 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
   const auth = props.path === "/login" || needsAccount() && ["/me", "/form", "/interview", "/messages"].includes(props.path);
   // сообщения — как мессенджер: ровно на высоту экрана, прокручиваются только чаты внутри, подвала нет
   const chat = props.path === "/messages" && !auth;
+  const bottomPadding = focus ? "pb-0" : chat ? "pb-4 md:pb-6" : props.path === "/" ? "pb-24" : "pb-10";
   return (
     <div
-      className={`mx-auto flex flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : chat ? "pb-4 md:pb-6" : wide ? "pb-24" : "pb-10"}`}
+      className={`mx-auto flex flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${bottomPadding}`}
     >
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Logo />
@@ -127,8 +128,7 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
       </header>
       <MockBanner />
       <main className={focus ? "flex flex-1 flex-col" : chat ? "flex min-h-0 flex-1 flex-col" : undefined}>{props.children}</main>
-      {/* на странице входа подвала нет — ничего не отвлекает от формы */}
-      {!auth && !focus && !chat && <Footer />}
+      {props.path === "/" && <Footer />}
     </div>
   );
 }
