@@ -64,10 +64,11 @@ export const flairHandlers = {
 };
 
 /** Ссылка внутри приложения: переход без перезагрузки страницы. */
-export function Link(props: { to: string; children: ReactNode; className?: string }) {
+export function Link(props: { to: string; children: ReactNode; className?: string; current?: boolean }) {
   return (
     <a
       href={props.to}
+      aria-current={props.current ? "page" : undefined}
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey) return; // открыть в новой вкладке — как обычно
         e.preventDefault();

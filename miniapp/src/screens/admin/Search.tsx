@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Availability, Candidate, Format, Opportunity, ParsedQuery, Regularity, Region, Role, SearchRequest, SearchResponse, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
 import { AVAILABILITY, formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
-import { navigate, useSearchParam } from "../../router";
+import { useSearchParam } from "../../router";
 import { Badge, Button, ButtonLink, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link } from "../../ui";
 
 const EXAMPLES = [

@@ -3,11 +3,11 @@
 //   /me      — личный кабинет волонтёра: анкета, путь, занятия, обучение, часы (сайт и Telegram Mini App)
 //   /admin   — кабинет фонда (ноутбук, только после входа координатора): сводка, умный поиск, база, аналитика, настройки
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
+import AdminDock from "./AdminDock";
 import { backend, getAccount, getVolunteerId, logout, USE_MOCK } from "./backend";
 import Footer from "./Footer";
-import { UnreadBadge, useUnread } from "./messages/Thread";
 import CallScreen from "./call/CallScreen";
 import CoordinatorPanel from "./call/CoordinatorPanel";
 import { match, navigate, navigateBack, usePath } from "./router";
@@ -154,7 +154,7 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
 function Logo(props: { className?: string }) {
   return (
     <Link to="/" className="flex shrink-0 items-center">
-      <img src="/logo.svg" alt="Дети Марии — на главную" className={props.className ?? "h-9 w-auto md:h-11"} />
+      <img src="/logo.svg" alt="Дети Марии — на главную" className={props.className ?? "h-6 w-auto min-[360px]:h-9 md:h-11"} />
     </Link>
   );
 }
@@ -169,7 +169,7 @@ function AccountNav(props: { path: string }) {
   if (account?.role === "coordinator") {
     return (
       <ButtonLink to="/admin">
-        Кабинет фонда
+        <span className="sm:hidden">Кабинет</span><span className="hidden sm:inline">Кабинет фонда</span>
       </ButtonLink>
     );
   }
@@ -222,33 +222,18 @@ function pageTitle(path: string, search: string): string {
 }
 
 function AdminLayout(props: { path: string; children: ReactNode }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const unread = useUnread(null, "coordinator");
   return (
     <div className="admin min-h-screen">
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 pt-3 pb-12">
           <div className="flex items-center gap-3 font-semibold">
             <Logo className="h-9 w-auto" />
-            <span className="text-hint">кабинет фонда</span>
+            <span className="hidden text-hint sm:inline">кабинет фонда</span>
           </div>
-          <nav className="hidden flex-wrap gap-4 md:flex"><AdminLinks path={props.path} unread={unread} /></nav>
-          <div className="ml-auto md:hidden">
-            <Button variant="secondary" aria-expanded={menuOpen} aria-controls="admin-mobile-menu" onClick={() => setMenuOpen((open) => !open)}>
-              {menuOpen ? "Закрыть" : "Меню"}
-            </Button>
-          </div>
-          <div className="hidden md:block"><CoordinatorMenu /></div>
-          {menuOpen && (
-            <div id="admin-mobile-menu" className="w-full rounded-2xl border border-line bg-page p-4 md:hidden" onClick={(e) => {
-              if ((e.target as HTMLElement).closest("a")) setMenuOpen(false);
-            }}>
-              <nav className="flex flex-col gap-4"><AdminLinks path={props.path} unread={unread} /></nav>
-              <div className="mt-4 border-t border-line pt-4"><CoordinatorMenu compact /></div>
-            </div>
-          )}
+          <CoordinatorMenu />
         </div>
       </header>
+      <AdminDock path={props.path} />
       <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-6">
         <MockBanner />
         {props.children}
@@ -257,25 +242,16 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
   );
 }
 
-/** «Сообщения» в меню фонда — со значком новых от волонтёров. */
-function MessagesLabel(props: { unread: number }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      Сообщения <UnreadBadge count={props.unread} />
-    </span>
-  );
-}
-
 /** Справа в шапке кабинета фонда: кто вошёл и «Выйти». */
-function CoordinatorMenu(props: { compact?: boolean }) {
+function CoordinatorMenu() {
   const account = getAccount();
   return (
-    <div className={`flex items-center gap-3 ${props.compact ? "justify-between" : "ml-auto"}`}>
+    <div className="ml-auto flex items-center gap-3">
       <span className="flex items-center gap-2" title={account?.email}>
         <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-full bg-soft font-display font-semibold uppercase">
           {account?.email[0]}
         </span>
-        <span className={`${props.compact ? "max-w-[14rem]" : "hidden max-w-[14rem] lg:inline"} truncate text-hint`}>{account?.email}</span>
+        <span className="hidden max-w-[14rem] truncate text-hint lg:inline">{account?.email}</span>
       </span>
       <button
         type="button"
@@ -288,30 +264,6 @@ function CoordinatorMenu(props: { compact?: boolean }) {
         Выйти
       </button>
     </div>
-  );
-}
-
-function AdminLinks(props: { path: string; unread: number }) {
-  return <>
-    <NavLink to="/admin" path={props.path} exact>Сводка</NavLink>
-    <NavLink to="/admin/search" path={props.path}>Умный поиск</NavLink>
-    <NavLink to="/admin/volunteers" path={props.path}>База</NavLink>
-    <NavLink to="/admin/opportunities" path={props.path}>Возможности</NavLink>
-    <NavLink to="/admin/analytics" path={props.path}>Аналитика</NavLink>
-    <NavLink to="/admin/messages" path={props.path}><MessagesLabel unread={props.unread} /></NavLink>
-    <NavLink to="/admin/settings" path={props.path}>Настройки</NavLink>
-  </>;
-}
-
-function NavLink(props: { to: string; path: string; exact?: boolean; children: ReactNode }) {
-  const active = props.exact ? props.path === props.to : props.path.startsWith(props.to);
-  return (
-    <Link
-      to={props.to}
-      className={active ? "font-semibold text-ink underline decoration-accent decoration-2 underline-offset-8" : "text-hint hover:text-ink"}
-    >
-      {props.children}
-    </Link>
   );
 }
 

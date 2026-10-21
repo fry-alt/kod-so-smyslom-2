@@ -1,7 +1,7 @@
 // Четыре сцены «что делают волонтёры фонда» — по тому, как фонд сам описывает помощь.
 // Персонажи собраны из простых фигур; цвета одежды — из палитры (var(--p-…)), движения — классы anim-* в index.css.
 // При «уменьшении движения» в системе анимации выключаются.
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export const SKIN = { light: "#f2c7a5", mid: "#c98e6b", dark: "#8d5a3b" };
 export const HAIR = { grey: "#c9ccd3", brown: "#6b4a3a", dark: "#1f2430" };
@@ -354,7 +354,6 @@ function SceneCard({ s }: { s: (typeof SCENES)[number] }) {
  *  на наклонённой плоскости, соседние колонки едут в разные стороны. Каждая колонка повторена трижды и едет
  *  со средней копии: сверху и снизу всегда есть карточки, пустых краёв в кадре нет. */
 export default function VolunteerScenes() {
-  const [paused, setPaused] = useState(false);
   const columns = [0, 1, 2].map((c) => SCENES.filter((_, i) => i % 3 === c));
   return (
     <>
@@ -365,17 +364,7 @@ export default function VolunteerScenes() {
           </li>
         ))}
       </ul>
-      <div className="mb-3 flex justify-end">
-        <button
-          type="button"
-          aria-pressed={paused}
-          onClick={() => setPaused((value) => !value)}
-          className="min-h-11 rounded-full border-2 border-line bg-surface px-4 font-semibold hover:border-accent"
-        >
-          {paused ? "Продолжить анимацию" : "Остановить анимацию"}
-        </button>
-      </div>
-      <div className={`marquee3d tile-in relative h-[26rem] overflow-x-clip md:h-[34rem] ${paused ? "is-paused" : ""}`} aria-hidden="true">
+      <div className="marquee3d tile-in relative h-[26rem] overflow-x-clip md:h-[34rem]" aria-hidden="true">
         <div className="marquee3d-fade absolute inset-0 overflow-hidden bg-surface">
           <div className="marquee3d-plane grid grid-cols-3 gap-4">
             {columns.map((col, c) => (
