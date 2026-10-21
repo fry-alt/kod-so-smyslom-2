@@ -4,6 +4,9 @@
 /call/<token> уходит волонтёру в Telegram. Статусы волонтёра не меняются: после звонка
 координатор отмечает «прошло», пишет заметку и сам решает, что дальше.
 
+После обучения волонтёр может и сам записаться на свободное время (free_slots → book): будни 10:00–18:00,
+каждые полчаса, на две недели вперёд, кроме занятого другими собеседованиями.
+
 Сам звонок — WebRTC между двумя браузерами, как в Yapp: бэкенд только знакомит их
 (api/calls.py) и выдаёт адреса STUN/TURN (ice_servers).
 """
@@ -13,7 +16,7 @@ import hashlib
 import hmac
 import secrets
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session, col, select
 
@@ -23,6 +26,20 @@ from app.schemas import IceServer, InterviewResultIn, InterviewStatus
 from app.schemas import Interview as InterviewOut
 from app.schemas import InterviewResult as InterviewResultOut
 from app.services import notify
+from app.services.dashboard import local_now
+
+# Запись на собеседование самим волонтёром
+SLOT_MINUTES = 30
+SLOT_DAYS = 14  # насколько вперёд показываем время
+SLOT_HOURS = (10, 18)  # с 10:00, последнее начало — 17:30
+# не ближе, чем через 2 часа: координатор должен успеть увидеть запись
+SLOT_LEAD = timedelta(hours=2)
+TRAINED = ("trained", "approved", "active")  # записаться самому можно только после обучения
+
+
+class BookingError(ValueError):
+    """Понятная человеку причина, почему записаться не получилось."""
+
 
 TURN_TTL = 6 * 3600  # секунд действуют логин и пароль TURN — с запасом на долгий звонок
 
@@ -47,6 +64,57 @@ def create(session: Session, volunteer: Volunteer, starts_at: datetime) -> Inter
     session.commit()
     session.refresh(interview)
     return interview
+
+
+def free_slots(session: Session, now: datetime | None = None) -> list[datetime]:
+    """Свободное время для записи: будни, рабочие часы, без пересечений с назначенными собеседованиями."""
+    now = now or local_now()
+    busy = [
+        i.starts_at
+        for i in session.exec(select(Interview).where(Interview.status == "scheduled")).all()
+    ]
+    length = timedelta(minutes=SLOT_MINUTES)
+    slots = []
+    for day in range(SLOT_DAYS + 1):
+        date = now.date() + timedelta(days=day)
+        if date.weekday() >= 5:
+            continue
+        start = datetime(date.year, date.month, date.day, SLOT_HOURS[0])
+        while start.hour < SLOT_HOURS[1]:
+            # координатор мог назначить и не ровно по сетке — занятым считаем любое пересечение
+            if start >= now + SLOT_LEAD and all(abs(start - b) >= length for b in busy):
+                slots.append(start)
+            start += length
+    return slots
+
+
+def upcoming(
+    session: Session, volunteer: Volunteer, now: datetime | None = None
+) -> Interview | None:
+    """Ближайшее назначенное собеседование волонтёра (опоздавшего ещё ждём 2 часа)."""
+    since = (now or local_now()) - timedelta(hours=2)
+    query = (
+        select(Interview)
+        .where(Interview.volunteer_id == volunteer.id, Interview.status == "scheduled")
+        .where(col(Interview.starts_at) >= since)
+        .order_by(col(Interview.starts_at))
+    )
+    return session.exec(query).first()
+
+
+def book(session: Session, volunteer: Volunteer, starts_at: datetime) -> Interview:
+    """Волонтёр записывается сам — после обучения. Одна запись за раз: чтобы перенести — сначала отменить."""
+    if volunteer.status not in TRAINED:
+        raise BookingError(
+            "Сначала пройдите обучение — после него можно записаться на собеседование"
+        )
+    if upcoming(session, volunteer):
+        raise BookingError(
+            "Вы уже записаны на собеседование. Чтобы выбрать другое время, отмените запись"
+        )
+    if starts_at.replace(tzinfo=None) not in free_slots(session):
+        raise BookingError("Это время уже занято или прошло — выберите другое")
+    return create(session, volunteer, starts_at)
 
 
 def get(session: Session, interview_id: int) -> Interview | None:

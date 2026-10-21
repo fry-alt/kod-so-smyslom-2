@@ -15,6 +15,7 @@ import type {
   DashboardToday,
   Interview,
   InterviewPlan,
+  InterviewSlots,
   Note,
   Opportunity,
   OpportunityIn,
@@ -577,6 +578,27 @@ function dashboardAnalytics(): DashboardAnalytics {
   };
 }
 
+/** Как на бэкенде: будни 10:00–18:00 по полчаса на 2 недели, не ближе 2 часов и без занятого. */
+function freeSlots(): InterviewSlots {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const local = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+  const busy = interviews.filter((i) => i.status === "scheduled").map((i) => new Date(i.starts_at).getTime());
+  const from = Date.now() + 2 * 3600_000;
+  const slots: string[] = [];
+  for (let day = 0; day <= 14; day++) {
+    const d = new Date();
+    d.setDate(d.getDate() + day);
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
+    for (let m = 10 * 60; m < 18 * 60; m += 30) {
+      d.setHours(Math.floor(m / 60), m % 60, 0, 0);
+      const t = d.getTime();
+      if (t >= from && busy.every((b) => Math.abs(t - b) >= 30 * 60_000)) slots.push(local(d));
+    }
+  }
+  return { slots, minutes: 30 };
+}
+
 export const mockApi: typeof volunteersApi = {
   submit: (data: VolunteerIn) => {
     const parsed = parseQuery(`${data.answers.skills} ${data.answers.about} ${data.answers.wishes}`);
@@ -720,6 +742,22 @@ export const mockApi: typeof volunteersApi = {
     interviews.push(i);
     saveOpportunities();
     return wait(i);
+  },
+  interviewSlots: () => {
+    refresh();
+    return wait(freeSlots());
+  },
+  bookInterview: (volunteerId, startsAt) => {
+    refresh();
+    const v = findVolunteer(volunteerId);
+    if (!v) return notFound("Волонтёр");
+    if (!["trained", "approved", "active"].includes(v.status))
+      return Promise.reject(new Error("Сначала пройдите обучение — после него можно записаться на собеседование"));
+    const since = Date.now() - 2 * 3600_000;
+    if (interviews.some((i) => i.volunteer_id === volunteerId && i.status === "scheduled" && new Date(i.starts_at).getTime() >= since))
+      return Promise.reject(new Error("Вы уже записаны на собеседование. Чтобы выбрать другое время, отмените запись"));
+    if (!freeSlots().slots.includes(startsAt)) return Promise.reject(new Error("Это время уже занято или прошло — выберите другое"));
+    return mockApi.scheduleInterview(volunteerId, startsAt);
   },
   updateInterview: (id, status) => {
     refresh();

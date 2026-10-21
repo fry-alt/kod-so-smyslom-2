@@ -372,6 +372,19 @@ class InterviewUpdate(BaseModel):
     status: InterviewStatus
 
 
+class InterviewSlots(BaseModel):
+    """GET /interviews/slots — свободное время, на которое волонтёр может записаться сам."""
+
+    slots: list[datetime]  # местное (московское) время начала, по порядку
+    minutes: int  # сколько длится собеседование
+
+
+class InterviewBookIn(BaseModel):
+    """POST /volunteers/{id}/interviews/book — волонтёр записывается на время из slots."""
+
+    starts_at: datetime
+
+
 class IceServer(BaseModel):
     """Сервер STUN/TURN для RTCPeerConnection — поля как в браузерном RTCIceServer."""
 

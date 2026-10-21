@@ -24,6 +24,7 @@ import Volunteers from "./screens/admin/Volunteers";
 import Ask from "./screens/volunteer/Ask";
 import Form from "./screens/volunteer/Form";
 import History from "./screens/volunteer/History";
+import Interview from "./screens/volunteer/Interview";
 import Me from "./screens/volunteer/Me";
 import Opportunities from "./screens/volunteer/Opportunities";
 import Training from "./screens/volunteer/Training";
@@ -39,6 +40,7 @@ const VOLUNTEER_ROUTES: Route[] = [
   ["/form", () => (needsAccount() ? <Auth /> : <Form />)],
   ["/training", () => <Training />],
   ["/me", () => (needsAccount() ? <Auth /> : <Me />)],
+  ["/interview", () => (needsAccount() ? <Auth /> : <Interview />)],
   ["/login", () => <Auth mode={new URLSearchParams(location.search).get("mode") === "login" ? "login" : "register"} />],
   ["/opportunities", () => <Opportunities />],
   ["/history", () => <History />],
@@ -95,11 +97,11 @@ export default function App() {
 }
 
 function VolunteerLayout(props: { path: string; children: ReactNode }) {
-  // лендинг, вход, кабинет и занятия — широкие (колонки на компьютере), остальные — узкие, как в телефоне
-  const wide = ["/", "/login", "/me", "/opportunities", "/form"].includes(props.path);
+  // лендинг, вход, кабинет, занятия, собеседование и анкета — широкие (колонки на компьютере), остальные — узкие, как в телефоне
+  const wide = ["/", "/login", "/me", "/opportunities", "/form", "/interview"].includes(props.path);
   // анкета — на весь экран и без подвала: ничего не отвлекает от заполнения
   const focus = props.path === "/form";
-  const auth = props.path === "/login" || needsAccount() && ["/me", "/form"].includes(props.path);
+  const auth = props.path === "/login" || needsAccount() && ["/me", "/form", "/interview"].includes(props.path);
   return (
     <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : wide ? "pb-24" : "pb-10"}`}>
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
