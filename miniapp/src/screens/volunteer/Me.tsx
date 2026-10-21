@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Interview, Look, Opportunity, Participation, Volunteer } from "../../api";
 import { backend, getAccount, getLook, getVolunteerId, loadLook, logout, setVolunteerId } from "../../backend";
 import { FORMAT, REGION, STATUS, STATUS_COLOR } from "../../labels";
+import { UnreadBadge, useUnread } from "../../messages/Thread";
 import { navigate } from "../../router";
 import { Badge, Button, Card, ErrorBox, FLAIR, flairHandlers, formatHours, Loading, useLoad } from "../../ui";
 import { Avatar, COVERS, Cover, LookEditor, type Progress } from "./Look";
@@ -28,6 +29,7 @@ export default function Me() {
   // приглашения координатора — показываем сверху, чтобы не пропустить
   const invites = mine?.filter((p) => p.status === "invited") ?? [];
   const call = nextCall(interviews ?? []);
+  const unread = useUnread(id, "volunteer");
   // оформление: сразу из копии на устройстве, потом — свежее с сервера
   const [look, setLook] = useState<Look>(getLook);
   const [editing, setEditing] = useState(false);
@@ -100,6 +102,14 @@ export default function Me() {
 
       {!v && <StartCard />}
       {call && <CallCard i={call} />}
+      {unread > 0 && (
+        <section className="flex flex-col gap-3 rounded-[1.75rem] bg-soft p-5 ring-2 ring-accent sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-lg font-semibold">
+            📨 Координатор написал вам{unread > 1 ? ` — новых сообщений: ${unread}` : ""}
+          </p>
+          <Button onClick={() => navigate("/messages")}>Прочитать и ответить</Button>
+        </section>
+      )}
       {invites.length > 0 && (
         <section className="flex flex-col gap-3 rounded-[1.75rem] bg-pop/25 p-5 ring-2 ring-pop sm:flex-row sm:items-center sm:justify-between">
           <p className="text-lg font-semibold">
@@ -127,7 +137,7 @@ export default function Me() {
               </div>
             </Card>
           )}
-          <QuickActions hasForm={!!v} />
+          <QuickActions hasForm={!!v} unread={unread} />
           <button
             type="button"
             onClick={() => {
@@ -307,9 +317,10 @@ function EventCard({ o }: { o: Opportunity }) {
 
 // ===== Быстрые действия =====
 
-function QuickActions(props: { hasForm: boolean }) {
+function QuickActions(props: { hasForm: boolean; unread: number }) {
   const items = [
     { icon: "📹", title: "Собеседование", sub: "Запись на видеозвонок с координатором", to: "/interview" },
+    { icon: "📨", title: "Сообщения", sub: "Переписка с координатором фонда", to: "/messages", needsForm: true, unread: props.unread },
     { icon: "🎓", title: "Обучение", sub: "Курс и тест перед занятиями", to: "/training" },
     { icon: "⏱", title: "История и часы", sub: "Где вы были и сколько помогли", to: "/history", needsForm: true },
     { icon: "💬", title: "Спросить о фонде", sub: "Ответим по документам фонда", to: "/ask" },
@@ -327,7 +338,10 @@ function QuickActions(props: { hasForm: boolean }) {
             {i.icon}
           </span>
           <span className="flex flex-col">
-            <span className="font-semibold">{i.title}</span>
+            <span className="flex items-center gap-2 font-semibold">
+              {i.title}
+              {"unread" in i && <UnreadBadge count={i.unread ?? 0} />}
+            </span>
             <span className="text-sm leading-snug text-hint">{i.sub}</span>
           </span>
         </button>

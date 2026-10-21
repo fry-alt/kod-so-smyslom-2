@@ -158,3 +158,26 @@ class AccountLook(SQLModel, table=True):
     cover: str = "sky"  # schemas.LookCover
     stickers: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     nickname: str = ""  # пусто — имя из анкеты
+
+
+class Dialog(SQLModel, table=True):
+    """Переписка фонда с волонтёром (T-100): одна на волонтёра, со стороны фонда пишет любой координатор.
+    Текст переписки — персональные данные: в LLM и в индекс не уходит."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=_now)
+    volunteer_id: int = Field(foreign_key="volunteer.id", index=True, unique=True)
+    last_at: datetime = Field(default_factory=_now)  # время последнего сообщения — свежие сверху
+    volunteer_read_id: int = 0  # id последнего сообщения, которое видел волонтёр
+    fund_read_id: int = 0  # … и координатор
+
+
+class DialogMessage(SQLModel, table=True):
+    """Сообщение в переписке. opportunity_id — «о занятии …», если написали с карточки занятия."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=_now)
+    dialog_id: int = Field(foreign_key="dialog.id", index=True)
+    sender: str  # schemas.Sender: coordinator | volunteer
+    text: str
+    opportunity_id: int | None = Field(default=None, foreign_key="opportunity.id")

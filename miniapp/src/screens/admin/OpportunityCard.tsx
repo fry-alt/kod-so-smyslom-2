@@ -141,6 +141,9 @@ function ParticipantRow(props: { p: Participation; onChange: () => void }) {
         {error && <span className="font-medium text-red-700">⚠️ {error}</span>}
       </div>
       <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" onClick={() => navigate(`/admin/messages/${p.volunteer_id}?about=${p.opportunity_id}`)}>
+          Написать
+        </Button>
         {ACTIONS[p.status].map((a) => (
           <Button
             key={a.status}

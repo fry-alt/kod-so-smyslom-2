@@ -138,7 +138,16 @@ function Dashboard({ d }: { d: DashboardToday }) {
               render={(p) => (
                 <Row
                   key={p.participation_id}
-                  side={<LinkButton to={`/admin/opportunities/${p.opportunity_id}`} variant="secondary">Ответить</LinkButton>}
+                  side={
+                    <>
+                      <LinkButton to={`/admin/messages/${p.volunteer.id}?about=${p.opportunity_id}`} variant="secondary">
+                        Написать
+                      </LinkButton>
+                      <LinkButton to={`/admin/opportunities/${p.opportunity_id}`} variant="secondary">
+                        Ответить
+                      </LinkButton>
+                    </>
+                  }
                 >
                   <PersonLink {...p.volunteer} />
                   <span className="text-hint">

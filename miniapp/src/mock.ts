@@ -13,9 +13,11 @@ import type {
   ChatResponse,
   DashboardAnalytics,
   DashboardToday,
+  DialogSummary,
   Interview,
   InterviewPlan,
   InterviewSlots,
+  Message,
   Note,
   Opportunity,
   OpportunityIn,
@@ -30,6 +32,7 @@ import type {
   Role,
   SearchRequest,
   SearchResponse,
+  Sender,
   TrainingModule,
   Volunteer,
   VolunteerIn,
@@ -487,6 +490,59 @@ function interviewPlan(v: Volunteer): InterviewPlan {
   return { volunteer_id: v.id, questions, focus, ai: true, created_at: new Date().toISOString() };
 }
 
+// ===== Переписка фонда с волонтёром (T-100) =====
+// Хранится в localStorage (mock_messages), чтобы в двух вкладках — /admin и /me — шёл один диалог.
+// Сбросить: localStorage.removeItem("mock_messages").
+const MESSAGES_KEY = "mock_messages";
+type MockMessage = Message & { volunteer_id: number };
+type MockDialogs = { messages: MockMessage[]; read: Record<number, Record<Sender, number>> };
+
+function loadDialogs(): MockDialogs {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MESSAGES_KEY) ?? "null") as MockDialogs | null;
+    if (saved) return saved;
+  } catch {
+    /* приватный режим — демо-переписка */
+  }
+  const msg = (id: number, sender: Sender, text: string, daysAgo: number, opportunity_id: number | null = null): MockMessage => ({
+    id, volunteer_id: 3, sender, text, opportunity_id, opportunity_title: null,
+    created_at: new Date(Date.now() - daysAgo * DAY).toISOString(),
+  });
+  return {
+    messages: [
+      msg(1, "coordinator", "Мария, здравствуйте! Спасибо, что записались на керамику. Сможете прийти на 15 минут раньше — помочь разложить глину?", 1, 1),
+      msg(2, "volunteer", "Здравствуйте! Да, конечно, приду к 9:45.", 0.5),
+    ],
+    read: { 3: { coordinator: 1, volunteer: 2 } },
+  };
+}
+
+function saveDialogs(d: MockDialogs) {
+  try {
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify(d));
+  } catch {
+    /* приватный режим — живём в памяти вкладки */
+  }
+}
+
+function messageOut(m: MockMessage): Message {
+  const { volunteer_id: _, ...rest } = m;
+  return { ...rest, opportunity_title: opportunities.find((o) => o.id === m.opportunity_id)?.title ?? null };
+}
+
+function unreadFor(d: MockDialogs, volunteerId: number, reader: Sender): number {
+  const seen = d.read[volunteerId]?.[reader] ?? 0;
+  return d.messages.filter((m) => m.volunteer_id === volunteerId && m.sender !== reader && m.id > seen).length;
+}
+
+function setRead(d: MockDialogs, volunteerId: number, reader: Sender, id: number) {
+  d.read[volunteerId] = { ...(d.read[volunteerId] ?? { coordinator: 0, volunteer: 0 }), [reader]: id };
+}
+
+function lastId(d: MockDialogs, volunteerId: number): number {
+  return Math.max(0, ...d.messages.filter((m) => m.volunteer_id === volunteerId).map((m) => m.id));
+}
+
 // ===== Дашборды. «Сегодня» считаем из моков, аналитику — заготовкой (у моков слишком мало истории) =====
 
 const DAY = 86_400_000;
@@ -785,6 +841,59 @@ export const mockApi: typeof volunteersApi = {
     return wait(dashboardToday());
   },
   dashboardAnalytics: () => wait(dashboardAnalytics()),
+  dialog: (volunteerId, reader) => {
+    const v = findVolunteer(volunteerId);
+    if (!v) return notFound("Волонтёр");
+    const d = loadDialogs();
+    const other: Sender = reader === "volunteer" ? "coordinator" : "volunteer";
+    return wait(
+      {
+        volunteer: { id: v.id, name: v.name },
+        messages: d.messages.filter((m) => m.volunteer_id === volunteerId).map(messageOut),
+        unread: unreadFor(d, volunteerId, reader),
+        their_read_id: d.read[volunteerId]?.[other] ?? 0,
+      },
+      150,
+    );
+  },
+  sendMessage: (volunteerId, data) => {
+    if (!findVolunteer(volunteerId)) return notFound("Волонтёр");
+    const text = data.text.trim();
+    if (!text) return Promise.reject(new Error("Пустое сообщение"));
+    const d = loadDialogs();
+    const m: MockMessage = {
+      id: Math.max(0, ...d.messages.map((x) => x.id)) + 1, volunteer_id: volunteerId, sender: data.sender, text,
+      opportunity_id: data.opportunity_id ?? null, opportunity_title: null, created_at: new Date().toISOString(),
+    };
+    d.messages.push(m);
+    setRead(d, volunteerId, data.sender, m.id); // своё — прочитано
+    saveDialogs(d);
+    return wait(messageOut(m), 200);
+  },
+  markRead: (volunteerId, reader) => {
+    const d = loadDialogs();
+    setRead(d, volunteerId, reader, lastId(d, volunteerId));
+    saveDialogs(d);
+    const ids = [...new Set(d.messages.map((m) => m.volunteer_id))];
+    const unread = reader === "volunteer" ? 0 : ids.reduce((n, id) => n + unreadFor(d, id, "coordinator"), 0);
+    return wait({ unread }, 100);
+  },
+  dialogs: () => {
+    refresh();
+    const d = loadDialogs();
+    const ids = [...new Set(d.messages.map((m) => m.volunteer_id))];
+    const list: DialogSummary[] = ids
+      .map((id) => {
+        const last = d.messages.filter((m) => m.volunteer_id === id).at(-1)!;
+        return {
+          volunteer: { id, name: findVolunteer(id)?.name ?? `Волонтёр №${id}` },
+          last: messageOut(last),
+          unread: unreadFor(d, id, "coordinator"),
+        };
+      })
+      .sort((a, b) => b.last!.id - a.last!.id);
+    return wait(list, 150);
+  },
 
 };
 

@@ -16,6 +16,7 @@ from app.api import (
     documents,
     health,
     interviews,
+    messages,
     opportunities,
     roles,
     search,
@@ -71,5 +72,6 @@ for module in (
     dashboard,
     calls,
     auth,
+    messages,
 ):
     app.include_router(module.router)

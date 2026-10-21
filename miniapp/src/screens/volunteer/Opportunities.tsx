@@ -147,6 +147,8 @@ function OpportunityItem(props: {
   const d = new Date(o.starts_at);
   const status = o.my_status && !props.invite ? MY_STATUS[o.my_status] : "";
   const canRespond = !props.invite && volunteerId && !o.my_status && left > 0;
+  // откликнулся, приглашён или записан — можно задать вопрос координатору об этом занятии
+  const canWrite = volunteerId && o.my_status && o.my_status !== "declined";
 
   return (
     <article
@@ -197,6 +199,11 @@ function OpportunityItem(props: {
           {canRespond && (
             <Button wide loading={busy === "respond"} onClick={() => act("respond")}>
               Откликнуться
+            </Button>
+          )}
+          {canWrite && (
+            <Button wide variant="secondary" onClick={() => navigate(`/messages?about=${o.id}`)}>
+              Написать координатору
             </Button>
           )}
         </div>

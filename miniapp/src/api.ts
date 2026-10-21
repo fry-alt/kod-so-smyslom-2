@@ -250,6 +250,27 @@ export type DashboardAnalytics = {
   top: TopVolunteer[];
   dormant: Dormant[];
 };
+
+// ===== Переписка фонда с волонтёром (T-100). Текст в LLM не уходит =====
+export type Sender = "coordinator" | "volunteer";
+export type MessageIn = { sender: Sender; text: string; opportunity_id?: number | null };
+export type Message = {
+  id: number;
+  sender: Sender;
+  text: string;
+  opportunity_id: number | null; // «о занятии …», если написали с карточки занятия
+  opportunity_title: string | null;
+  created_at: string;
+};
+/** Переписка глазами того, кто смотрит (reader). */
+export type Dialog = {
+  volunteer: VolunteerRef;
+  messages: Message[]; // старые сверху
+  unread: number; // новых от собеседника
+  their_read_id: number; // до какого сообщения дочитал собеседник — для «прочитано»
+};
+export type DialogSummary = { volunteer: VolunteerRef; last: Message | null; unread: number };
+
 export type IceServer = { urls: string[]; username?: string | null; credential?: string | null };
 export type CallInfo = { starts_at: string; status: InterviewStatus; ice_servers: IceServer[] };
 
@@ -341,4 +362,12 @@ export const volunteersApi = {
     request<Interview>("PUT", `/interviews/${interviewId}/result`, data),
   dashboardToday: () => request<DashboardToday>("GET", "/dashboard/today"),
   dashboardAnalytics: () => request<DashboardAnalytics>("GET", "/dashboard/analytics"),
+  // переписка: reader — кто смотрит (волонтёр в «Сообщениях» или координатор в /admin)
+  dialog: (volunteerId: number, reader: Sender) =>
+    request<Dialog>("GET", `/volunteers/${volunteerId}/dialog?reader=${reader}`),
+  sendMessage: (volunteerId: number, data: MessageIn) =>
+    post<Message>(`/volunteers/${volunteerId}/dialog/messages`, data),
+  markRead: (volunteerId: number, reader: Sender) =>
+    post<{ unread: number }>(`/volunteers/${volunteerId}/dialog/read`, { reader }),
+  dialogs: () => request<DialogSummary[]>("GET", "/dialogs"),
 };
