@@ -1,6 +1,7 @@
 // Моки бэкенда по контракту из api.ts — чтобы интерфейс работал без бэкенда.
-// Включаются переменной VITE_MOCK=1 (см. backend.ts). Данные вымышленные и живут в памяти вкладки:
-// после перезагрузки страницы всё возвращается к исходному.
+// Включаются переменной VITE_MOCK=1 (см. backend.ts). Данные вымышленные и живут в памяти вкладки;
+// волонтёры дополнительно сохраняются в localStorage, чтобы после перезагрузки работал «Мой статус».
+// Сбросить демо-данные: localStorage.removeItem("mock_volunteers").
 import type {
   AskResponse,
   Availability,
@@ -17,6 +18,7 @@ import type {
   Region,
   Regularity,
   Role,
+  SearchRequest,
   SearchResponse,
   TrainingModule,
   Volunteer,
@@ -93,8 +95,8 @@ const roles: Role[] = [
   },
 ];
 
-let nextVolunteerId = 11;
-const volunteers: Volunteer[] = [
+const SAVE_KEY = "mock_volunteers";
+const volunteers: Volunteer[] = loadSaved() ?? [
   vol(1, "Анна Ковалёва", "@anna_k", "pensioner", ["weekday_morning", "weekday_day"], "moscow", "regular",
     "Бывший преподаватель ИЗО, 30 лет в школе.", "живопись, рисование, педагогика",
     ["живопись", "педагогика"], ["creative_lead"], "trained", 90, 12),
@@ -126,6 +128,24 @@ const volunteers: Volunteer[] = [
     "Клинический психолог, свободна по утрам в будни.", "психология, арт-терапия",
     ["психология", "арт-терапия"], ["psy_support"], "active", 95, 30),
 ];
+
+let nextVolunteerId = Math.max(...volunteers.map((v) => v.id)) + 1;
+
+function loadSaved(): Volunteer[] | null {
+  try {
+    return JSON.parse(localStorage.getItem(SAVE_KEY) ?? "null");
+  } catch {
+    return null;
+  }
+}
+
+function save() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(volunteers));
+  } catch {
+    /* приватный режим — живём в памяти */
+  }
+}
 
 function vol(
   id: number, name: string, contact: string, occupation: Volunteer["answers"]["occupation"],
@@ -227,7 +247,10 @@ function parseQuery(query: string): ParsedQuery {
   const q = query.toLowerCase();
   const allSkills = [...new Set(volunteers.flatMap((v) => v.profile?.skills ?? []))];
   const stem = (w: string) => w.slice(0, Math.max(4, w.length - 3));
-  const skills = allSkills.filter((s) => s.split(" ").some((w) => q.includes(stem(w))));
+  // навык «работа с детьми» совпадает, только если в тексте есть все его значимые слова
+  const skills = allSkills.filter((s) =>
+    s.split(" ").filter((w) => w.length > 2).every((w) => q.includes(stem(w))),
+  );
   if (/фотограф|съёмк|съемк|снять|отснять/.test(q) && !skills.includes("фотография")) skills.push("фотография");
   const availability = [...new Set(TIME_WORDS.filter(([re]) => re.test(q)).flatMap(([, a]) => a))];
   // «четверг утром» — только будни утро, а не весь будний день
@@ -245,9 +268,22 @@ function parseQuery(query: string): ParsedQuery {
   };
 }
 
-function search(query: string, statuses?: Volunteer["status"][], limit = 5, roleCode?: string | null): SearchResponse {
+function search(req: SearchRequest): SearchResponse {
+  const { statuses, limit = 10 } = req;
+  let query = req.query;
+  let roleCode = req.role_code;
+  // подбор под возможность: запрос строим из её полей, как бэкенд
+  const opp = opportunities.find((o) => o.id === req.opportunity_id);
+  if (opp) {
+    query = `${opp.title} ${opp.description} ${query}`;
+    roleCode = roleCode ?? opp.role_code;
+  }
   const role = roles.find((r) => r.code === roleCode);
   const parsed = parseQuery(query + (role ? " " + role.skills.join(" ") : ""));
+  if (opp) {
+    parsed.region = opp.format === "online" ? null : opp.region;
+    parsed.format = opp.format;
+  }
   const pool = volunteers.filter(
     (v) => v.status !== "paused" && (!statuses?.length || statuses.includes(v.status)),
   );
@@ -292,6 +328,7 @@ export const mockApi: typeof volunteersApi = {
       },
     };
     volunteers.push(v);
+    save();
     return wait(v, 1500); // LLM «думает»
   },
   get: (id) => (findVolunteer(id) ? wait(findVolunteer(id)!) : notFound("Волонтёр")),
@@ -308,6 +345,7 @@ export const mockApi: typeof volunteersApi = {
     v.training_score = score;
     if (v.status === "new") v.status = "training";
     if (score >= 70 && v.status === "training") v.status = "trained";
+    save();
     const result: QuizResult = { score, passed: score >= 70, correct, status: v.status };
     return wait(result);
   },
@@ -347,16 +385,18 @@ export const mockApi: typeof volunteersApi = {
       p.hours = opportunities.find((o) => o.id === p.opportunity_id)?.hours ?? 0;
       const v = findVolunteer(p.volunteer_id);
       if (v) v.hours += p.hours;
+      save();
     }
     p.status = status;
     return wait(withNames(p));
   },
-  search: (data) => wait(search(data.query, data.statuses, data.limit, data.role_code), 1200),
+  search: (data) => wait(search(data), 1200),
   list: (status) => wait(volunteers.filter((v) => !status || v.status === status)),
   update: (id, data) => {
     const v = findVolunteer(id);
     if (!v) return notFound("Волонтёр");
     Object.assign(v, data);
+    save();
     return wait(v);
   },
   notes: (id) => wait(notes.filter((n) => n.volunteer_id === id)),

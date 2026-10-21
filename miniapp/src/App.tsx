@@ -4,7 +4,7 @@
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
 import type { ReactNode } from "react";
 
-import { USE_MOCK } from "./backend";
+import { getVolunteerId, USE_MOCK } from "./backend";
 import { match, usePath } from "./router";
 import { Link } from "./ui";
 import AdminOpportunities from "./screens/admin/Opportunities";
@@ -21,7 +21,8 @@ import Welcome from "./screens/volunteer/Welcome";
 type Route = [pattern: string, render: (params: Record<string, string>) => ReactNode];
 
 const VOLUNTEER_ROUTES: Route[] = [
-  ["/", () => <Welcome />],
+  // повторный заход: анкета уже отправлена — сразу статус
+  ["/", () => (getVolunteerId() ? <Me /> : <Welcome />)],
   ["/form", () => <Form />],
   ["/training", () => <Training />],
   ["/me", () => <Me />],
