@@ -8,13 +8,9 @@ import { backend } from "../../backend";
 import { FORMAT, REGION } from "../../labels";
 import { navigate } from "../../router";
 import { tgUser } from "../../telegram";
+import Journey from "./Journey";
 import VolunteerScenes from "./VolunteerScenes";
 
-const STEPS = [
-  { title: "Анкета", text: "Расскажите о себе и отметьте, когда вам удобно помогать." },
-  { title: "Знакомство и обучение", text: "Встреча с координатором и короткий курс о наших подопечных." },
-  { title: "Занятия", text: "Выбираете подходящие мастер-классы и приходите — разово или постоянно." },
-];
 
 export default function Welcome() {
   return (
@@ -37,24 +33,10 @@ export default function Welcome() {
         <VolunteerScenes />
       </section>
 
+      <Journey />
+
       <Upcoming />
 
-      <section className="flex flex-col gap-6">
-        <h2 className="font-display text-2xl font-semibold">Как всё устроено</h2>
-        <ol className="grid gap-6 md:grid-cols-3 md:gap-8">
-          {STEPS.map((s, i) => (
-            <li key={s.title} className="flex gap-4 md:flex-col md:gap-3">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-accent font-display text-lg font-semibold text-accent">
-                {i + 1}
-              </span>
-              <div>
-                <p className="text-lg font-semibold">{s.title}</p>
-                <p className="text-hint">{s.text}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
 
       <section className="flex flex-col gap-5 rounded-[2rem] bg-surface p-6 md:flex-row md:items-center md:justify-between md:p-8">
         <p className="max-w-[46ch] text-lg">
