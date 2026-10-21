@@ -2,7 +2,7 @@
 date: 2026-10-22
 author: fry-alt
 task: T-111 (#111)
-pr: —
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/121
 areas: [бэкенд, интерфейс, деплой]
 ---
 
