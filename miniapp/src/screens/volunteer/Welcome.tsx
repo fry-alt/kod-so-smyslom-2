@@ -8,6 +8,7 @@ import { backend } from "../../backend";
 import { FORMAT, REGION } from "../../labels";
 import { navigate } from "../../router";
 import { tgUser } from "../../telegram";
+import { FLAIR, flairHandlers } from "../../ui";
 import Journey from "./Journey";
 import VolunteerScenes from "./VolunteerScenes";
 
@@ -45,7 +46,8 @@ export default function Welcome() {
         <button
           type="button"
           onClick={() => navigate("/ask")}
-          className="min-h-12 shrink-0 self-start rounded-full border-2 border-ink/15 px-6 font-semibold transition hover:border-accent hover:text-accent md:self-center"
+          {...flairHandlers}
+          className={`btn-flair min-h-12 shrink-0 self-start rounded-full border-2 border-ink/15 px-6 font-semibold md:self-center ${FLAIR.secondary}`}
         >
           Спросить о фонде
         </button>
@@ -60,7 +62,8 @@ function PrimaryButton(props: { onClick: () => void; children: string }) {
     <button
       type="button"
       onClick={props.onClick}
-      className="min-h-14 rounded-full bg-accent px-8 text-lg font-semibold whitespace-nowrap text-accent-text shadow-[0_8px_24px_-8px_var(--p-accent)] transition hover:brightness-110 active:scale-[.98]"
+      {...flairHandlers}
+      className={`btn-flair min-h-14 rounded-full bg-cta px-8 text-lg font-bold whitespace-nowrap text-white shadow-[0_8px_24px_-8px_var(--p-cta)] ${FLAIR.cta}`}
     >
       {props.children}
     </button>

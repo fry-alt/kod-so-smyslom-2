@@ -124,7 +124,7 @@ function Specialist() {
   return (
     <Scene label="Волонтёр-специалист консультирует подростка за столом">
       <Person x={60} y={66} skin={SKIN.light} shirt="var(--p-accent)" hair={HAIR.brown} style="short" glasses />
-      <Person x={144} y={76} s={0.85} skin={SKIN.dark} shirt="var(--p-pop)" hair={HAIR.dark} style="curly" />
+      <Person x={144} y={76} s={0.85} skin={SKIN.dark} shirt="var(--logo-cyan)" hair={HAIR.dark} style="curly" />
       <rect x="28" y="112" width="144" height="9" rx="4" fill={FURNITURE_DARK} />
       <rect x="40" y="121" width="6" height="22" rx="2" fill={FURNITURE} />
       <rect x="154" y="121" width="6" height="22" rx="2" fill={FURNITURE} />
@@ -164,7 +164,7 @@ function FairAndPhoto() {
       <circle cx="70" cy="91" r="3" fill="var(--p-accent)" />
       <circle cx="82" cy="91" r="3" fill="var(--p-accent)" />
       <rect x="92" y="94" width="12" height="12" rx="3" fill="#fff" />
-      <Person x={160} y={66} skin={SKIN.dark} shirt="var(--p-accent)" hair="var(--p-pop-2)" style="beanie" />
+      <Person x={160} y={66} skin={SKIN.dark} shirt="var(--logo-blue)" hair="var(--logo-berry)" style="beanie" />
       <Arm from={[146, 92]} to={[136, 90]} skin={SKIN.dark} />
       <rect x="118" y="80" width="24" height="17" rx="4" fill="#1f2430" />
       <circle cx="128" cy="88.5" r="5" fill="#fff" />

@@ -5,6 +5,7 @@
 import type { ReactNode } from "react";
 
 import { getVolunteerId, USE_MOCK } from "./backend";
+import Footer from "./Footer";
 import CallScreen from "./call/CallScreen";
 import { match, usePath } from "./router";
 import { Link } from "./ui";
@@ -15,7 +16,6 @@ import Search from "./screens/admin/Search";
 import VolunteerCard from "./screens/admin/VolunteerCard";
 import Volunteers from "./screens/admin/Volunteers";
 import Ask from "./screens/volunteer/Ask";
-import { Privacy, Terms } from "./screens/volunteer/Legal";
 import Form from "./screens/volunteer/Form";
 import History from "./screens/volunteer/History";
 import Me from "./screens/volunteer/Me";
@@ -34,8 +34,6 @@ const VOLUNTEER_ROUTES: Route[] = [
   ["/opportunities", () => <Opportunities />],
   ["/history", () => <History />],
   ["/ask", () => <Ask />],
-  ["/privacy", () => <Privacy />],
-  ["/terms", () => <Terms />],
 ];
 
 const ADMIN_ROUTES: Route[] = [
@@ -73,8 +71,7 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
     <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 pb-24 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl pb-10"}`}>
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Link to="/" className="flex items-center gap-2.5 font-display text-lg font-semibold whitespace-nowrap">
-          <BrandMark />
-          Дети Марии
+          <img src="/logo.svg" alt="Дети Марии" className="h-9 w-auto md:h-11" />
         </Link>
         <nav className="flex gap-4 whitespace-nowrap">
           <NavLink to="/opportunities" path={props.path}>
@@ -87,25 +84,8 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
       </header>
       <MockBanner />
       <main>{props.children}</main>
-      <footer className="mt-auto flex flex-wrap justify-center gap-x-4 gap-y-1 pt-10 text-ink">
-        <Link to="/privacy" className="hover:text-accent">
-          Политика конфиденциальности.
-        </Link>
-        <Link to="/terms" className="hover:text-accent">
-          Условия использования.
-        </Link>
-      </footer>
+      <Footer />
     </div>
-  );
-}
-
-/** Знак: две капли краски — оранжевая и цвет акцента. */
-function BrandMark() {
-  return (
-    <span className="relative inline-block size-8" aria-hidden="true">
-      <span className="absolute top-0 left-0 size-5 rounded-full bg-pop" />
-      <span className="absolute right-0 bottom-0 size-6 rounded-full rounded-tl-md bg-accent" />
-    </span>
   );
 }
 
@@ -114,8 +94,9 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
     <div className="admin min-h-screen">
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Link to="/admin" className="font-bold">
-            🧡 Дети Марии · кабинет фонда
+          <Link to="/admin" className="flex items-center gap-3 font-semibold">
+            <img src="/logo.svg" alt="Дети Марии" className="h-9 w-auto" />
+            <span className="text-hint">кабинет фонда</span>
           </Link>
           <nav className="flex flex-wrap gap-4">
             <NavLink to="/admin" path={props.path} exact>
