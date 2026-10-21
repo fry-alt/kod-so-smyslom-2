@@ -2,7 +2,7 @@
 date: 2026-10-22
 author: gordeymos
 task: T-116 (#116)
-pr: пока не создан
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/123
 areas: [интерфейс]
 ---
 
