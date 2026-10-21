@@ -1,6 +1,6 @@
 // Одно приложение — две части:
 //   /        — волонтёр (сайт и Telegram Mini App): приветствие → анкета → обучение → статус
-//   /admin   — кабинет фонда (ноутбук): умный поиск, база, карточка, возможности
+//   /admin   — кабинет фонда (ноутбук): сводка, умный поиск, база, карточка, возможности, аналитика
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
 import type { ReactNode } from "react";
 
@@ -9,10 +9,12 @@ import Footer from "./Footer";
 import CallScreen from "./call/CallScreen";
 import { match, usePath } from "./router";
 import { Link } from "./ui";
+import Analytics from "./screens/admin/Analytics";
 import AdminOpportunities from "./screens/admin/Opportunities";
 import OpportunityCard from "./screens/admin/OpportunityCard";
 import OpportunityForm from "./screens/admin/OpportunityForm";
 import Search from "./screens/admin/Search";
+import Summary from "./screens/admin/Summary";
 import VolunteerCard from "./screens/admin/VolunteerCard";
 import Volunteers from "./screens/admin/Volunteers";
 import Ask from "./screens/volunteer/Ask";
@@ -37,7 +39,10 @@ const VOLUNTEER_ROUTES: Route[] = [
 ];
 
 const ADMIN_ROUTES: Route[] = [
-  ["/admin", () => <Search />],
+  // старые ссылки на подбор под возможность (/admin?opportunity=3) по-прежнему открывают поиск
+  ["/admin", () => (new URLSearchParams(location.search).has("opportunity") ? <Search /> : <Summary />)],
+  ["/admin/search", () => <Search />],
+  ["/admin/analytics", () => <Analytics />],
   ["/admin/volunteers", () => <Volunteers />],
   ["/admin/volunteers/:id", (p) => <VolunteerCard id={Number(p.id)} />],
   ["/admin/opportunities", () => <AdminOpportunities />],
@@ -100,6 +105,9 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
           </Link>
           <nav className="flex flex-wrap gap-4">
             <NavLink to="/admin" path={props.path} exact>
+              Сводка
+            </NavLink>
+            <NavLink to="/admin/search" path={props.path}>
               Умный поиск
             </NavLink>
             <NavLink to="/admin/volunteers" path={props.path}>
@@ -107,6 +115,9 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
             </NavLink>
             <NavLink to="/admin/opportunities" path={props.path}>
               Возможности
+            </NavLink>
+            <NavLink to="/admin/analytics" path={props.path}>
+              Аналитика
             </NavLink>
           </nav>
         </div>

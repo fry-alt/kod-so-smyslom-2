@@ -1,4 +1,5 @@
 // Карточка волонтёра (T-09): анкета, профиль от AI, статус, часы и заметки координатора.
+// Собеседование (T-60, T-69): назначить звонок, план от AI и итог — в interview/InterviewBlock.tsx.
 // Всё, что меняет координатор, сразу сохраняется на сервере и видно после перезагрузки.
 // Заметки — только для фонда: в AI они не отправляются.
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -7,6 +8,7 @@ import type { Note, Role, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
 import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
 import { Badge, Button, Card, Contact, Empty, ErrorBox, errorText, inputClass, Link, Loading, useLoad } from "../../ui";
+import InterviewBlock from "./interview/InterviewBlock";
 
 /** Кнопки смены статуса: что делает координатор → какой статус ставим. */
 const STATUS_ACTIONS: { status: VolunteerStatus; label: string }[] = [
@@ -20,6 +22,11 @@ export default function VolunteerCard(props: { id: number }) {
   // после сохранения показываем ответ сервера, не перезагружая всю карточку
   const [saved, setSaved] = useState<Volunteer | null>(null);
   const v = saved?.id === props.id ? saved : data;
+
+  // из «Сводки» ведёт ссылка …/volunteers/3#interview — прокручиваем к собеседованию
+  useEffect(() => {
+    if (v && location.hash === "#interview") document.getElementById("interview")?.scrollIntoView({ block: "start" });
+  }, [v?.id]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -51,6 +58,7 @@ export default function VolunteerCard(props: { id: number }) {
               <Notes key={`n${v.id}`} id={v.id} />
             </div>
             <div className="flex min-w-0 flex-col gap-5 lg:order-1 lg:col-span-3">
+              <InterviewBlock key={`i${v.id}`} v={v} />
               <ProfileCard v={v} />
               <AnswersCard v={v} />
             </div>

@@ -1,6 +1,6 @@
-// Умный поиск (T-08) — главный экран кабинета фонда.
+// Умный поиск (T-08) — /admin/search (главный экран кабинета — «Сводка», T-69).
 // Координатор пишет запрос своими словами → видит, как система его поняла, и топ кандидатов.
-// Открыт из возможности (/admin?opportunity=3) — подбор под неё и кнопка «Пригласить».
+// Открыт из возможности (/admin/search?opportunity=3) — подбор под неё и кнопка «Пригласить».
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import type { Candidate, Opportunity, ParsedQuery, Role, SearchRequest, SearchResponse, VolunteerStatus } from "../../api";

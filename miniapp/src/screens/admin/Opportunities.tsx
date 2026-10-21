@@ -52,7 +52,7 @@ function OpportunityTile({ o }: { o: Opportunity }) {
         <Button variant="secondary" onClick={() => navigate(`/admin/opportunities/${o.id}`)}>
           Участники
         </Button>
-        {!full && <Button onClick={() => navigate(`/admin?opportunity=${o.id}`)}>Подобрать</Button>}
+        {!full && <Button onClick={() => navigate(`/admin/search?opportunity=${o.id}`)}>Подобрать</Button>}
       </div>
     </Card>
   );
