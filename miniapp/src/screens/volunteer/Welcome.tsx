@@ -1,7 +1,7 @@
 // Стартовый экран волонтёра.
 // Справа — сцены «что делают волонтёры» (VolunteerScenes.tsx).
 // Ниже — ближайшие занятия, где нужны люди; если их нет — неделя «когда нужна помощь».
-import { useEffect, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 
 import type { Opportunity } from "../../api";
 import { backend } from "../../backend";
@@ -107,14 +107,30 @@ function Upcoming() {
 function Cards3D({ list }: { list: Opportunity[] }) {
   const [active, setActive] = useState<number | null>(null);
 
-  function tilt(e: PointerEvent<HTMLElement>) {
+  // Наклон считаем от неподвижной обёртки <li>, а не от самой карточки: иначе карточка поворачивается,
+  // её границы смещаются, наклон пересчитывается — и всё трясётся. Обновляем не чаще кадра.
+  const frame = useRef(0);
+  function tilt(e: PointerEvent<HTMLLIElement>) {
     if (e.pointerType !== "mouse") return;
-    const el = e.currentTarget;
-    const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5; // −0.5…0.5
-    const y = (e.clientY - r.top) / r.height - 0.5;
-    el.style.setProperty("--ry", `${x * 18}deg`);
-    el.style.setProperty("--rx", `${-y * 18}deg`);
+    const li = e.currentTarget;
+    const card = li.firstElementChild as HTMLElement | null;
+    const { clientX, clientY } = e;
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      const r = li.getBoundingClientRect();
+      const x = Math.max(-0.5, Math.min(0.5, (clientX - r.left) / r.width - 0.5));
+      const y = Math.max(-0.5, Math.min(0.5, (clientY - r.top) / r.height - 0.5));
+      card?.style.setProperty("--ry", `${(x * 10).toFixed(2)}deg`);
+      card?.style.setProperty("--rx", `${(-y * 10).toFixed(2)}deg`);
+    });
+  }
+
+  function reset(li: HTMLLIElement) {
+    cancelAnimationFrame(frame.current);
+    const card = li.firstElementChild as HTMLElement | null;
+    card?.style.setProperty("--rx", "0deg");
+    card?.style.setProperty("--ry", "0deg");
+    setActive(null);
   }
 
   return (
@@ -123,17 +139,16 @@ function Cards3D({ list }: { list: Opportunity[] }) {
         const d = new Date(o.starts_at);
         const left = o.slots - o.taken;
         return (
-          <li key={o.id} className={`card3d-item ${active === i ? "is-active" : ""}`}>
+          <li
+            key={o.id}
+            className={`card3d-item ${active === i ? "is-active" : ""}`}
+            onPointerEnter={(e) => e.pointerType === "mouse" && setActive(i)}
+            onPointerMove={tilt}
+            onPointerLeave={(e) => reset(e.currentTarget)}
+          >
             <button
               type="button"
               onClick={() => navigate("/form")}
-              onPointerEnter={(e) => e.pointerType === "mouse" && setActive(i)}
-              onPointerMove={tilt}
-              onPointerLeave={(e) => {
-                e.currentTarget.style.setProperty("--rx", "0deg");
-                e.currentTarget.style.setProperty("--ry", "0deg");
-                setActive(null);
-              }}
               className="card3d flex h-full w-full gap-4 rounded-3xl border-2 border-line bg-page p-5 text-left"
             >
               <span className="card3d-pop-2 flex w-16 shrink-0 flex-col items-center rounded-2xl bg-soft py-2 text-ink">
