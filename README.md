@@ -36,7 +36,7 @@ iOS-версию можно собрать так же (`npx cap add ios`), но
 make setup     # uv + npm зависимости, .env из .env.example, git-хуки
 make up        # Docker: backend :8000, Streamlit :8501, Mini App :8080, бот (если есть токен)
 make ingest    # загрузить документы фонда (data/demo) и учебные тексты (data/training)
-make seed      # загрузить 40 демо-анкет волонтёров (в пустую базу)
+make seed      # загрузить 40 демо-анкет и 8 возможностей (в пустую базу)
 ```
 
 Потом откройте:

@@ -1,9 +1,10 @@
-"""Загрузить 40 демо-анкет через API бэкенда (бэкенд должен быть запущен).
+"""Загрузить 40 демо-анкет и 8 возможностей через API бэкенда (бэкенд должен быть запущен).
 
 Запуск: make seed  или  uv run python scripts/seed.py [--force]
 Анкеты грузим только в пустую базу: тогда id волонтёра = номер анкеты в volunteers.json,
 и эталонные запросы из search_benchmark.json указывают на нужных людей.
 --force — загрузить, даже если в базе уже есть волонтёры (номера в бенчмарке разъедутся).
+Возможности грузим, если каталог пуст, — независимо от анкет.
 """
 
 import json
@@ -14,7 +15,9 @@ import urllib.request
 from pathlib import Path
 
 BASE_URL = os.environ.get("BACKEND_URL", "http://localhost:8000").rstrip("/")
-FORMS = Path(__file__).resolve().parents[1] / "data" / "demo" / "volunteers.json"
+DEMO = Path(__file__).resolve().parents[1] / "data" / "demo"
+FORMS = DEMO / "volunteers.json"
+OPPORTUNITIES = DEMO / "opportunities.json"
 TIMEOUT = 60  # секунд на анкету: с реальной LLM профиль строится несколько секунд
 
 
@@ -31,6 +34,7 @@ def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # кириллица в консоли Windows и без make
     try:
         existing = call("GET", "/volunteers")
+        catalog = call("GET", "/opportunities")
     except (urllib.error.URLError, TimeoutError) as e:
         print(f"❌ Бэкенд {BASE_URL} недоступен ({e}). Запустите make up или make dev.")
         return 1
@@ -49,6 +53,18 @@ def main() -> int:
             return 1
         print(f"→ {number:2}. {form['name']} → id {volunteer['id']}")
     print(f"✅ Загружено анкет: {len(forms)}")
+
+    if catalog:
+        print(f"ℹ️ В каталоге уже {len(catalog)} возможностей — демо-возможности не добавляю.")
+        return 0
+    items = json.loads(OPPORTUNITIES.read_text(encoding="utf-8"))
+    for item in items:
+        try:
+            call("POST", "/opportunities", item)
+        except urllib.error.HTTPError as e:
+            print(f"❌ Возможность «{item['title']}»: {e.code} {e.read().decode()}")
+            return 1
+    print(f"✅ Загружено возможностей: {len(items)}")
     return 0
 
 
