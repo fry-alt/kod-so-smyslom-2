@@ -51,10 +51,6 @@ export default function Welcome() {
         </button>
       </section>
 
-      <p className="text-sm text-hint">
-        Имя и телефон из анкеты видит только координатор фонда. В сервисы искусственного интеллекта они не
-        передаются.
-      </p>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import Search from "./screens/admin/Search";
 import VolunteerCard from "./screens/admin/VolunteerCard";
 import Volunteers from "./screens/admin/Volunteers";
 import Ask from "./screens/volunteer/Ask";
+import { Privacy, Terms } from "./screens/volunteer/Legal";
 import Form from "./screens/volunteer/Form";
 import History from "./screens/volunteer/History";
 import Me from "./screens/volunteer/Me";
@@ -33,6 +34,8 @@ const VOLUNTEER_ROUTES: Route[] = [
   ["/opportunities", () => <Opportunities />],
   ["/history", () => <History />],
   ["/ask", () => <Ask />],
+  ["/privacy", () => <Privacy />],
+  ["/terms", () => <Terms />],
 ];
 
 const ADMIN_ROUTES: Route[] = [
@@ -84,6 +87,14 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
       </header>
       <MockBanner />
       <main>{props.children}</main>
+      <footer className="mt-auto flex flex-wrap justify-center gap-x-4 gap-y-1 pt-10 text-ink">
+        <Link to="/privacy" className="hover:text-accent">
+          Политика конфиденциальности.
+        </Link>
+        <Link to="/terms" className="hover:text-accent">
+          Условия использования.
+        </Link>
+      </footer>
     </div>
   );
 }
