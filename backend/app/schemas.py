@@ -315,6 +315,39 @@ class InterviewIn(BaseModel):
     starts_at: datetime
 
 
+class PlanQuestion(BaseModel):
+    question: str  # что спросить, обычными словами
+    why: str  # зачем: что уточняем по анкете
+
+
+class InterviewPlan(BaseModel):
+    """GET /volunteers/{id}/interview-plan — вопросы к собеседованию под анкету."""
+
+    volunteer_id: int
+    questions: list[PlanQuestion]
+    focus: list[str]  # на что обратить внимание
+    ai: bool  # False — базовый план по правилам, LLM недоступен
+    created_at: datetime
+
+
+Decision = Literal["next", "think", "reject"]  # дальше / подумать / не подходит
+
+
+class InterviewResultIn(BaseModel):
+    """PUT /interviews/{id}/result — итог после звонка. Только для фонда, в LLM не уходит."""
+
+    motivation: int = Field(ge=1, le=5)
+    readiness: int = Field(ge=1, le=5, description="готовность к работе с подопечными")
+    regularity: int = Field(ge=1, le=5, description="насколько надёжно будет приходить")
+    decision: Decision
+    roles: list[str] = Field(default_factory=list, description="коды ролей из data/roles.json")
+    comment: str = Field(default="", max_length=4000)
+
+
+class InterviewResult(InterviewResultIn):
+    created_at: datetime
+
+
 class Interview(BaseModel):
     id: int
     volunteer_id: int
@@ -323,6 +356,7 @@ class Interview(BaseModel):
     token: str  # ссылка на звонок — /call/<token>
     notified: bool  # ссылка ушла волонтёру в Telegram; false — координатор отправит её сам
     created_at: datetime
+    result: InterviewResult | None = None  # итог после звонка; волонтёру не показываем
 
 
 class InterviewUpdate(BaseModel):

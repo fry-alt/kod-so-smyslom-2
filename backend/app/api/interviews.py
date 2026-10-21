@@ -4,8 +4,9 @@ from sqlmodel import Session
 from app.db import get_session
 from app.models import Interview as InterviewRow
 from app.models import Volunteer
-from app.schemas import Interview, InterviewIn, InterviewUpdate
-from app.services import interviews, volunteers
+from app.schemas import Interview, InterviewIn, InterviewPlan, InterviewResultIn, InterviewUpdate
+from app.services import interview_plan, interviews, volunteers
+from app.services.roles import load_roles
 
 router = APIRouter(tags=["interviews"])
 
@@ -27,23 +28,49 @@ def _interview_or_404(session: Session, interview_id: int) -> InterviewRow:
 @router.post("/volunteers/{volunteer_id}/interviews", response_model=Interview)
 def create(
     volunteer_id: int, data: InterviewIn, session: Session = Depends(get_session)
-) -> InterviewRow:
+) -> Interview:
     """Координатор назначает видеособеседование; волонтёру уходит ссылка в Telegram."""
     volunteer = _volunteer_or_404(session, volunteer_id)
-    return interviews.create(session, volunteer, data.starts_at)
+    return interviews.to_out(session, interviews.create(session, volunteer, data.starts_at))
 
 
 @router.get("/volunteers/{volunteer_id}/interviews", response_model=list[Interview])
 def list_for_volunteer(
     volunteer_id: int, session: Session = Depends(get_session)
-) -> list[InterviewRow]:
+) -> list[Interview]:
     """Собеседования волонтёра — для карточки в /admin и для раздела «Я»."""
-    return interviews.for_volunteer(session, _volunteer_or_404(session, volunteer_id))
+    volunteer = _volunteer_or_404(session, volunteer_id)
+    return [interviews.to_out(session, i) for i in interviews.for_volunteer(session, volunteer)]
+
+
+@router.get("/volunteers/{volunteer_id}/interview-plan", response_model=InterviewPlan)
+def plan(
+    volunteer_id: int, refresh: bool = False, session: Session = Depends(get_session)
+) -> InterviewPlan:
+    """Вопросы к собеседованию под анкету (в LLM — только ответы анкеты). refresh=true — заново."""
+    volunteer = _volunteer_or_404(session, volunteer_id)
+    return interview_plan.get_or_build(session, volunteer, refresh)
 
 
 @router.patch("/interviews/{interview_id}", response_model=Interview)
 def update(
     interview_id: int, data: InterviewUpdate, session: Session = Depends(get_session)
-) -> InterviewRow:
+) -> Interview:
     """done — прошло, canceled — отменить (ссылка перестаёт работать)."""
-    return interviews.update_status(session, _interview_or_404(session, interview_id), data.status)
+    interview = _interview_or_404(session, interview_id)
+    return interviews.to_out(session, interviews.update_status(session, interview, data.status))
+
+
+@router.put("/interviews/{interview_id}/result", response_model=Interview)
+def save_result(
+    interview_id: int, data: InterviewResultIn, session: Session = Depends(get_session)
+) -> Interview:
+    """Итог после звонка: оценки, решение, подходящие роли. Ставит собеседованию «прошло»."""
+    interview = _interview_or_404(session, interview_id)
+    if interview.status == "canceled":
+        raise HTTPException(409, "Собеседование отменено — итог не сохраняем")
+    known = {r.code for r in load_roles()}
+    unknown = [code for code in data.roles if code not in known]
+    if unknown:
+        raise HTTPException(422, f"Неизвестные роли: {', '.join(unknown)}")
+    return interviews.to_out(session, interviews.save_result(session, interview, data))

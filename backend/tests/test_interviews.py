@@ -184,3 +184,54 @@ def test_signaling_unknown_token_and_bad_role(client):
     token = schedule(client, create_volunteer(client))["token"]
     with client.websocket_connect(f"/calls/{token}/ws") as ws:
         assert join(ws, "admin")["type"] == "error"
+
+
+RESULT = {
+    "motivation": 5,
+    "readiness": 4,
+    "regularity": 3,
+    "decision": "next",
+    "roles": ["photographer"],
+    "comment": "Снимает на свою камеру, готова по субботам",
+}
+
+
+def test_new_interview_has_no_result(client):
+    interview = schedule(client, create_volunteer(client))
+    assert interview["result"] is None
+
+
+def test_result_saved_marks_done_and_can_be_corrected(client):
+    volunteer_id = create_volunteer(client)
+    interview = schedule(client, volunteer_id)
+
+    r = client.put(f"/interviews/{interview['id']}/result", json=RESULT)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["status"] == "done"
+    assert body["result"]["decision"] == "next"
+    assert body["result"]["roles"] == ["photographer"]
+
+    # координатор поправил итог — перезаписываем, а не создаём второй
+    r = client.put(
+        f"/interviews/{interview['id']}/result", json={**RESULT, "decision": "think", "roles": []}
+    )
+    assert r.status_code == 200, r.text
+    listed = client.get(f"/volunteers/{volunteer_id}/interviews").json()
+    assert listed[0]["result"]["decision"] == "think"
+    assert listed[0]["result"]["roles"] == []
+
+
+def test_result_errors(client):
+    interview = schedule(client, create_volunteer(client))
+    url = f"/interviews/{interview['id']}/result"
+    assert client.put("/interviews/999/result", json=RESULT).status_code == 404
+    assert client.put(url, json={**RESULT, "motivation": 0}).status_code == 422
+    r = client.put(url, json={**RESULT, "roles": ["astronaut"]})
+    assert r.status_code == 422
+    assert "astronaut" in r.json()["detail"]
+
+    client.patch(f"/interviews/{interview['id']}", json={"status": "canceled"})
+    r = client.put(url, json=RESULT)
+    assert r.status_code == 409
+    assert "отменено" in r.json()["detail"]
