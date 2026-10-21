@@ -750,6 +750,8 @@ export const mockApi: typeof volunteersApi = {
     refresh();
     const v = findVolunteer(volunteerId);
     if (!v) return notFound("Волонтёр");
+    if (!["trained", "approved", "active"].includes(v.status))
+      return Promise.reject(new Error("Сначала пройдите обучение — после него можно записаться на собеседование"));
     const since = Date.now() - 2 * 3600_000;
     if (interviews.some((i) => i.volunteer_id === volunteerId && i.status === "scheduled" && new Date(i.starts_at).getTime() >= since))
       return Promise.reject(new Error("Вы уже записаны на собеседование. Чтобы выбрать другое время, отмените запись"));

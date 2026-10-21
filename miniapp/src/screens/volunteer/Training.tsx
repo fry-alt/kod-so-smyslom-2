@@ -108,7 +108,7 @@ export default function Training() {
             </p>
           )}
           {currentStatus === "trained" && (
-            <p className="font-semibold">🎉 Обучение пройдено! Координатор фонда скоро свяжется с вами.</p>
+            <p className="font-semibold">🎉 Обучение пройдено! Теперь запишитесь на собеседование с координатором.</p>
           )}
         </Card>
       )}
@@ -149,8 +149,8 @@ export default function Training() {
       </ol>
 
       {currentStatus === "trained" && (
-        <Button wide onClick={() => navigate("/opportunities")}>
-          Посмотреть, куда можно пойти
+        <Button wide onClick={() => navigate("/interview")}>
+          Записаться на собеседование
         </Button>
       )}
     </div>

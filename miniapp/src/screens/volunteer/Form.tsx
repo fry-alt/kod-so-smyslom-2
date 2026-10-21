@@ -826,7 +826,7 @@ function Thanks(props: { volunteer: Volunteer }) {
         </svg>
         <h1 className="tile-in font-display text-[1.75rem] leading-tight font-semibold">Спасибо, {v.name.split(" ")[0]}!</h1>
         <p className="tile-in [animation-delay:120ms]">
-          Анкета у нас. Координатор посмотрит её и свяжется с вами, чтобы договориться о встрече-знакомстве.
+          Анкета у нас. Следующий шаг — короткое обучение, а после него вы сами запишетесь на собеседование с координатором.
         </p>
       </div>
       {p && (tags.length > 0 || roleTitles.length > 0) ? (
@@ -859,7 +859,7 @@ function Thanks(props: { volunteer: Volunteer }) {
           <p className="text-hint">Мы ещё разбираем вашу анкету — подходящие задачи появятся в личном кабинете.</p>
         </Card>
       )}
-      <p>Пока можно познакомиться с фондом и пройти короткое обучение — оно нужно до первого занятия.</p>
+      <p>Обучение — несколько коротких текстов о наших подопечных и правилах фонда, в конце небольшой тест.</p>
       <Button wide onClick={() => navigate("/training")}>
         Пройти обучение
       </Button>

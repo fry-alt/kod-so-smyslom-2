@@ -337,11 +337,12 @@ function CallCard({ i }: { i: Interview }) {
 
 // ===== Путь в фонде =====
 
-type StepKey = "form" | "interview" | "training" | "approval" | "classes";
+// порядок шагов — порядок ключей: сначала обучение, потом собеседование
+type StepKey = "form" | "training" | "interview" | "approval" | "classes";
 const STEP_TITLE: Record<StepKey, string> = {
   form: "Анкета",
-  interview: "Собеседование",
   training: "Обучение",
+  interview: "Собеседование",
   approval: "Допуск",
   classes: "Занятия",
 };
@@ -354,9 +355,9 @@ function Path(props: { v: Volunteer | null; interviews: Interview[]; participati
   const later = (...s: Volunteer["status"][]) => !!v && s.includes(v.status);
   const done: Record<StepKey, boolean> = {
     form: !!v,
-    // до видеособеседований на сайте знакомились без системы — поэтому «дальше новой анкеты» тоже считается
-    interview: !!v && (props.interviews.some((i) => i.status === "done") || !later("new")),
     training: later("trained", "approved", "active"),
+    // до видеособеседований на сайте знакомились без системы — поэтому допуск тоже значит «собеседование было»
+    interview: props.interviews.some((i) => i.status === "done") || later("approved", "active"),
     approval: later("approved", "active"),
     classes: later("active") || props.participations.some((p) => p.status === "attended"),
   };
