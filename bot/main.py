@@ -5,10 +5,12 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import BotCommand
 
 from bot.api_client import BackendClient
 from bot.config import BotSettings
 from bot.handlers import routers
+from bot.keyboards import menu_button
 
 # тот же формат, что у бэкенда (app/log.py) — бот от бэкенда не зависит
 LOG_FORMAT = "%(asctime)s | %(levelname)-7s | %(name)s | %(message)s"
@@ -31,12 +33,32 @@ async def main() -> None:
     dp["settings"] = settings
     dp.include_routers(*routers)
 
+    await setup_bot(bot, settings)
     log.info("Бот запущен, бэкенд: %s", settings.backend_url)
     try:
         await dp.start_polling(bot)
     finally:
         await api.close()
         await bot.session.close()
+
+
+async def setup_bot(bot: Bot, settings: BotSettings) -> None:
+    """Команды и кнопка меню «Приложение» — чтобы не настраивать их руками в @BotFather."""
+    try:
+        await bot.set_my_commands(
+            [
+                BotCommand(command="start", description="Начать: анкета и приложение"),
+                BotCommand(command="help", description="Что умеет бот"),
+            ]
+        )
+        button = menu_button(settings.webapp_url)
+        if button:
+            await bot.set_chat_menu_button(menu_button=button)
+            log.info("Кнопка меню ведёт в Mini App: %s", settings.webapp_url)
+        else:
+            log.warning("WEBAPP_URL не https — кнопки Mini App не будет")
+    except Exception:  # бот должен работать, даже если Telegram не принял настройку
+        log.exception("Не удалось настроить команды и кнопку меню")
 
 
 if __name__ == "__main__":

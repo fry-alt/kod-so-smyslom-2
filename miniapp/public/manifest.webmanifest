@@ -1,0 +1,16 @@
+{
+  "name": "Дети Марии — волонтёрам",
+  "short_name": "Дети Марии",
+  "description": "Анкета, обучение и задачи для волонтёров фонда «Дети Марии»; кабинет координатора — /admin.",
+  "lang": "ru",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fffaf5",
+  "theme_color": "#e0672b",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
