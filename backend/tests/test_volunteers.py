@@ -29,7 +29,7 @@ def test_create_and_get_volunteer(client):
     v = create(client)
     assert v["id"] > 0
     assert v["status"] == "new"
-    assert v["profile"] is None  # профиль появится в T-05
+    assert v["profile"] is not None  # на fake — заглушка по схеме Profile
     assert v["hours"] == 0
     assert v["training_score"] is None
     assert v["answers"]["region"] == "yaroslavl"
