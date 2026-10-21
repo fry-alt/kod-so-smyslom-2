@@ -44,7 +44,7 @@ export default function InterviewBlock(props: { v: Volunteer }) {
         <p className="text-sm text-hint">Видеозвонок прямо на сайте. Ссылка уходит волонтёру в Telegram.</p>
       </div>
 
-      <Schedule volunteerId={v.id} onCreated={replace} />
+        <Schedule volunteerId={v.id} onCreated={replace} primary={v.status === "new"} />
 
       {loading && !list && <Loading />}
       {error && !list && <ErrorBox text={`Не удалось загрузить собеседования: ${error}`} onRetry={reload} />}
@@ -71,7 +71,7 @@ export default function InterviewBlock(props: { v: Volunteer }) {
 }
 
 /** «Назначить»: дата и время → POST /volunteers/{id}/interviews. */
-function Schedule(props: { volunteerId: number; onCreated: (i: Interview) => void }) {
+function Schedule(props: { volunteerId: number; onCreated: (i: Interview) => void; primary?: boolean }) {
   const [when, setWhen] = useState(tomorrowAt(15));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -107,7 +107,7 @@ function Schedule(props: { volunteerId: number; onCreated: (i: Interview) => voi
           onChange={(e) => setWhen(e.target.value)}
           className={`${inputClass} w-auto min-w-0 flex-1 basis-52`}
         />
-        <Button type="submit" loading={saving}>
+        <Button type="submit" variant={props.primary ? "primary" : "secondary"} loading={saving}>
           Назначить
         </Button>
       </div>
@@ -133,6 +133,7 @@ function InterviewItem(props: { i: Interview; v: Volunteer; roles: Role[]; onCha
   const past = new Date(i.starts_at).getTime() < Date.now();
 
   async function setStatus(status: InterviewStatus) {
+    if (status === "canceled" && !window.confirm("Отменить собеседование? Волонтёр больше не сможет войти по этой ссылке.")) return;
     setSaving(status);
     setError("");
     try {
@@ -159,10 +160,10 @@ function InterviewItem(props: { i: Interview; v: Volunteer; roles: Role[]; onCha
               Открыть звонок
             </LinkButton>
             <Button variant="secondary" onClick={() => setStatus("done")} loading={saving === "done"} disabled={saving !== null}>
-              Прошло
+              Отметить: состоялось
             </Button>
             <Button variant="secondary" onClick={() => setStatus("canceled")} loading={saving === "canceled"} disabled={saving !== null}>
-              Отменить
+              Отменить собеседование
             </Button>
           </div>
           <p className="text-sm text-hint">

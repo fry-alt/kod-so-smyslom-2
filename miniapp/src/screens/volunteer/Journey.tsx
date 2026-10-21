@@ -115,12 +115,12 @@ const STEP_COLORS = ["bg-logo-blue", "bg-logo-berry", "bg-accent"];
 
 function Step(props: { i: number; title: string; text: string; art: ReactNode; raised?: boolean }) {
   return (
-    <li className={`flex flex-col gap-3 ${props.raised ? "md:-mt-8" : "md:mt-6"}`}>
+    <li className={`flex min-w-0 flex-col gap-3 ${props.raised ? "md:-mt-8" : "md:mt-6"}`}>
       <div className="flex items-center gap-3">
         <span className={`flex size-10 shrink-0 items-center justify-center rounded-full font-display text-lg font-semibold text-white ${STEP_COLORS[props.i]}`}>
           {props.i + 1}
         </span>
-        <span className="font-display text-xl font-semibold leading-tight">{props.title}</span>
+        <span className="min-w-0 break-words font-display text-xl font-semibold leading-tight">{props.title}</span>
       </div>
       <div className={`journey-step journey-step-${props.i + 1} rounded-[1.75rem] bg-surface p-3`}>{props.art}</div>
       <p className="text-hint">{props.text}</p>
@@ -134,7 +134,7 @@ export default function Journey() {
       <h2 className="font-display text-2xl font-semibold">Как всё устроено</h2>
 
       {/* ноутбук: шаги в ряд дугой, стрелки между ними */}
-      <ol className="hidden grid-cols-[1fr_5.5rem_1fr_5.5rem_1fr] items-start md:grid">
+      <ol className="hidden grid-cols-[minmax(0,1fr)_5.5rem_minmax(0,1fr)_5.5rem_minmax(0,1fr)] items-start md:grid">
         <Step i={0} {...STEPS[0]} />
         <li aria-hidden="true" className="mt-24 px-1">
           <CurvedArrow up index={1} />

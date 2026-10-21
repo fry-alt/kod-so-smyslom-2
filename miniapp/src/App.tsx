@@ -5,14 +5,14 @@
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
 import { useEffect, type ReactNode } from "react";
 
+import AdminDock from "./AdminDock";
 import { backend, getAccount, getVolunteerId, logout, USE_MOCK } from "./backend";
 import Footer from "./Footer";
-import { UnreadBadge, useUnread } from "./messages/Thread";
 import CallScreen from "./call/CallScreen";
 import CoordinatorPanel from "./call/CoordinatorPanel";
-import { match, navigate, usePath } from "./router";
+import { match, navigate, navigateBack, usePath } from "./router";
 import { tg } from "./telegram";
-import { Button, Link, useLoad } from "./ui";
+import { ButtonLink, Link, useLoad } from "./ui";
 import Auth from "./screens/Auth";
 import Analytics from "./screens/admin/Analytics";
 import AdminMessages from "./screens/admin/Messages";
@@ -81,6 +81,17 @@ export default function App() {
   useEffect(() => {
     document.title = `${pageTitle(path, search)} — Дети Марии`;
   }, [path, search]);
+  useEffect(() => {
+    const back = tg?.BackButton;
+    if (!back) return;
+    const goBack = () => navigateBack("/");
+    back.onClick(goBack);
+    return () => back.offClick(goBack);
+  }, []);
+  useEffect(() => {
+    if (path === "/") tg?.BackButton?.hide();
+    else tg?.BackButton?.show();
+  }, [path]);
   // видеособеседование — на весь экран, без меню (ссылку открывают и волонтёр, и координатор)
   const call = match("/call/:token", path);
   if (call) {
@@ -117,18 +128,24 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
   const auth = props.path === "/login" || needsAccount() && ["/me", "/form", "/interview", "/messages"].includes(props.path);
   // сообщения — как мессенджер: ровно на высоту экрана, прокручиваются только чаты внутри, подвала нет
   const chat = props.path === "/messages" && !auth;
+  const bottomPadding = focus ? "pb-0" : chat ? "pb-4 md:pb-6" : props.path === "/" ? "pb-24" : "pb-10";
+  const showVolunteerBack = !auth && ["/training", "/interview", "/messages", "/opportunities", "/history", "/ask"].includes(props.path);
   return (
     <div
-      className={`mx-auto flex flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : chat ? "pb-4 md:pb-6" : wide ? "pb-24" : "pb-10"}`}
+      className={`mx-auto flex w-full min-w-0 flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${bottomPadding}`}
     >
-      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+      <header className="flex flex-nowrap items-center justify-between gap-x-3">
         <Logo />
         {!auth && <AccountNav path={props.path} />}
       </header>
       <MockBanner />
-      <main className={focus ? "flex flex-1 flex-col" : chat ? "flex min-h-0 flex-1 flex-col" : undefined}>{props.children}</main>
-      {/* на странице входа подвала нет — ничего не отвлекает от формы */}
-      {!auth && !focus && !chat && <Footer />}
+      {showVolunteerBack && (
+        <nav aria-label="Навигация по кабинету">
+          <Link to="/me">← Личный кабинет</Link>
+        </nav>
+      )}
+      <main className={`w-full min-w-0 ${focus ? "flex flex-1 flex-col" : chat ? "flex min-h-0 flex-1 flex-col" : ""}`}>{props.children}</main>
+      {props.path === "/" && <Footer />}
     </div>
   );
 }
@@ -137,7 +154,7 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
 function Logo(props: { className?: string }) {
   return (
     <Link to="/" className="flex shrink-0 items-center">
-      <img src="/logo.svg" alt="Дети Марии — на главную" className={props.className ?? "h-9 w-auto md:h-11"} />
+      <img src="/logo.svg" alt="Дети Марии — на главную" className={props.className ?? "h-6 w-auto min-[360px]:h-9 md:h-11"} />
     </Link>
   );
 }
@@ -151,31 +168,31 @@ function AccountNav(props: { path: string }) {
   if (account && props.path === "/me") return null;
   if (account?.role === "coordinator") {
     return (
-      <Button variant="secondary" onClick={() => navigate("/admin")}>
-        Кабинет фонда
-      </Button>
+      <ButtonLink to="/admin">
+        <span className="sm:hidden">Кабинет</span><span className="hidden sm:inline">Кабинет фонда</span>
+      </ButtonLink>
     );
   }
   if (account && !me) {
     return (
-      <Button variant="secondary" onClick={() => navigate("/me")}>
-        Личный кабинет
-      </Button>
+      <ButtonLink to="/me">
+        <span className="sm:hidden">Кабинет</span><span className="hidden sm:inline">Личный кабинет</span>
+      </ButtonLink>
     );
   }
   if (!id || !me) {
     return (
-      <Button variant="secondary" onClick={() => navigate("/login?mode=login")}>
+      <ButtonLink to="/login?mode=login">
         Войти
-      </Button>
+      </ButtonLink>
     );
   }
   return (
     <div className="flex items-center gap-3">
       <span className="hidden max-w-[12rem] truncate font-semibold sm:inline">{me.name.split(" ")[0]}</span>
-      <Button variant="secondary" onClick={() => navigate("/me")}>
-        Личный кабинет
-      </Button>
+      <ButtonLink to="/me">
+        <span className="sm:hidden">Кабинет</span><span className="hidden sm:inline">Личный кабинет</span>
+      </ButtonLink>
     </div>
   );
 }
@@ -197,8 +214,8 @@ function pageTitle(path: string, search: string): string {
   if (path.startsWith("/admin/analytics")) return "Аналитика";
   if (path.startsWith("/admin/volunteers/")) return "Карточка волонтёра";
   if (path.startsWith("/admin/volunteers")) return "Волонтёры";
-  if (path.startsWith("/admin/opportunities/")) return "Карточка возможности";
-  if (path.startsWith("/admin/opportunities")) return "Возможности";
+  if (path.startsWith("/admin/opportunities/")) return "Карточка занятия";
+  if (path.startsWith("/admin/opportunities")) return "Занятия";
   if (path.startsWith("/admin/messages")) return "Сообщения";
   if (path.startsWith("/admin/settings")) return "Настройки";
   return "Страница не найдена";
@@ -208,52 +225,20 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
   return (
     <div className="admin min-h-screen">
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 pt-3 pb-12">
           <div className="flex items-center gap-3 font-semibold">
             <Logo className="h-9 w-auto" />
-            <span className="text-hint">кабинет фонда</span>
+            <span className="hidden text-hint sm:inline">кабинет фонда</span>
           </div>
-          <nav className="flex flex-wrap gap-4">
-            <NavLink to="/admin" path={props.path} exact>
-              Сводка
-            </NavLink>
-            <NavLink to="/admin/search" path={props.path}>
-              Умный поиск
-            </NavLink>
-            <NavLink to="/admin/volunteers" path={props.path}>
-              База
-            </NavLink>
-            <NavLink to="/admin/opportunities" path={props.path}>
-              Возможности
-            </NavLink>
-            <NavLink to="/admin/analytics" path={props.path}>
-              Аналитика
-            </NavLink>
-            <NavLink to="/admin/messages" path={props.path}>
-              <MessagesLabel />
-            </NavLink>
-            <NavLink to="/admin/settings" path={props.path}>
-              Настройки
-            </NavLink>
-          </nav>
           <CoordinatorMenu />
         </div>
       </header>
-      <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
+      <AdminDock path={props.path} />
+      <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-6">
         <MockBanner />
         {props.children}
       </main>
     </div>
-  );
-}
-
-/** «Сообщения» в меню фонда — со значком новых от волонтёров. */
-function MessagesLabel() {
-  const unread = useUnread(null, "coordinator");
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      Сообщения <UnreadBadge count={unread} />
-    </span>
   );
 }
 
@@ -279,18 +264,6 @@ function CoordinatorMenu() {
         Выйти
       </button>
     </div>
-  );
-}
-
-function NavLink(props: { to: string; path: string; exact?: boolean; children: ReactNode }) {
-  const active = props.exact ? props.path === props.to : props.path.startsWith(props.to);
-  return (
-    <Link
-      to={props.to}
-      className={active ? "font-semibold text-ink underline decoration-accent decoration-2 underline-offset-8" : "text-hint hover:text-ink"}
-    >
-      {props.children}
-    </Link>
   );
 }
 

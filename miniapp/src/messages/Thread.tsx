@@ -177,7 +177,7 @@ export default function Thread(props: {
 export function Bubble(props: { m: Message; mine: boolean; name: string; showName: boolean; read: boolean; inChat?: boolean }) {
   const { m, mine } = props;
   return (
-    <div className={`bubble-in flex max-w-[85%] flex-col gap-1 ${mine ? "items-end self-end" : "items-start self-start"}`}>
+    <div className={`bubble-in flex min-w-0 max-w-[85%] flex-col gap-1 ${mine ? "items-end self-end" : "items-start self-start"}`}>
       {props.showName && <span className="px-2 text-sm font-semibold text-hint">{props.name}</span>}
       <div
         className={`rounded-3xl px-4 py-2.5 text-lg leading-snug break-words whitespace-pre-wrap ${

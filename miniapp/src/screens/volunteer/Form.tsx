@@ -293,7 +293,7 @@ export default function Form() {
     <form
       onSubmit={next}
       noValidate
-      className="grid flex-1 gap-6 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-10 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-14"
+      className="grid min-w-0 flex-1 gap-6 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-10 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-14"
     >
       <StepList step={step} reached={reached} saved={saved} onJump={jump} />
 
@@ -307,18 +307,18 @@ export default function Form() {
           data-step
           className={`flex flex-col gap-6 ${direction === "forward" ? "step-in-forward" : "step-in-back"}`}
         >
-          <div className="flex items-start gap-4">
+            <div className="flex min-w-0 items-start gap-4">
             <span
               className="step-icon grid size-14 shrink-0 place-items-center rounded-2xl bg-soft text-3xl"
               aria-hidden="true"
             >
               {STEPS[step].icon}
             </span>
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <h1
                 ref={headingRef}
                 tabIndex={-1}
-                className="step-heading font-display text-[1.6rem] leading-tight font-semibold tracking-tight text-balance md:text-[2rem]"
+                className="step-heading min-w-0 [overflow-wrap:anywhere] font-display text-[1.6rem] leading-tight font-semibold tracking-tight text-balance md:text-[2rem]"
               >
                 {step === 1 && firstName ? `${firstName}, немного о жизни` : STEPS[step].title}
               </h1>
@@ -502,7 +502,7 @@ export default function Form() {
           </div>
         </div>
 
-        <div className="sticky bottom-0 z-10 -mx-4 mt-auto flex gap-3 bg-gradient-to-t from-page from-70% to-transparent px-4 pt-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="sticky bottom-0 z-10 mt-auto flex min-w-0 gap-3 bg-gradient-to-t from-page from-70% to-transparent pt-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
           {step > 0 && !sending && (
             <button
               type="button"
@@ -713,7 +713,7 @@ function Choices<T extends string>(props: {
                 {props.icons[k]}
               </span>
             )}
-            <span className="flex flex-1 flex-col leading-tight">
+            <span className="flex min-w-0 flex-1 flex-col break-words leading-tight">
               <span className="font-semibold">{props.options[k]}</span>
               {props.subs?.[k] && <span className="mt-0.5 text-sm text-hint">{props.subs[k]}</span>}
             </span>

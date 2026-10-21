@@ -12,6 +12,9 @@ export function Button(props: {
   loading?: boolean;
   loadingLabel?: string;
   wide?: boolean;
+  ariaPressed?: boolean;
+  "aria-expanded"?: boolean;
+  "aria-controls"?: string;
 }) {
   const variant = props.variant ?? "primary";
   const look = {
@@ -24,6 +27,9 @@ export function Button(props: {
       type={props.type ?? "button"}
       onClick={props.onClick}
       disabled={props.disabled || props.loading}
+      aria-pressed={props.ariaPressed}
+      aria-expanded={props["aria-expanded"]}
+      aria-controls={props["aria-controls"]}
       {...(variant === "ghost" ? {} : flairHandlers)}
       className={`min-h-12 rounded-full px-6 py-3 font-semibold disabled:opacity-50 ${look} ${props.wide ? "w-full" : ""}`}
     >
@@ -58,10 +64,11 @@ export const flairHandlers = {
 };
 
 /** Ссылка внутри приложения: переход без перезагрузки страницы. */
-export function Link(props: { to: string; children: ReactNode; className?: string }) {
+export function Link(props: { to: string; children: ReactNode; className?: string; current?: boolean }) {
   return (
     <a
       href={props.to}
+      aria-current={props.current ? "page" : undefined}
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey) return; // открыть в новой вкладке — как обычно
         e.preventDefault();
@@ -74,8 +81,28 @@ export function Link(props: { to: string; children: ReactNode; className?: strin
   );
 }
 
+/** Навигационная ссылка, оформленная как кнопка для заметного действия-перехода. */
+export function ButtonLink(props: {
+  to: string;
+  children: ReactNode;
+  variant?: "primary" | "secondary";
+  wide?: boolean;
+}) {
+  const look = props.variant === "primary"
+    ? "bg-accent text-accent-text shadow-sm"
+    : "border-2 border-line bg-surface text-ink hover:border-accent";
+  return (
+    <Link
+      to={props.to}
+      className={`inline-flex min-h-12 items-center justify-center rounded-full px-6 py-3 font-semibold no-underline ${look} ${props.wide ? "w-full" : ""}`}
+    >
+      {props.children}
+    </Link>
+  );
+}
+
 export function Card(props: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-3xl bg-surface p-5 ${props.className ?? ""}`}>{props.children}</div>;
+  return <div className={`min-w-0 rounded-3xl bg-surface p-5 ${props.className ?? ""}`}>{props.children}</div>;
 }
 
 export function Badge(props: { children: ReactNode; className?: string; title?: string }) {
@@ -197,11 +224,11 @@ export function Contact({ contact }: { contact: string }) {
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-page px-4 py-2">
       <span className="font-medium">{contact}</span>
       <button type="button" onClick={copy} className="text-link hover:underline">
-        {copied ? "Скопировано ✓" : "Копировать"}
+        {copied ? "Контакт скопирован ✓" : "Скопировать контакт"}
       </button>
       {username && (
         <a href={`https://t.me/${username}`} target="_blank" rel="noreferrer" className="text-link hover:underline">
-          Написать в Telegram
+          Открыть Telegram
         </a>
       )}
     </div>

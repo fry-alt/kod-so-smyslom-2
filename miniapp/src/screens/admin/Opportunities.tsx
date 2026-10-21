@@ -1,4 +1,4 @@
-// Возможности фонда: список → «Создать» → карточка с участниками → «Подобрать» в умном поиске.
+// Занятия фонда: список → «Создать» → карточка с участниками → «Подобрать» в умном поиске.
 import type { Opportunity } from "../../api";
 import { backend } from "../../backend";
 import { FORMAT, REGION } from "../../labels";
@@ -12,15 +12,15 @@ export default function AdminOpportunities() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold">Возможности</h1>
-        <Button onClick={() => navigate("/admin/opportunities/new")}>+ Создать возможность</Button>
+        <h1 className="text-3xl font-bold">Занятия и события</h1>
+        <Button onClick={() => navigate("/admin/opportunities/new")}>+ Создать занятие</Button>
       </div>
       <p className="text-hint">
-        Занятия, события и задачи фонда. Откройте возможность, чтобы подобрать волонтёров и отметить, кто участвовал.
+        Создавайте занятия и события фонда, подбирайте волонтёров и отмечайте участие.
       </p>
       {loading && <Loading />}
       {error && <ErrorBox text={error} onRetry={reload} />}
-      {data?.length === 0 && <Empty>Возможностей пока нет. Нажмите «Создать возможность».</Empty>}
+      {data?.length === 0 && <Empty>Занятий пока нет. Нажмите «Создать занятие».</Empty>}
       <div className="grid gap-3 md:grid-cols-2">
         {sorted.map((o) => (
           <OpportunityTile key={o.id} o={o} />

@@ -6,7 +6,8 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, ty
 import type { ChatMessage, Source } from "../../api";
 import { chatApi } from "../../backend";
 import { tg } from "../../telegram";
-import { ErrorBox, errorText } from "../../ui";
+import { Button, ErrorBox, errorText } from "../../ui";
+import { navigate } from "../../router";
 
 /** Примеры вопросов — нажать и сразу спросить. */
 const EXAMPLES = ["Как стать волонтёром?", "Можно ли помогать онлайн?", "Что взять на первую встречу?"];
@@ -31,7 +32,7 @@ type Turn = ChatMessage & { sources?: Source[] };
 
 export default function Ask() {
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-10">
+    <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-10">
       <header className="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
         <h1 className="font-display text-[2rem] leading-[1.15] font-semibold tracking-tight text-balance md:text-[2.6rem]">
           Спросить о фонде
@@ -44,7 +45,7 @@ export default function Ask() {
           🔒 Не пишите сюда телефон, адрес и паспортные данные — их лучше передать координатору лично.
         </p>
       </header>
-      <section aria-label="Переписка с помощником" className="flex flex-col gap-5 rounded-[2rem] bg-surface p-4 md:p-6 lg:min-h-[26rem]">
+      <section aria-label="Переписка с помощником" className="flex min-w-0 flex-col gap-5 rounded-[2rem] bg-surface p-4 md:p-6 lg:min-h-[26rem]">
         <ChatPanel />
       </section>
     </div>
@@ -97,7 +98,7 @@ function ChatPanel() {
             <Examples onPick={send} />
           </>
         )}
-        {turns.map((t, i) => (t.role === "user" ? <UserBubble key={i} text={t.content} /> : <AnswerBubble key={i} turn={t} />))}
+        {turns.map((t, i) => (t.role === "user" ? <UserBubble key={i} text={t.content} /> : <AnswerBubble key={i} turn={t} question={turns[i - 1]?.role === "user" ? turns[i - 1].content : undefined} />))}
         {loading && (
           <>
             <UserBubble text={pending} />
@@ -130,7 +131,7 @@ function ChatPanel() {
 
 function UserBubble(props: { text: string }) {
   return (
-    <div className="tile-in max-w-[85%] self-end whitespace-pre-wrap rounded-3xl rounded-br-lg bg-accent px-5 py-3 text-accent-text">
+    <div className="tile-in min-w-0 max-w-[85%] self-end [overflow-wrap:anywhere] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-accent px-5 py-3 text-accent-text">
       {props.text}
     </div>
   );
@@ -142,11 +143,17 @@ function plain(text: string) {
 }
 
 /** Ответ помощника и под ним — откуда он: раскрывающиеся фрагменты документов фонда. */
-function AnswerBubble(props: { turn: Turn }) {
+function AnswerBubble(props: { turn: Turn; question?: string }) {
   const sources = props.turn.sources ?? [];
+  const unanswered = sources.length === 0 && /в документах фонда этого нет|в документах фонда об этом ничего нет|не знаю:.*документ|спросите координатора/i.test(props.turn.content);
   return (
-    <div className="tile-in flex max-w-[85%] flex-col gap-2 self-start rounded-3xl rounded-bl-lg bg-page px-5 py-3">
+    <div className="tile-in flex min-w-0 max-w-[85%] flex-col gap-2 self-start rounded-3xl rounded-bl-lg bg-page px-5 py-3">
       <p className="whitespace-pre-wrap">{props.turn.content}</p>
+      {unanswered && props.question && (
+        <Button variant="secondary" onClick={() => navigate(`/messages?about=fund&question=${encodeURIComponent(props.question!)}`)}>
+          Написать координатору
+        </Button>
+      )}
       {sources.length > 0 && (
         <div className="flex flex-col gap-1 border-t border-line pt-2 text-sm">
           <span className="text-hint">Откуда ответ:</span>

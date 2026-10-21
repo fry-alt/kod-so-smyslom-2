@@ -830,9 +830,6 @@ html:has(form [data-step]) {
   animation: marquee-up 40s linear infinite;
   will-change: transform;
 }
-.marquee3d.is-paused * {
-  animation-play-state: paused !important;
-}
 .marquee3d-down {
   animation-name: marquee-down;
 }
@@ -1155,5 +1152,159 @@ html:has(form [data-step]) {
   .goo.is-busy .goo-btn,
   .goo-dots i {
     animation: none;
+  }
+}
+
+/* Меню кабинета фонда — плавающий «док» (AdminDock.tsx): капсула наполовину заходит на шапку
+   и при прокрутке остаётся сверху. Иконка растёт через --s (его задаёт скрипт), подпись всегда видна. */
+.dock-wrap {
+  position: sticky;
+  top: 1.25rem;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  margin-top: -2.4rem;
+  padding-inline: 1rem;
+  pointer-events: none; /* по бокам от капсулы клики проходят к странице */
+}
+
+.dock {
+  position: relative;
+  display: flex;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0.45rem 0.5rem 0.35rem;
+  list-style: none;
+  pointer-events: auto;
+  border: 1px solid var(--color-line);
+  border-radius: 1.6rem;
+  background: color-mix(in srgb, var(--p-page) 85%, transparent);
+  backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow:
+    0 12px 32px -14px color-mix(in srgb, var(--p-ink) 35%, transparent),
+    0 2px 6px -2px color-mix(in srgb, var(--p-ink) 10%, transparent);
+}
+
+.dock-item {
+  --s: 1;
+  display: flex;
+}
+
+.dock-link {
+  position: relative;
+  display: flex;
+  min-width: 5rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.35rem 0.4rem;
+  border-radius: 1.1rem;
+  color: var(--p-hint);
+}
+
+.dock-icon {
+  position: relative;
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  border-radius: 0.9rem;
+  background: var(--p-surface);
+  color: var(--p-ink);
+  transform: scale(var(--s));
+  transform-origin: 50% 100%;
+  will-change: transform;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.dock-icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.dock-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.dock-link:hover .dock-icon {
+  background: var(--p-soft);
+}
+.dock-link:hover .dock-label,
+.dock-link.is-active .dock-label {
+  color: var(--p-ink);
+}
+
+/* открытый раздел: зелёная плитка и точка под подписью */
+.dock-link.is-active .dock-icon {
+  background: var(--p-accent);
+  color: var(--p-accent-text);
+  box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--p-accent) 70%, transparent);
+}
+.dock-link.is-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0.05rem;
+  left: 50%;
+  width: 0.3rem;
+  height: 0.3rem;
+  margin-left: -0.15rem;
+  border-radius: 50%;
+  background: var(--p-accent);
+}
+
+/* счётчик новых сообщений — в углу иконки */
+.dock-badge {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.55rem;
+}
+.dock-badge > span {
+  min-width: 1.15rem;
+  padding-inline: 0.25rem;
+  font-size: 0.62rem;
+  line-height: 1.15rem;
+  box-shadow: 0 0 0 2px var(--p-page);
+}
+
+/* телефон: компактная панель с прокруткой, без увеличения */
+@media (max-width: 640px) {
+  .dock-wrap {
+    top: 0.5rem;
+    margin-top: -2.2rem;
+    padding-inline: 0.75rem;
+  }
+  .dock {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding: 0.4rem 0.35rem 0.3rem;
+  }
+  .dock::-webkit-scrollbar {
+    display: none;
+  }
+  .dock-link {
+    min-width: 4.3rem;
+  }
+  .dock-icon {
+    width: 2.15rem;
+    height: 2.15rem;
+    transform: none;
+  }
+  .dock-label {
+    font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-icon {
+    transform: none;
+    transition: none;
   }
 }
