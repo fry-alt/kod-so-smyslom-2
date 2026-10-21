@@ -781,9 +781,15 @@ body {
 
 /* 3D-бегущая лента сцен (VolunteerScenes.tsx): плоскость наклонена, колонки едут вверх и вниз по очереди. */
 .marquee3d {
-  /* широкое мягкое растворение по краям: карточки плавно проявляются и уходят, а не выскакивают */
-  -webkit-mask-image: radial-gradient(ellipse 72% 68% at 50% 50%, #000 35%, transparent 100%);
-  mask-image: radial-gradient(ellipse 72% 68% at 50% 50%, #000 35%, transparent 100%);
+  /* подложка и карточки растворяются в фон со всех четырёх сторон: к самому краю маска доходит до нуля,
+     поэтому видимой границы нет, а середина остаётся чёткой. Две вложенные маски (здесь — по вертикали,
+     у .marquee3d-fade — по горизонтали) перемножаются сами, без mask-composite и разных префиксов для Safari. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+}
+.marquee3d-fade {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 22%, #000 78%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 22%, #000 78%, transparent);
 }
 .marquee3d-plane {
   position: absolute;

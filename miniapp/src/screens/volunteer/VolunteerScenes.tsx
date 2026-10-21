@@ -364,15 +364,17 @@ export default function VolunteerScenes() {
           </li>
         ))}
       </ul>
-      <div className="marquee3d tile-in relative h-[26rem] overflow-hidden rounded-[2rem] bg-surface md:h-[34rem]" aria-hidden="true">
-        <div className="marquee3d-plane grid grid-cols-3 gap-4">
-          {columns.map((col, c) => (
-            <div key={c} className={`marquee3d-col flex flex-col gap-4 ${c % 2 ? "marquee3d-down" : "marquee3d-up"}`} style={{ animationDuration: `${[44, 52, 48][c]}s` }}>
-              {[...col, ...col, ...col].map((s, i) => (
-                <SceneCard key={`${s.title}-${i}`} s={s} />
-              ))}
-            </div>
-          ))}
+      <div className="marquee3d tile-in relative h-[26rem] md:h-[34rem]" aria-hidden="true">
+        <div className="marquee3d-fade absolute inset-0 overflow-hidden bg-surface">
+          <div className="marquee3d-plane grid grid-cols-3 gap-4">
+            {columns.map((col, c) => (
+              <div key={c} className={`marquee3d-col flex flex-col gap-4 ${c % 2 ? "marquee3d-down" : "marquee3d-up"}`} style={{ animationDuration: `${[44, 52, 48][c]}s` }}>
+                {[...col, ...col, ...col].map((s, i) => (
+                  <SceneCard key={`${s.title}-${i}`} s={s} />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </>
