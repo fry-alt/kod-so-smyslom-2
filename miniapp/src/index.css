@@ -453,3 +453,66 @@ body {
 .call-stage :focus-visible {
   outline-color: #fff;
 }
+
+/* Страница входа (screens/Auth.tsx): за сценами медленно плавают цветные пятна в цветах логотипа. */
+.auth-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(36px);
+  opacity: 0.55;
+  animation: auth-float 14s ease-in-out infinite alternate;
+}
+.auth-blob-1 {
+  width: 16rem;
+  height: 16rem;
+  top: -5rem;
+  right: -4rem;
+  background: var(--logo-yellow);
+}
+.auth-blob-2 {
+  width: 13rem;
+  height: 13rem;
+  bottom: -4rem;
+  left: -3rem;
+  background: var(--logo-cyan);
+  animation-delay: -5s;
+}
+.auth-blob-3 {
+  width: 10rem;
+  height: 10rem;
+  top: 40%;
+  left: 45%;
+  background: var(--logo-berry);
+  opacity: 0.25;
+  animation-delay: -9s;
+}
+@keyframes auth-float {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-2.5rem, 2rem) scale(1.15);
+  }
+}
+
+/* Личный кабинет: карточки чуть приподнимаются при наведении. */
+.lift {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px -28px var(--p-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-blob {
+    animation: none;
+  }
+  .lift,
+  .lift:hover {
+    transition: none;
+    transform: none;
+  }
+}

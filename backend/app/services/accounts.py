@@ -1,0 +1,94 @@
+"""Аккаунты сайта: регистрация и вход по почте и паролю, роль «волонтёр» или «координатор».
+
+Пароль хранится только хэшем (PBKDF2 из стандартной библиотеки — без новых зависимостей).
+Почта и пароль в LLM и в индекс не уходят. Координатором можно стать с кодом фонда
+(COORDINATOR_CODE в .env); если код не задан — без него, как на демо.
+"""
+
+import hashlib
+import hmac
+import secrets
+
+from sqlmodel import Session, select
+
+from app.config import get_settings
+from app.models import Account
+from app.schemas import AccountOut, AuthOut, LoginIn, RegisterIn
+
+ITERATIONS = 200_000
+
+
+class AuthError(ValueError):
+    """Понятная человеку причина, почему не получилось войти или зарегистрироваться."""
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), ITERATIONS).hex()
+    return f"pbkdf2${ITERATIONS}${salt}${digest}"
+
+
+def check_password(password: str, stored: str) -> bool:
+    try:
+        _, iterations, salt, digest = stored.split("$")
+    except ValueError:
+        return False
+    actual = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), int(iterations)).hex()
+    return hmac.compare_digest(actual, digest)
+
+
+def to_out(account: Account) -> AccountOut:
+    return AccountOut.model_validate(account, from_attributes=True)
+
+
+def _auth(account: Account) -> AuthOut:
+    return AuthOut(token=account.token, account=to_out(account))
+
+
+def by_email(session: Session, email: str) -> Account | None:
+    return session.exec(select(Account).where(Account.email == email.strip().lower())).first()
+
+
+def by_token(session: Session, token: str) -> Account | None:
+    if not token:
+        return None
+    return session.exec(select(Account).where(Account.token == token)).first()
+
+
+def register(session: Session, data: RegisterIn) -> AuthOut:
+    if by_email(session, data.email):
+        raise AuthError("Эта почта уже зарегистрирована — войдите")
+    code = get_settings().coordinator_code
+    if data.role == "coordinator" and code and not hmac.compare_digest(data.code.strip(), code):
+        raise AuthError("Неверный код фонда. Его выдаёт руководитель фонда")
+    account = Account(
+        email=data.email.strip().lower(),
+        password_hash=hash_password(data.password),
+        role=data.role,
+        token=secrets.token_urlsafe(32),
+    )
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return _auth(account)
+
+
+def login(session: Session, data: LoginIn) -> AuthOut:
+    account = by_email(session, data.email)
+    if account is None or not check_password(data.password, account.password_hash):
+        raise AuthError("Неверная почта или пароль")
+    if account.role != data.role:
+        who = "координатор фонда" if account.role == "coordinator" else "волонтёр"
+        raise AuthError(
+            f"Эта почта зарегистрирована как {who} — выберите «{who}» и войдите ещё раз"
+        )
+    return _auth(account)
+
+
+def link_volunteer(session: Session, account: Account, volunteer_id: int) -> None:
+    """Анкета, отправленная из аккаунта волонтёра, становится его анкетой (первая — не перезаписываем)."""
+    if account.role != "volunteer" or account.volunteer_id is not None:
+        return
+    account.volunteer_id = volunteer_id
+    session.add(account)
+    session.commit()

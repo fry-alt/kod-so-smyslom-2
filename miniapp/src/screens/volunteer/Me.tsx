@@ -1,43 +1,34 @@
+// Личный кабинет волонтёра. Открывается сразу после регистрации — ещё до анкеты:
+// уже видно, куда можно пойти, а первый шаг пути — «Заполнить анкету».
+// Итог собеседования (оценка координатора) здесь не показываем — он только для фонда.
 import type { ReactNode } from "react";
 
-import type { Interview, Participation, Volunteer } from "../../api";
-import { backend, getVolunteerId, setVolunteerId } from "../../backend";
-import { STATUS, STATUS_COLOR } from "../../labels";
+import type { Interview, Opportunity, Participation, Volunteer } from "../../api";
+import { backend, getAccount, getVolunteerId, logout, setVolunteerId } from "../../backend";
+import { FORMAT, REGION, STATUS, STATUS_COLOR } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Button, Card, ErrorBox, FLAIR, flairHandlers, Loading, useLoad } from "../../ui";
+import { Badge, Button, Card, ErrorBox, FLAIR, flairHandlers, formatHours, Loading, useLoad } from "../../ui";
 
-/** Статус волонтёра: путь «анкета → собеседование → обучение → допуск → занятия», ближайший звонок и что дальше.
- *  Итог собеседования (оценка координатора) здесь не показываем — он только для фонда. */
 export default function Me() {
+  const account = getAccount();
   const id = getVolunteerId();
   const { data: v, error, loading, reload } = useLoad(
     () => (id ? backend.get(id) : Promise.resolve(null)),
     [id],
   );
-  // приглашения координатора — показываем сверху, чтобы не пропустить
   const { data: mine } = useLoad(
     () => (id ? backend.myParticipations(id) : Promise.resolve([])),
     [id],
   );
-  const invites = mine?.filter((p) => p.status === "invited") ?? [];
   const { data: interviews } = useLoad(
     () => (id ? backend.interviews(id) : Promise.resolve([])),
     [id],
   );
+  // приглашения координатора — показываем сверху, чтобы не пропустить
+  const invites = mine?.filter((p) => p.status === "invited") ?? [];
   const call = nextCall(interviews ?? []);
 
-  if (!id) {
-    return (
-      <div className="flex flex-col gap-5">
-        <h1 className="text-3xl font-bold">Мой статус</h1>
-        <p>Вы ещё не заполнили анкету.</p>
-        <Button wide onClick={() => navigate("/form")}>
-          Заполнить анкету
-        </Button>
-      </div>
-    );
-  }
-  if (loading) return <Loading />;
+  if (id && loading) return <Loading />;
   if (error) {
     // например, анкету удалили или моки сбросились после перезагрузки
     return (
@@ -55,70 +46,254 @@ export default function Me() {
       </div>
     );
   }
-  if (!v) return null;
+
+  const attended = (mine ?? []).filter((p) => p.status === "attended").length;
 
   return (
-    <div className="flex flex-col gap-5">
-      <h1 className="font-display text-3xl font-semibold">{v.name}</h1>
+    <div className="flex flex-col gap-6 pb-6">
+      <Hero
+        name={v ? v.name.split(" ")[0] : null}
+        email={account?.email ?? null}
+        badge={v ? <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge> : null}
+        stats={
+          v
+            ? [
+                { value: formatHours(v.hours), label: "волонтёрских часов" },
+                { value: v.training_score === null ? "—" : `${v.training_score}%`, label: "балл за обучение" },
+                { value: String(attended), label: attended === 1 ? "занятие" : "занятий" },
+              ]
+            : null
+        }
+      />
+
+      {!v && <StartCard />}
       {call && <CallCard i={call} />}
       {invites.length > 0 && (
-        <Card className="flex flex-col gap-3 ring-2 ring-accent">
+        <section className="flex flex-col gap-3 rounded-[1.75rem] bg-pop/25 p-5 ring-2 ring-pop sm:flex-row sm:items-center sm:justify-between">
           <p className="text-lg font-semibold">
             📩 Вас пригласили: {invites.map((p) => `«${p.opportunity_title}»`).join(", ")}
           </p>
-          <Button wide onClick={() => navigate("/opportunities")}>
-            Посмотреть и подтвердить
-          </Button>
-        </Card>
+          <Button onClick={() => navigate("/opportunities")}>Посмотреть и подтвердить</Button>
+        </section>
       )}
-      <Card className="flex flex-col gap-3">
-        <div>
-          <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <Events volunteerId={id} />
+          <Path v={v ?? null} interviews={interviews ?? []} participations={mine ?? []} upcoming={call} />
         </div>
-        {v.profile && (
-          <div className="flex flex-wrap gap-2">
-            {v.profile.skills.map((s) => (
-              <Badge key={s} className="bg-page">
-                {s}
-              </Badge>
-            ))}
-          </div>
-        )}
-        <p className="text-hint">
-          Волонтёрских часов: <b className="text-ink">{v.hours}</b>
-          {v.training_score !== null && (
-            <>
-              {" "}
-              · Балл за обучение: <b className="text-ink">{v.training_score}%</b>
-            </>
+        <aside className="flex flex-col gap-6">
+          {v?.profile && (v.profile.skills.length > 0 || v.profile.interests.length > 0) && (
+            <Card className="flex flex-col gap-3">
+              <h2 className="font-display text-lg font-semibold">Что мы о вас поняли</h2>
+              <div className="flex flex-wrap gap-2">
+                {[...new Set([...v.profile.skills, ...v.profile.interests])].map((s) => (
+                  <Badge key={s} className="bg-page">
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            </Card>
           )}
-        </p>
-      </Card>
-      <Path v={v} interviews={interviews ?? []} participations={mine ?? []} upcoming={call} />
-      <Button wide onClick={() => navigate("/training")}>
-        Обучение
-      </Button>
-      <Button wide variant="secondary" onClick={() => navigate("/opportunities")}>
-        Куда можно пойти
-      </Button>
-      <Button wide variant="secondary" onClick={() => navigate("/history")}>
-        Моя история и часы
-      </Button>
-      <Button wide variant="secondary" onClick={() => navigate("/ask")}>
-        Спросить о фонде
-      </Button>
-      <Button
-        variant="ghost"
-        onClick={() => {
-          setVolunteerId(null);
-          navigate("/");
-        }}
-      >
-        Это не я — выйти
-      </Button>
+          <QuickActions hasForm={!!v} />
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              navigate("/");
+            }}
+            className="min-h-12 self-start rounded-full px-4 font-semibold text-hint hover:text-ink"
+          >
+            Выйти из кабинета
+          </button>
+        </aside>
+      </div>
     </div>
   );
 }
+
+// ===== Шапка кабинета =====
+
+function Hero(props: {
+  name: string | null;
+  email: string | null;
+  badge: ReactNode;
+  stats: { value: string; label: string }[] | null;
+}) {
+  const initial = (props.name ?? props.email ?? "?")[0].toUpperCase();
+  return (
+    <section className="relative overflow-hidden rounded-[2rem] bg-soft p-5 sm:p-8">
+      <span aria-hidden="true" className="auth-blob auth-blob-1" />
+      <span aria-hidden="true" className="auth-blob auth-blob-2" />
+      <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="flex items-center gap-4">
+          <span
+            aria-hidden="true"
+            className="flex size-16 shrink-0 items-center justify-center rounded-full bg-logo-blue font-display text-2xl font-semibold text-white shadow-[0_10px_24px_-12px_var(--logo-blue)] sm:size-20 sm:text-3xl"
+          >
+            {initial}
+          </span>
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <h1 className="font-display text-[1.7rem] leading-tight font-semibold tracking-tight sm:text-[2.2rem]">
+              {props.name ? `Здравствуйте, ${props.name}!` : "Добро пожаловать!"}
+            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              {props.badge}
+              {props.email && <span className="truncate text-hint">{props.email}</span>}
+            </div>
+          </div>
+        </div>
+        {props.stats && (
+          <dl className="grid grid-cols-3 gap-2 sm:gap-3">
+            {props.stats.map((s) => (
+              <div key={s.label} className="flex flex-col rounded-2xl bg-page/85 px-3 py-3 backdrop-blur-sm sm:min-w-28 sm:px-4">
+                <dt className="order-2 text-sm leading-tight text-hint">{s.label}</dt>
+                <dd className="order-1 font-display text-2xl font-semibold">{s.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** До анкеты: крупно — первый шаг. */
+function StartCard() {
+  return (
+    <section className="flex flex-col gap-4 rounded-[1.75rem] border-2 border-cta/30 bg-page p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <div className="flex flex-col gap-1">
+        <span className="font-semibold text-cta">Первый шаг</span>
+        <h2 className="font-display text-xl leading-snug font-semibold sm:text-2xl">Расскажите о себе в анкете</h2>
+        <p className="text-hint">
+          Так координатор подберёт вам занятия по душе и пригласит на знакомство. Займёт 5–7 минут.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => navigate("/form")}
+        {...flairHandlers}
+        className={`btn-flair min-h-14 shrink-0 rounded-full bg-cta px-8 text-lg font-bold whitespace-nowrap text-white shadow-[0_8px_24px_-8px_var(--p-cta)] ${FLAIR.cta}`}
+      >
+        Заполнить анкету
+      </button>
+    </section>
+  );
+}
+
+// ===== Куда можно пойти =====
+
+function Events(props: { volunteerId: number | null }) {
+  const { data } = useLoad(() => backend.opportunities(props.volunteerId ?? undefined), [props.volunteerId]);
+  if (!data) return null;
+  const now = Date.now();
+  // подходящие под анкету — первыми, дальше по дате
+  const list = data
+    .filter((o) => new Date(o.starts_at).getTime() > now && (o.slots - o.taken > 0 || o.my_status))
+    .sort((a, b) => Number(b.recommended) - Number(a.recommended) || a.starts_at.localeCompare(b.starts_at))
+    .slice(0, 4);
+
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-display text-2xl font-semibold">Куда можно пойти</h2>
+        <button type="button" onClick={() => navigate("/opportunities")} className="font-semibold text-link hover:underline">
+          Все занятия →
+        </button>
+      </div>
+      {list.length === 0 ? (
+        <Card>
+          <p className="text-hint">Сейчас открытых занятий нет. Координатор добавит новые — они появятся здесь.</p>
+        </Card>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {list.map((o) => (
+            <li key={o.id}>
+              <EventCard o={o} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+const MY_STATUS: Record<NonNullable<Opportunity["my_status"]>, string> = {
+  responded: "Вы откликнулись",
+  invited: "Вас пригласили",
+  confirmed: "✓ Вы записаны",
+  attended: "✓ Вы участвовали",
+  declined: "Вы отказались",
+};
+
+function EventCard({ o }: { o: Opportunity }) {
+  const d = new Date(o.starts_at);
+  const left = o.slots - o.taken;
+  return (
+    <button
+      type="button"
+      onClick={() => navigate("/opportunities")}
+      className="lift flex h-full w-full gap-4 rounded-3xl border-2 border-line bg-page p-4 text-left hover:border-accent"
+    >
+      <span className="flex w-16 shrink-0 flex-col items-center rounded-2xl bg-soft py-2">
+        <span className="font-display text-2xl leading-none font-semibold">{d.getDate()}</span>
+        <span className="text-sm">{d.toLocaleDateString("ru", { month: "short" }).replace(".", "")}</span>
+        <span className="text-sm text-hint">{d.toLocaleDateString("ru", { weekday: "short" })}</span>
+      </span>
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="text-lg leading-snug font-semibold">{o.title}</span>
+        <span className="text-hint">
+          {d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })},{" "}
+          {o.format === "online" ? FORMAT.online.toLowerCase() : o.place || REGION[o.region]}
+        </span>
+        <span className="mt-1 flex flex-wrap gap-1.5">
+          {o.my_status ? (
+            <span className="rounded-full bg-soft px-3 py-0.5 text-sm font-semibold">{MY_STATUS[o.my_status]}</span>
+          ) : (
+            <span className="rounded-full bg-pop px-3 py-0.5 text-sm font-semibold">
+              {left === 1 ? "Нужен ещё 1 человек" : `Нужно ещё ${left} человек${left < 5 ? "а" : ""}`}
+            </span>
+          )}
+          {o.recommended && !o.my_status && (
+            <span className="rounded-full bg-accent px-3 py-0.5 text-sm font-semibold text-accent-text">Вам подходит</span>
+          )}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+// ===== Быстрые действия =====
+
+function QuickActions(props: { hasForm: boolean }) {
+  const items = [
+    { icon: "🎓", title: "Обучение", sub: "Курс и тест перед занятиями", to: "/training" },
+    { icon: "⏱", title: "История и часы", sub: "Где вы были и сколько помогли", to: "/history", needsForm: true },
+    { icon: "💬", title: "Спросить о фонде", sub: "Ответим по документам фонда", to: "/ask" },
+  ].filter((i) => props.hasForm || !i.needsForm);
+  return (
+    <nav aria-label="Разделы кабинета" className="flex flex-col gap-3">
+      {items.map((i) => (
+        <button
+          key={i.to}
+          type="button"
+          onClick={() => navigate(i.to)}
+          className="lift flex items-center gap-4 rounded-3xl bg-surface p-4 text-left"
+        >
+          <span aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-page text-2xl">
+            {i.icon}
+          </span>
+          <span className="flex flex-col">
+            <span className="font-semibold">{i.title}</span>
+            <span className="text-sm leading-snug text-hint">{i.sub}</span>
+          </span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+// ===== Видеособеседование =====
 
 /** Ближайшее назначенное собеседование. Опоздавшего ещё пускаем: звонок виден 2 часа после начала. */
 function nextCall(list: Interview[]): Interview | null {
@@ -141,23 +316,25 @@ function callWhen(iso: string): string {
 
 function CallCard({ i }: { i: Interview }) {
   return (
-    <section className="flex flex-col gap-4 rounded-[1.75rem] bg-soft p-5">
+    <section className="flex flex-col gap-4 rounded-[1.75rem] bg-logo-blue p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:p-6">
       <div className="flex flex-col gap-1">
-        <span className="font-semibold text-hint">📹 Видеособеседование с координатором</span>
+        <span className="font-semibold text-white/80">📹 Видеособеседование с координатором</span>
         <span className="font-display text-2xl font-semibold">{callWhen(i.starts_at)}</span>
-        <span className="text-hint">Перед входом вы увидите себя и проверите микрофон.</span>
+        <span className="text-white/80">Перед входом вы увидите себя и проверите микрофон.</span>
       </div>
       <button
         type="button"
         onClick={() => navigate(`/call/${encodeURIComponent(i.token)}`)}
         {...flairHandlers}
-        className={`btn-flair min-h-14 w-full rounded-full bg-cta px-8 text-lg font-bold text-white shadow-[0_8px_24px_-8px_var(--p-cta)] ${FLAIR.cta}`}
+        className={`btn-flair min-h-14 shrink-0 rounded-full bg-cta px-8 text-lg font-bold text-white shadow-[0_8px_24px_-8px_var(--p-cta)] ${FLAIR.cta}`}
       >
         Войти в звонок
       </button>
     </section>
   );
 }
+
+// ===== Путь в фонде =====
 
 type StepKey = "form" | "interview" | "training" | "approval" | "classes";
 const STEP_TITLE: Record<StepKey, string> = {
@@ -170,14 +347,14 @@ const STEP_TITLE: Record<StepKey, string> = {
 /** Цвет текущего шага — цвета букв логотипа; на светлых (голубой, жёлтый) цифра тёмная. */
 const STEP_COLORS = ["bg-logo-blue text-white", "bg-logo-berry text-white", "bg-logo-cyan text-ink", "bg-pop text-ink", "bg-accent text-white"];
 
-/** Шаги пути: пройденные — с галочкой, текущий — крупно и с подсказкой, что делать. */
-function Path(props: { v: Volunteer; interviews: Interview[]; participations: Participation[]; upcoming: Interview | null }) {
+/** Шаги пути: пройденные — с галочкой, текущий — крупно и с подсказкой, что делать. Без анкеты текущий — «Анкета». */
+function Path(props: { v: Volunteer | null; interviews: Interview[]; participations: Participation[]; upcoming: Interview | null }) {
   const { v } = props;
-  const later = (...s: Volunteer["status"][]) => s.includes(v.status);
+  const later = (...s: Volunteer["status"][]) => !!v && s.includes(v.status);
   const done: Record<StepKey, boolean> = {
-    form: true,
+    form: !!v,
     // до видеособеседований на сайте знакомились без системы — поэтому «дальше новой анкеты» тоже считается
-    interview: props.interviews.some((i) => i.status === "done") || !later("new"),
+    interview: !!v && (props.interviews.some((i) => i.status === "done") || !later("new")),
     training: later("trained", "approved", "active"),
     approval: later("approved", "active"),
     classes: later("active") || props.participations.some((p) => p.status === "attended"),
@@ -186,14 +363,14 @@ function Path(props: { v: Volunteer; interviews: Interview[]; participations: Pa
   const current = keys.find((k) => !done[k]) ?? null;
 
   const hint: Record<StepKey, ReactNode> = {
-    form: null,
+    form: "Расскажите о себе: что умеете, когда свободны, чем хотите помогать. Кнопка «Заполнить анкету» — выше.",
     interview: props.upcoming
       ? `Назначено на ${callWhen(props.upcoming.starts_at)}. Кнопка «Войти в звонок» — выше.`
       : "Координатор пригласит вас на короткий видеозвонок. Ссылка придёт в Telegram и появится здесь.",
     training: (
       <>
         <span>Короткий курс о наших подопечных и правилах фонда, в конце — тест.</span>
-        <Button onClick={() => navigate("/training")}>{v.status === "training" ? "Продолжить обучение" : "Пройти обучение"}</Button>
+        <Button onClick={() => navigate("/training")}>{v?.status === "training" ? "Продолжить обучение" : "Пройти обучение"}</Button>
       </>
     ),
     approval: "Координатор посмотрит результаты и допустит вас к занятиям. Обычно это 1–2 дня.",
@@ -206,9 +383,9 @@ function Path(props: { v: Volunteer; interviews: Interview[]; participations: Pa
   };
 
   return (
-    <Card className="flex flex-col gap-4">
-      <h2 className="font-display text-xl font-semibold">Ваш путь в фонде</h2>
-      {v.status === "paused" && (
+    <Card className="flex flex-col gap-4 sm:p-6">
+      <h2 className="font-display text-2xl font-semibold">Ваш путь в фонде</h2>
+      {v?.status === "paused" && (
         <p className="rounded-2xl bg-page px-4 py-3">Сейчас вы на паузе. Когда будете готовы вернуться — напишите координатору.</p>
       )}
       <ol className="flex flex-col">
@@ -233,7 +410,7 @@ function Path(props: { v: Volunteer; interviews: Interview[]; participations: Pa
                   {done[k] && <span className="sr-only"> — пройдено</span>}
                   {isCurrent && <span className="rounded-full bg-soft px-2.5 py-0.5 font-sans text-sm font-semibold">сейчас</span>}
                 </span>
-                {isCurrent && hint[k] && <div className="flex flex-col items-start gap-3 text-hint">{hint[k]}</div>}
+                {isCurrent && <div className="flex flex-col items-start gap-3 text-hint">{hint[k]}</div>}
               </div>
             </li>
           );

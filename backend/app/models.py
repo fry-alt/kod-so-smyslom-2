@@ -129,3 +129,20 @@ class InterviewPlan(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_now)
     questions: list[dict[str, Any]] = Field(sa_column=Column(JSON, nullable=False))  # PlanQuestion
     focus: list[str] = Field(sa_column=Column(JSON, nullable=False))
+
+
+class Account(SQLModel, table=True):
+    """Вход на сайт по почте и паролю. Почта — персональные данные: в LLM и индекс не уходит.
+    Пароль хранится только хэшем (services/accounts.py)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=_now)
+    email: str = Field(index=True, unique=True)  # в нижнем регистре
+    password_hash: str
+    role: str = "volunteer"  # schemas.AccountRole
+    volunteer_id: int | None = Field(
+        default=None, foreign_key="volunteer.id"
+    )  # анкета, если уже заполнена
+    token: str = Field(
+        index=True, unique=True
+    )  # ключ входа: сайт присылает его в заголовке Authorization

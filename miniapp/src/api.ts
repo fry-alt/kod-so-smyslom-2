@@ -8,11 +8,23 @@ export type ChatResponse = { answer: string; provider: string; model: string };
 export type Source = { source: string; chunk: number; score: number; text: string };
 export type AskResponse = { answer: string; found: boolean; sources: Source[] };
 
-async function post<T>(path: string, body: unknown): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (initData) headers["X-Telegram-Init-Data"] = initData;
+/** Ключ входа на сайт (после регистрации или входа по почте). Хранится в localStorage, см. backend.ts. */
+export const TOKEN_KEY = "auth_token";
 
-  const r = await fetch(BASE + path, { method: "POST", headers, body: JSON.stringify(body) });
+function headers(): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (initData) h["X-Telegram-Init-Data"] = initData;
+  try {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) h.Authorization = `Bearer ${token}`;
+  } catch {
+    /* приватный режим — без входа */
+  }
+  return h;
+}
+
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const r = await fetch(BASE + path, { method: "POST", headers: headers(), body: JSON.stringify(body) });
   if (!r.ok) throw await httpError(r);
   return r.json() as Promise<T>;
 }
@@ -239,6 +251,19 @@ export type DashboardAnalytics = {
 export type IceServer = { urls: string[]; username?: string | null; credential?: string | null };
 export type CallInfo = { starts_at: string; status: InterviewStatus; ice_servers: IceServer[] };
 
+// ===== Вход на сайт по почте и паролю =====
+export type AccountRole = "volunteer" | "coordinator";
+export type Account = { id: number; email: string; role: AccountRole; volunteer_id: number | null };
+export type AuthOut = { token: string; account: Account };
+export type RegisterIn = { email: string; password: string; role: AccountRole; code?: string };
+export type LoginIn = { email: string; password: string; role: AccountRole };
+
+export const authApi = {
+  register: (data: RegisterIn) => post<AuthOut>("/auth/register", data),
+  login: (data: LoginIn) => post<AuthOut>("/auth/login", data),
+  me: () => request<Account>("GET", "/auth/me"),
+};
+
 /** Адрес сигнального WebSocket звонка: тот же бэкенд, что и BASE, но ws:// или wss://. */
 export function callSocketUrl(token: string): string {
   const url = new URL(`${BASE}/calls/${encodeURIComponent(token)}/ws`, location.href);
@@ -247,11 +272,9 @@ export function callSocketUrl(token: string): string {
 }
 
 async function request<T>(method: "GET" | "PATCH" | "PUT", path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (initData) headers["X-Telegram-Init-Data"] = initData;
   const r = await fetch(BASE + path, {
     method,
-    headers,
+    headers: headers(),
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!r.ok) throw await httpError(r);
