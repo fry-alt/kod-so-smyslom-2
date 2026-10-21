@@ -8,7 +8,7 @@ import { backend, getAccount, getLook, getVolunteerId, loadLook, logout, setVolu
 import { FORMAT, REGION, STATUS, STATUS_COLOR } from "../../labels";
 import { UnreadBadge, useUnread } from "../../messages/Thread";
 import { navigate } from "../../router";
-import { Badge, Button, Card, ErrorBox, FLAIR, flairHandlers, formatHours, Loading, useLoad } from "../../ui";
+import { Badge, Button, ButtonLink, Card, ErrorBox, FLAIR, flairHandlers, formatHours, Link, Loading, useLoad } from "../../ui";
 import { Avatar, COVERS, Cover, LookEditor, type Progress } from "./Look";
 
 export default function Me() {
@@ -108,7 +108,7 @@ export default function Me() {
           <p className="text-lg font-semibold">
             📨 Координатор написал вам{unread > 1 ? ` — новых сообщений: ${unread}` : ""}
           </p>
-          <Button onClick={() => navigate("/messages")}>Прочитать и ответить</Button>
+          <ButtonLink to="/messages">Прочитать и ответить</ButtonLink>
         </section>
       )}
       {invites.length > 0 && (
@@ -116,7 +116,7 @@ export default function Me() {
           <p className="text-lg font-semibold">
             📩 Вас пригласили: {invites.map((p) => `«${p.opportunity_title}»`).join(", ")}
           </p>
-          <Button onClick={() => navigate("/opportunities")}>Посмотреть и подтвердить</Button>
+          <ButtonLink to="/opportunities">Посмотреть и подтвердить</ButtonLink>
         </section>
       )}
 
@@ -222,14 +222,12 @@ function StartCard() {
           Так координатор подберёт вам занятия по душе и пригласит на знакомство. Займёт 5–7 минут.
         </p>
       </div>
-      <button
-        type="button"
-        onClick={() => navigate("/form")}
-        {...flairHandlers}
-        className={`btn-flair min-h-14 shrink-0 rounded-full bg-cta px-8 text-lg font-bold whitespace-nowrap text-white shadow-[0_8px_24px_-8px_var(--p-cta)] ${FLAIR.cta}`}
+      <Link
+        to="/form"
+        className={`inline-flex min-h-14 shrink-0 items-center justify-center rounded-full bg-cta px-8 text-lg font-bold whitespace-nowrap text-white no-underline shadow-[0_8px_24px_-8px_var(--p-cta)] transition hover:brightness-95 ${FLAIR.cta}`}
       >
         Заполнить анкету
-      </button>
+      </Link>
     </section>
   );
 }
@@ -270,7 +268,7 @@ function NextStepCard(props: { volunteer: Volunteer; interviews: Interview[] | u
         <h2 className="font-display text-xl leading-snug font-semibold">{title}</h2>
         <p className="text-hint">{detail}</p>
       </div>
-      {action && <Button onClick={() => navigate(action.path)}>{action.label}</Button>}
+      {action && <ButtonLink variant="primary" to={action.path}>{action.label}</ButtonLink>}
     </section>
   );
 }
@@ -291,9 +289,9 @@ function Events(props: { volunteerId: number | null }) {
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-2xl font-semibold">Куда можно пойти</h2>
-        <button type="button" onClick={() => navigate("/opportunities")} className="font-semibold text-link hover:underline">
+        <Link to="/opportunities" className="font-semibold text-link hover:underline">
           Все занятия →
-        </button>
+        </Link>
       </div>
       {list.length === 0 ? (
         <Card>
@@ -324,9 +322,8 @@ function EventCard({ o }: { o: Opportunity }) {
   const d = new Date(o.starts_at);
   const left = o.slots - o.taken;
   return (
-    <button
-      type="button"
-      onClick={() => navigate("/opportunities")}
+    <Link
+      to="/opportunities"
       className="lift flex h-full w-full gap-4 rounded-3xl border-2 border-line bg-page p-4 text-left hover:border-accent"
     >
       <span className="flex w-16 shrink-0 flex-col items-center rounded-2xl bg-soft py-2">
@@ -353,7 +350,7 @@ function EventCard({ o }: { o: Opportunity }) {
           )}
         </span>
       </span>
-    </button>
+    </Link>
   );
 }
 
@@ -370,10 +367,9 @@ function QuickActions(props: { hasForm: boolean; unread: number }) {
   return (
     <nav aria-label="Разделы кабинета" className="flex flex-col gap-3">
       {items.map((i) => (
-        <button
+        <Link
           key={i.to}
-          type="button"
-          onClick={() => navigate(i.to)}
+          to={i.to}
           className="lift flex items-center gap-4 rounded-3xl bg-surface p-4 text-left"
         >
           <span aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-page text-2xl">
@@ -386,7 +382,7 @@ function QuickActions(props: { hasForm: boolean; unread: number }) {
             </span>
             <span className="text-sm leading-snug text-hint">{i.sub}</span>
           </span>
-        </button>
+        </Link>
       ))}
     </nav>
   );
@@ -469,20 +465,20 @@ function Path(props: { v: Volunteer | null; interviews: Interview[]; participati
     ) : (
       <>
         <span>Короткий видеозвонок с координатором — 30 минут. Выберите удобное время сами.</span>
-        <Button onClick={() => navigate("/interview")}>Записаться на собеседование</Button>
+        <ButtonLink to="/interview">Записаться на собеседование</ButtonLink>
       </>
     ),
     training: (
       <>
         <span>Короткий курс о наших подопечных и правилах фонда, в конце — тест.</span>
-        <Button onClick={() => navigate("/training")}>{v?.status === "training" ? "Продолжить обучение" : "Пройти обучение"}</Button>
+        <ButtonLink to="/training">{v?.status === "training" ? "Продолжить обучение" : "Пройти обучение"}</ButtonLink>
       </>
     ),
     approval: "Координатор посмотрит результаты и допустит вас к занятиям. Обычно это 1–2 дня.",
     classes: (
       <>
         <span>Выберите занятие, которое вам подходит, и откликнитесь.</span>
-        <Button onClick={() => navigate("/opportunities")}>Куда пойти</Button>
+        <ButtonLink to="/opportunities">Куда пойти</ButtonLink>
       </>
     ),
   };
