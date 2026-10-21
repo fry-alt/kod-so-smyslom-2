@@ -75,6 +75,8 @@ export type Volunteer = VolunteerIn & {
   created_at: string;
 };
 export type VolunteerUpdate = { status?: VolunteerStatus; hours?: number };
+/** Благодарность от фонда за часы и роли; ai=false — по шаблону, без LLM. */
+export type Thanks = { text: string; ai: boolean };
 export type NoteIn = { text: string; author?: string };
 export type Note = Required<NoteIn> & { id: number; volunteer_id: number; created_at: string };
 export type Role = {
@@ -189,4 +191,7 @@ export const volunteersApi = {
     request<Volunteer>("PATCH", `/volunteers/${id}`, data),
   notes: (id: number) => request<Note[]>("GET", `/volunteers/${id}/notes`),
   addNote: (id: number, data: NoteIn) => post<Note>(`/volunteers/${id}/notes`, data),
+  thanks: (id: number) => request<Thanks>("GET", `/volunteers/${id}/thanks`),
+  /** Ссылка для кнопки «Скачать часы (CSV)» — файл для Excel и «Добро.рф». */
+  exportCsvUrl: `${BASE}/volunteers/export.csv`,
 };

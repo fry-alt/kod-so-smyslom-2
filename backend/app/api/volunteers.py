@@ -1,10 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session
 
 from app.db import get_session
 from app.models import Volunteer
-from app.schemas import Note, NoteIn, VolunteerIn, VolunteerOut, VolunteerStatus, VolunteerUpdate
-from app.services import volunteers
+from app.schemas import (
+    Note,
+    NoteIn,
+    Thanks,
+    VolunteerIn,
+    VolunteerOut,
+    VolunteerStatus,
+    VolunteerUpdate,
+)
+from app.services import hours, volunteers
 
 router = APIRouter(prefix="/volunteers", tags=["volunteers"])
 
@@ -29,6 +37,16 @@ def list_all(
     return [volunteers.to_out(session, v) for v in volunteers.list_all(session, status)]
 
 
+@router.get("/export.csv", response_class=Response)
+def export_csv(session: Session = Depends(get_session)) -> Response:
+    """Часы волонтёров для «Добро.рф»: имя, контакт, часы, роли, статус. Открывается в Excel."""
+    return Response(
+        hours.export_csv(session),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="volunteer-hours.csv"'},
+    )
+
+
 @router.get("/{volunteer_id}", response_model=VolunteerOut)
 def get(volunteer_id: int, session: Session = Depends(get_session)) -> VolunteerOut:
     return volunteers.to_out(session, _get_or_404(session, volunteer_id))
@@ -41,6 +59,12 @@ def update(
     """Координатор меняет статус и часы."""
     volunteer = volunteers.update(session, _get_or_404(session, volunteer_id), data)
     return volunteers.to_out(session, volunteer)
+
+
+@router.get("/{volunteer_id}/thanks", response_model=Thanks)
+def thanks(volunteer_id: int, session: Session = Depends(get_session)) -> Thanks:
+    """Благодарность от фонда за часы и роли — координатор копирует и отправляет сам."""
+    return hours.thanks(session, _get_or_404(session, volunteer_id))
 
 
 @router.get("/{volunteer_id}/notes", response_model=list[Note])

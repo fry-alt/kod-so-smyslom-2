@@ -530,6 +530,15 @@ export const mockApi: typeof volunteersApi = {
     notes.push(n);
     return wait(n);
   },
+  thanks: (id) => {
+    const v = findVolunteer(id);
+    if (!v) return Promise.reject(new Error(`Волонтёр ${id} не найден`));
+    return wait({
+      text: `${v.name}, здравствуйте!\n\nСпасибо вам за ${v.hours} ч. волонтёрской помощи фонду! Будем рады видеть вас снова.\n\nФонд «Дети Марии»`,
+      ai: false,
+    });
+  },
+  exportCsvUrl: "data:text/csv;charset=utf-8,%EF%BB%BF%D0%94%D0%B5%D0%BC%D0%BE-%D1%80%D0%B5%D0%B6%D0%B8%D0%BC",
 };
 
 /** Моки для «Спросить о фонде» (api.chat / api.ask из шаблона). */
