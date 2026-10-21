@@ -1,6 +1,6 @@
 """Контракт API: что приходит в запросах и что уходит в ответах."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -379,3 +379,106 @@ class CallInfo(BaseModel):
     starts_at: datetime
     status: InterviewStatus
     ice_servers: list[IceServer]
+
+
+# ===== Дашборды кабинета координатора (T-66) =====
+# Имена волонтёров здесь — для экрана фонда; в LLM дашборды не ходят.
+
+
+class VolunteerRef(BaseModel):
+    id: int
+    name: str
+
+
+class TodayInterview(BaseModel):
+    interview_id: int
+    volunteer: VolunteerRef
+    starts_at: datetime
+    token: str  # ссылка на звонок — /call/<token>?as=coordinator
+    overdue: bool  # время прошло, а итога нет
+
+
+class WaitingVolunteer(BaseModel):
+    volunteer: VolunteerRef
+    since: datetime  # анкета от / последний тест
+    days: int  # сколько дней ждёт
+    training_score: int | None = None
+
+
+class PendingResponse(BaseModel):
+    participation_id: int
+    opportunity_id: int
+    opportunity_title: str
+    starts_at: datetime
+    volunteer: VolunteerRef
+
+
+class Understaffed(BaseModel):
+    opportunity_id: int
+    title: str
+    starts_at: datetime
+    slots: int
+    taken: int
+    missing: int
+
+
+class Counters(BaseModel):
+    volunteers: int
+    active: int  # участвовали за 60 дней
+    hours_total: float
+    hours_month: float  # занятия с начала текущего месяца
+
+
+class DashboardToday(BaseModel):
+    """GET /dashboard/today — что требует внимания координатора сегодня."""
+
+    interviews: list[TodayInterview]  # сегодня и прошедшие без итога, по времени
+    new_without_interview: list[WaitingVolunteer]  # дольше ждут — выше
+    awaiting_approval: list[WaitingVolunteer]  # обучение пройдено, ждут допуска
+    pending_responses: list[PendingResponse]  # отклики на будущие занятия без ответа
+    understaffed: list[Understaffed]  # ближайшие 7 дней, не хватает людей
+    counters: Counters
+
+
+FunnelStep = Literal["applied", "interviewed", "trained", "approved", "participated", "active"]
+
+
+class FunnelRow(BaseModel):
+    step: FunnelStep
+    count: int
+    by_occupation: dict[Occupation, int]  # все 6 видов занятости, нули тоже
+
+
+class SupplyRow(BaseModel):
+    key: str  # Availability (время) или Region; для онлайн-занятий — "online"
+    demand: int  # свободных мест в занятиях на 30 дней вперёд
+    supply: int  # допущенных волонтёров, которым подходит
+
+
+class WeekRow(BaseModel):
+    week_start: date  # понедельник
+    hours: float
+    participations: int
+
+
+class TopVolunteer(BaseModel):
+    volunteer: VolunteerRef
+    hours: float
+    participations: int
+
+
+class Dormant(BaseModel):
+    volunteer: VolunteerRef
+    last_attended: date | None  # None — допущен, но ни разу не участвовал
+    days: int | None
+
+
+class DashboardAnalytics(BaseModel):
+    """GET /dashboard/analytics — воронка, спрос и предложение, активность за 12 недель."""
+
+    funnel: list[FunnelRow]  # 6 шагов по порядку, «дошёл хотя бы до»
+    by_time: list[SupplyRow]  # 4 слота в порядке Availability
+    by_region: list[SupplyRow]  # только где есть спрос или люди
+    weeks: list[WeekRow]  # 12 недель, последняя — текущая
+    top: list[TopVolunteer]  # 5 по часам за 12 недель
+    dormant: list[Dormant]  # допущены, но не участвовали 45+ дней или ни разу
