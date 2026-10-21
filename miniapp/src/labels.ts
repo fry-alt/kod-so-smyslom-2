@@ -1,7 +1,9 @@
 // Подписи для значений из контракта (api.ts). Все тексты интерфейса для этих полей — только отсюда.
 import type {
   Availability,
+  Decision,
   Format,
+  FunnelStep,
   Occupation,
   ParticipationStatus,
   Region,
@@ -78,4 +80,20 @@ export const PARTICIPATION_COLOR: Record<ParticipationStatus, string> = {
   confirmed: "bg-green-100 text-green-900",
   attended: "bg-emerald-200 text-emerald-950",
   declined: "bg-gray-200 text-gray-700",
+};
+
+export const DECISION: Record<Decision, string> = {
+  next: "Дальше",
+  think: "Подумать",
+  reject: "Не подходит",
+};
+
+/** Шаги воронки волонтёров на «Аналитике». */
+export const FUNNEL_STEP: Record<FunnelStep, string> = {
+  applied: "Анкета",
+  interviewed: "Собеседование",
+  trained: "Обучение пройдено",
+  approved: "Допущен",
+  participated: "Первое участие",
+  active: "Активен (60 дней)",
 };

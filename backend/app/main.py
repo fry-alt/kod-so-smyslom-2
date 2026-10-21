@@ -8,10 +8,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import (
+    calls,
     case,
     chat,
+    dashboard,
     documents,
     health,
+    interviews,
     opportunities,
     roles,
     search,
@@ -63,5 +66,8 @@ for module in (
     search,
     training,
     opportunities,
+    interviews,
+    dashboard,
+    calls,
 ):
     app.include_router(module.router)

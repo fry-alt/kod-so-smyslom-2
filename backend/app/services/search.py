@@ -2,7 +2,8 @@
 
 1. Разбор запроса (LLM) → ParsedQuery; для роли без текста — прямо из полей роли.
    Подбор под возможность: роль возможности + её время, регион и формат (они важнее текста).
-2. Жёсткий фильтр в БД: статус, время, регион, очно/онлайн.
+2. Жёсткий фильтр в БД: статус, время, регион, очно/онлайн. Никого не осталось — ослабляем
+   время, потом регион, и пишем об этом в «Как я понял запрос» (notes).
 3. Векторы: TOP_K ближайших по смыслу среди отфильтрованных.
 4. LLM одним вызовом ставит оценку 0–100 и пишет причину.
    Не вышло — фолбэк: сходство × 70 + доля совпавших навыков × 30, ai=False.
@@ -28,7 +29,8 @@ from app.services.roles import load_roles
 
 log = logging.getLogger(__name__)
 
-TOP_K = 20  # сколько кандидатов отдаём LLM на переранжирование
+TOP_K = 10  # сколько кандидатов отдаём LLM на переранжирование: столько показывает экран поиска;
+# каждый лишний — это оценка и фраза в ответе модели, то есть секунды ожидания (docs/METRICS.md)
 STEM = 6  # сколько первых букв навыка сравниваем с анкетой — грубо, но без морфологии
 QUERY_STOP_WORDS = {"нужен", "нужна", "нужно", "нужны", "ищем", "который", "которая", "можно"}
 QUERY_STOP_WORDS |= {"помочь", "помощь", "волонтер", "волонтёр", "человек", "кто-то", "чтобы"}
@@ -72,14 +74,15 @@ def search(session: Session, req: SearchRequest) -> SearchResponse:
     request = request_text(req.query, role, opportunity)
     parsed = parse_query(req.query, role, opportunity)
     regions = {parsed.region} if parsed.region else set(role.regions if role else [])
-    pool = [
-        v
-        for v in session.exec(select(Volunteer)).all()
-        if passes_filter(v, parsed, regions, req.statuses)
-    ]
+    pool, dropped = filtered_pool(
+        list(session.exec(select(Volunteer)).all()), parsed, regions, req.statuses
+    )
 
     documents = {v.id: volunteers.index_document(v) for v in pool}
-    similarity = vector_similarity(f"{request}\n{', '.join(parsed.skills)}", list(documents))
+    shortlist = max(TOP_K, req.limit)
+    similarity = vector_similarity(
+        f"{request}\n{', '.join(parsed.skills)}", list(documents), shortlist
+    )
     # с чем сверяем анкеты; запрос не разобран (LLM недоступна) — со словами самого запроса
     terms = parsed.skills or query_words(request)
     what = "по навыкам" if parsed.skills else "по словам запроса"
@@ -88,7 +91,7 @@ def search(session: Session, req: SearchRequest) -> SearchResponse:
     def closeness(v: Volunteer) -> tuple[float, int]:
         return similarity.get(v.id, 0.0), len(matched[v.id])
 
-    top = sorted(pool, key=closeness, reverse=True)[:TOP_K]
+    top = sorted(pool, key=closeness, reverse=True)[:shortlist]
     ai = rerank(request, parsed, {v.id: documents[v.id] for v in top})
 
     candidates = []
@@ -126,7 +129,33 @@ def search(session: Session, req: SearchRequest) -> SearchResponse:
     )
     session.commit()
     log.info("search: %d из %d за %.0f мс, AI=%s", len(candidates), len(pool), ms, bool(ai))
+    if dropped and pool:
+        # чипсы остаются как поняли запрос, а в пометке — что пришлось ослабить
+        conditions = "этих условий" if len(dropped) > 1 else "этого условия"
+        note = f"Никого не нашлось {' и '.join(dropped)} — показываю без {conditions}"
+        parsed = parsed.model_copy(update={"notes": ". ".join(filter(None, [note, parsed.notes]))})
     return SearchResponse(parsed=parsed, candidates=candidates, total_checked=len(pool))
+
+
+def filtered_pool(
+    everyone: list[Volunteer], parsed: ParsedQuery, regions: set[str], statuses: list[str]
+) -> tuple[list[Volunteer], list[str]]:
+    """Жёсткий фильтр. Никого не осталось — ослабляем: сначала время, потом регион.
+
+    Статус и очно/онлайн не трогаем. Возвращаем и список ослабленных условий — для пометки.
+    Переранжирование всё равно видит исходный запрос и оценит неподходящих по времени ниже.
+    """
+    dropped: list[str] = []
+    pool = [v for v in everyone if passes_filter(v, parsed, regions, statuses)]
+    if not pool and parsed.availability:
+        parsed = parsed.model_copy(update={"availability": []})
+        dropped.append("в это время")
+        pool = [v for v in everyone if passes_filter(v, parsed, regions, statuses)]
+    if not pool and regions and parsed.format != "online":
+        regions = set()
+        dropped.append("в этом регионе")
+        pool = [v for v in everyone if passes_filter(v, parsed, regions, statuses)]
+    return pool, dropped
 
 
 def request_text(query: str, role: Role | None, opportunity: Opportunity | None = None) -> str:
@@ -195,8 +224,8 @@ def passes_filter(
     return not (regions and parsed.format != "online" and answers["region"] not in regions)
 
 
-def vector_similarity(text: str, volunteer_ids: list[int]) -> dict[int, float]:
-    """{id: сходство 0..1} для TOP_K ближайших. Эмбеддинги недоступны — пустой словарь."""
+def vector_similarity(text: str, volunteer_ids: list[int], limit: int) -> dict[int, float]:
+    """{id: сходство 0..1} для limit ближайших. Эмбеддинги недоступны — пустой словарь."""
     if not volunteer_ids:
         return {}
     try:
@@ -204,7 +233,7 @@ def vector_similarity(text: str, volunteer_ids: list[int]) -> dict[int, float]:
     except LLMError as e:
         log.warning("Эмбеддинги недоступны, ранжируем по навыкам: %s", e)
         return {}
-    return volunteer_index.nearest(embedding, volunteer_ids, TOP_K)
+    return volunteer_index.nearest(embedding, volunteer_ids, limit)
 
 
 def matched_skills(skills: list[str], document: str) -> list[str]:

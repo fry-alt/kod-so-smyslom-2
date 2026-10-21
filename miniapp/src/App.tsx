@@ -5,6 +5,8 @@
 import type { ReactNode } from "react";
 
 import { getVolunteerId, USE_MOCK } from "./backend";
+import Footer from "./Footer";
+import CallScreen from "./call/CallScreen";
 import { match, usePath } from "./router";
 import { Link } from "./ui";
 import AdminOpportunities from "./screens/admin/Opportunities";
@@ -53,6 +55,9 @@ function render(routes: Route[], path: string): ReactNode {
 
 export default function App() {
   const path = usePath();
+  // видеособеседование — на весь экран, без меню (ссылку открывают и волонтёр, и координатор)
+  const call = match("/call/:token", path);
+  if (call) return <CallScreen token={call.token} />;
   if (path === "/admin" || path.startsWith("/admin/")) {
     return <AdminLayout path={path}>{render(ADMIN_ROUTES, path) ?? <NotFound home="/admin" />}</AdminLayout>;
   }
@@ -60,11 +65,13 @@ export default function App() {
 }
 
 function VolunteerLayout(props: { path: string; children: ReactNode }) {
+  // стартовый экран для новичка — широкий (две колонки на компьютере), остальные — узкие, как в телефоне
+  const wide = props.path === "/" && !getVolunteerId();
   return (
-    <div className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-4 pt-4 pb-10">
+    <div className={`mx-auto flex min-h-screen flex-col gap-6 px-4 pt-4 pb-24 ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl pb-10"}`}>
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <Link to="/" className="font-bold whitespace-nowrap">
-          🧡 Дети Марии
+        <Link to="/" className="flex items-center gap-2.5 font-display text-lg font-semibold whitespace-nowrap">
+          <img src="/logo.svg" alt="Дети Марии" className="h-9 w-auto md:h-11" />
         </Link>
         <nav className="flex gap-4 whitespace-nowrap">
           <NavLink to="/opportunities" path={props.path}>
@@ -77,6 +84,7 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
       </header>
       <MockBanner />
       <main>{props.children}</main>
+      <Footer />
     </div>
   );
 }
@@ -86,8 +94,9 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
     <div className="admin min-h-screen">
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Link to="/admin" className="font-bold">
-            🧡 Дети Марии · кабинет фонда
+          <Link to="/admin" className="flex items-center gap-3 font-semibold">
+            <img src="/logo.svg" alt="Дети Марии" className="h-9 w-auto" />
+            <span className="text-hint">кабинет фонда</span>
           </Link>
           <nav className="flex flex-wrap gap-4">
             <NavLink to="/admin" path={props.path} exact>

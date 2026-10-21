@@ -74,6 +74,13 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_auth_required: bool = False  # true — без валидного initData Mini App не пустит
     telegram_auth_max_age: int = 86400  # секунд
+    webapp_url: str = ""  # https-адрес сайта — для ссылки на видеособеседование в сообщении
+
+    # --- видеособеседование (WebRTC) ---
+    # STUN помогает браузерам найти друг друга; TURN пересылает видео, когда напрямую не выходит.
+    stun_urls: str = "stun:stun.l.google.com:19302"  # через запятую
+    turn_urls: str = ""  # через запятую, например turn:example.ru:3478?transport=udp
+    turn_secret: str = ""  # --static-auth-secret coturn; пусто — только STUN
 
     @property
     def cors_origin_list(self) -> list[str]:

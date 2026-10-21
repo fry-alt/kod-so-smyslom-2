@@ -119,6 +119,8 @@ jobs:
           scp deploy/docker-compose.prod.yml deploy@"$HOST":deti/docker-compose.yml
           scp deploy/.env deploy@"$HOST":deti/.env
           ssh deploy@"$HOST" "chmod 600 ~/deti/.env"
+          # TURN для звонков — coturn Yapp: секрет берётся из его .env прямо на сервере.
+          ssh deploy@"$HOST" 'bash -s' < deploy/turn-from-yapp.sh
 
       - name: Выкладка
         run: |

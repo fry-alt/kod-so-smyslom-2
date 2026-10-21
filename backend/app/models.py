@@ -94,3 +94,38 @@ class Participation(SQLModel, table=True):
     volunteer_id: int = Field(foreign_key="volunteer.id", index=True)
     status: str = "responded"  # schemas.ParticipationStatus
     hours: float = 0  # начислено после attended
+
+
+class Interview(SQLModel, table=True):
+    """Видеособеседование координатора с волонтёром. Комната звонка — /call/<token>."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=_now)
+    volunteer_id: int = Field(foreign_key="volunteer.id", index=True)
+    starts_at: NaiveDatetime  # местное время, как его указал координатор
+    status: str = "scheduled"  # schemas.InterviewStatus
+    token: str = Field(index=True, unique=True)  # случайная строка: знает ссылку — может войти
+    notified: bool = False  # ссылка ушла волонтёру в Telegram
+
+
+class InterviewResult(SQLModel, table=True):
+    """Итог собеседования (T-66). Как и заметки — только для фонда: в LLM и в индекс не уходит."""
+
+    interview_id: int = Field(foreign_key="interview.id", primary_key=True)
+    created_at: datetime = Field(default_factory=_now)  # когда сохранили последний раз
+    motivation: int  # 1–5
+    readiness: int  # 1–5, готовность к работе с подопечными
+    regularity: int  # 1–5, насколько надёжно будет приходить
+    decision: str  # schemas.Decision
+    roles: list[str] = Field(sa_column=Column(JSON, nullable=False))  # коды из data/roles.json
+    comment: str = ""
+
+
+class InterviewPlan(SQLModel, table=True):
+    """AI-план собеседования (T-66). Хранится, чтобы вопросы не менялись во время звонка.
+    Зависит только от анкеты, поэтому один на волонтёра."""
+
+    volunteer_id: int = Field(foreign_key="volunteer.id", primary_key=True)
+    created_at: datetime = Field(default_factory=_now)
+    questions: list[dict[str, Any]] = Field(sa_column=Column(JSON, nullable=False))  # PlanQuestion
+    focus: list[str] = Field(sa_column=Column(JSON, nullable=False))
