@@ -28,7 +28,8 @@ from app.services.roles import load_roles
 
 log = logging.getLogger(__name__)
 
-TOP_K = 20  # сколько кандидатов отдаём LLM на переранжирование
+TOP_K = 10  # сколько кандидатов отдаём LLM на переранжирование: столько показывает экран поиска;
+# каждый лишний — это оценка и фраза в ответе модели, то есть секунды ожидания (docs/METRICS.md)
 STEM = 6  # сколько первых букв навыка сравниваем с анкетой — грубо, но без морфологии
 QUERY_STOP_WORDS = {"нужен", "нужна", "нужно", "нужны", "ищем", "который", "которая", "можно"}
 QUERY_STOP_WORDS |= {"помочь", "помощь", "волонтер", "волонтёр", "человек", "кто-то", "чтобы"}
@@ -79,7 +80,10 @@ def search(session: Session, req: SearchRequest) -> SearchResponse:
     ]
 
     documents = {v.id: volunteers.index_document(v) for v in pool}
-    similarity = vector_similarity(f"{request}\n{', '.join(parsed.skills)}", list(documents))
+    shortlist = max(TOP_K, req.limit)
+    similarity = vector_similarity(
+        f"{request}\n{', '.join(parsed.skills)}", list(documents), shortlist
+    )
     # с чем сверяем анкеты; запрос не разобран (LLM недоступна) — со словами самого запроса
     terms = parsed.skills or query_words(request)
     what = "по навыкам" if parsed.skills else "по словам запроса"
@@ -88,7 +92,7 @@ def search(session: Session, req: SearchRequest) -> SearchResponse:
     def closeness(v: Volunteer) -> tuple[float, int]:
         return similarity.get(v.id, 0.0), len(matched[v.id])
 
-    top = sorted(pool, key=closeness, reverse=True)[:TOP_K]
+    top = sorted(pool, key=closeness, reverse=True)[:shortlist]
     ai = rerank(request, parsed, {v.id: documents[v.id] for v in top})
 
     candidates = []
@@ -195,8 +199,8 @@ def passes_filter(
     return not (regions and parsed.format != "online" and answers["region"] not in regions)
 
 
-def vector_similarity(text: str, volunteer_ids: list[int]) -> dict[int, float]:
-    """{id: сходство 0..1} для TOP_K ближайших. Эмбеддинги недоступны — пустой словарь."""
+def vector_similarity(text: str, volunteer_ids: list[int], limit: int) -> dict[int, float]:
+    """{id: сходство 0..1} для limit ближайших. Эмбеддинги недоступны — пустой словарь."""
     if not volunteer_ids:
         return {}
     try:
@@ -204,7 +208,7 @@ def vector_similarity(text: str, volunteer_ids: list[int]) -> dict[int, float]:
     except LLMError as e:
         log.warning("Эмбеддинги недоступны, ранжируем по навыкам: %s", e)
         return {}
-    return volunteer_index.nearest(embedding, volunteer_ids, TOP_K)
+    return volunteer_index.nearest(embedding, volunteer_ids, limit)
 
 
 def matched_skills(skills: list[str], document: str) -> list[str]:
