@@ -2,7 +2,7 @@
 date: 2026-10-21
 author: fry-alt
 task: T-95 (#96)
-pr: будет ссылка на PR
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/99
 areas: [бэкенд, интерфейс]
 ---
 
