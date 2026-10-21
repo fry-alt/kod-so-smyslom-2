@@ -31,6 +31,7 @@ def test_env(tmp_path, monkeypatch):
         "DATABASE_URL": f"sqlite:///{(tmp_path / 'app.db').as_posix()}",
         "TELEGRAM_BOT_TOKEN": BOT_TOKEN,
         "TELEGRAM_AUTH_REQUIRED": "false",
+        "RAG_AUTOLOAD": "false",  # тесты сами решают, какие документы загрузить
     }
     for key, value in env.items():
         monkeypatch.setenv(key, value)

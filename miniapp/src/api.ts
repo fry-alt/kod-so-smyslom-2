@@ -4,9 +4,9 @@ import { initData } from "./telegram";
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
-export type ChatResponse = { answer: string; provider: string; model: string };
 export type Source = { source: string; chunk: number; score: number; text: string };
-export type AskResponse = { answer: string; found: boolean; sources: Source[] };
+/** sources — места в документах фонда, на которых основан ответ помощника. */
+export type ChatResponse = { answer: string; sources: Source[]; provider: string; model: string };
 
 /** Ключ входа на сайт (после регистрации или входа по почте). Хранится в localStorage, см. backend.ts. */
 export const TOKEN_KEY = "auth_token";
@@ -43,7 +43,6 @@ async function httpError(r: Response): Promise<Error> {
 export const api = {
   chat: (message: string, history: ChatMessage[]) =>
     post<ChatResponse>("/chat", { message, history, channel: "miniapp" }),
-  ask: (question: string) => post<AskResponse>("/documents/ask", { question, channel: "miniapp" }),
 };
 
 // ===== Умный поиск волонтёров — повторяет backend/app/schemas.py =====

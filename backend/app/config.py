@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     rag_min_score: float = 0.2  # ниже этого сходства фрагмент считаем нерелевантным
     chunk_size: int = 800
     chunk_overlap: int = 150
+    rag_autoload: bool = True  # база знаний пуста при запуске → загрузить data/demo и data/training
 
     # --- Telegram ---
     telegram_bot_token: str = ""

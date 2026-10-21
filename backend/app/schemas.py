@@ -18,17 +18,20 @@ class ChatRequest(BaseModel):
     channel: str = "api"  # api | bot | web | miniapp
 
 
-class ChatResponse(BaseModel):
-    answer: str
-    provider: str
-    model: str
-
-
 class Source(BaseModel):
     source: str  # имя файла
     chunk: int  # номер фрагмента в файле
     score: float  # сходство 0..1
     text: str
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    sources: list[Source] = Field(
+        default_factory=list, description="фрагменты документов фонда, на которых основан ответ"
+    )
+    provider: str
+    model: str
 
 
 class AskRequest(BaseModel):

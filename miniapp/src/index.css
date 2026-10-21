@@ -1135,18 +1135,10 @@ body {
   }
 }
 
-.ask-tab {
-  transition:
-    background-color 0.25s ease,
-    color 0.25s ease,
-    box-shadow 0.25s ease;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .goo-field,
   .goo-btn,
-  .goo-send,
-  .ask-tab {
+  .goo-send {
     transition: none;
   }
   .goo-drip {
