@@ -12,6 +12,8 @@ export function Button(props: {
   loading?: boolean;
   loadingLabel?: string;
   wide?: boolean;
+  "aria-expanded"?: boolean;
+  "aria-controls"?: string;
 }) {
   const variant = props.variant ?? "primary";
   const look = {
@@ -24,6 +26,8 @@ export function Button(props: {
       type={props.type ?? "button"}
       onClick={props.onClick}
       disabled={props.disabled || props.loading}
+      aria-expanded={props["aria-expanded"]}
+      aria-controls={props["aria-controls"]}
       {...(variant === "ghost" ? {} : flairHandlers)}
       className={`min-h-12 rounded-full px-6 py-3 font-semibold disabled:opacity-50 ${look} ${props.wide ? "w-full" : ""}`}
     >

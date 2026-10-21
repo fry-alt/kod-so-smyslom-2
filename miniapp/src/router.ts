@@ -20,9 +20,16 @@ export function useSearchParam(name: string): string | null {
 
 export function navigate(path: string) {
   if (path === location.pathname + location.search) return;
-  history.pushState(null, "", path);
+  const depth = Number(history.state?.appHistoryDepth ?? 0) + 1;
+  history.pushState({ ...history.state, appHistoryDepth: depth }, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
   window.scrollTo(0, 0);
+}
+
+/** Возврат внутри Mini App; если приложение открыли сразу на странице, ведём на его главную. */
+export function navigateBack(fallback = "/") {
+  if (Number(history.state?.appHistoryDepth ?? 0) > 0) history.back();
+  else navigate(fallback);
 }
 
 /** Сопоставить путь с шаблоном вида "/admin/volunteers/:id". Вернёт параметры или null. */

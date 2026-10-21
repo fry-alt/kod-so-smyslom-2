@@ -3,14 +3,14 @@
 //   /me      — личный кабинет волонтёра: анкета, путь, занятия, обучение, часы (сайт и Telegram Mini App)
 //   /admin   — кабинет фонда (ноутбук, только после входа координатора): сводка, умный поиск, база, аналитика, настройки
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { backend, getAccount, getVolunteerId, logout, USE_MOCK } from "./backend";
 import Footer from "./Footer";
 import { UnreadBadge, useUnread } from "./messages/Thread";
 import CallScreen from "./call/CallScreen";
 import CoordinatorPanel from "./call/CoordinatorPanel";
-import { match, navigate, usePath } from "./router";
+import { match, navigate, navigateBack, usePath } from "./router";
 import { tg } from "./telegram";
 import { Button, Link, useLoad } from "./ui";
 import Auth from "./screens/Auth";
@@ -81,6 +81,17 @@ export default function App() {
   useEffect(() => {
     document.title = `${pageTitle(path, search)} — Дети Марии`;
   }, [path, search]);
+  useEffect(() => {
+    const back = tg?.BackButton;
+    if (!back) return;
+    const goBack = () => navigateBack("/");
+    back.onClick(goBack);
+    return () => back.offClick(goBack);
+  }, []);
+  useEffect(() => {
+    if (path === "/") tg?.BackButton?.hide();
+    else tg?.BackButton?.show();
+  }, [path]);
   // видеособеседование — на весь экран, без меню (ссылку открывают и волонтёр, и координатор)
   const call = match("/call/:token", path);
   if (call) {
@@ -121,7 +132,7 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
     <div
       className={`mx-auto flex flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : chat ? "pb-4 md:pb-6" : wide ? "pb-24" : "pb-10"}`}
     >
-      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+      <header className="flex flex-nowrap items-center justify-between gap-x-3">
         <Logo />
         {!auth && <AccountNav path={props.path} />}
       </header>
@@ -159,7 +170,7 @@ function AccountNav(props: { path: string }) {
   if (account && !me) {
     return (
       <Button variant="secondary" onClick={() => navigate("/me")}>
-        Личный кабинет
+        <span className="sm:hidden">Кабинет</span><span className="hidden sm:inline">Личный кабинет</span>
       </Button>
     );
   }
@@ -174,7 +185,7 @@ function AccountNav(props: { path: string }) {
     <div className="flex items-center gap-3">
       <span className="hidden max-w-[12rem] truncate font-semibold sm:inline">{me.name.split(" ")[0]}</span>
       <Button variant="secondary" onClick={() => navigate("/me")}>
-        Личный кабинет
+        <span className="sm:hidden">Кабинет</span><span className="hidden sm:inline">Личный кабинет</span>
       </Button>
     </div>
   );
@@ -205,6 +216,8 @@ function pageTitle(path: string, search: string): string {
 }
 
 function AdminLayout(props: { path: string; children: ReactNode }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const unread = useUnread(null, "coordinator");
   return (
     <div className="admin min-h-screen">
       <header className="border-b border-line bg-surface">
@@ -213,30 +226,21 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
             <Logo className="h-9 w-auto" />
             <span className="text-hint">кабинет фонда</span>
           </div>
-          <nav className="flex flex-wrap gap-4">
-            <NavLink to="/admin" path={props.path} exact>
-              Сводка
-            </NavLink>
-            <NavLink to="/admin/search" path={props.path}>
-              Умный поиск
-            </NavLink>
-            <NavLink to="/admin/volunteers" path={props.path}>
-              База
-            </NavLink>
-            <NavLink to="/admin/opportunities" path={props.path}>
-              Возможности
-            </NavLink>
-            <NavLink to="/admin/analytics" path={props.path}>
-              Аналитика
-            </NavLink>
-            <NavLink to="/admin/messages" path={props.path}>
-              <MessagesLabel />
-            </NavLink>
-            <NavLink to="/admin/settings" path={props.path}>
-              Настройки
-            </NavLink>
-          </nav>
-          <CoordinatorMenu />
+          <nav className="hidden flex-wrap gap-4 md:flex"><AdminLinks path={props.path} unread={unread} /></nav>
+          <div className="ml-auto md:hidden">
+            <Button variant="secondary" aria-expanded={menuOpen} aria-controls="admin-mobile-menu" onClick={() => setMenuOpen((open) => !open)}>
+              {menuOpen ? "Закрыть" : "Меню"}
+            </Button>
+          </div>
+          <div className="hidden md:block"><CoordinatorMenu /></div>
+          {menuOpen && (
+            <div id="admin-mobile-menu" className="w-full rounded-2xl border border-line bg-page p-4 md:hidden" onClick={(e) => {
+              if ((e.target as HTMLElement).closest("a")) setMenuOpen(false);
+            }}>
+              <nav className="flex flex-col gap-4"><AdminLinks path={props.path} unread={unread} /></nav>
+              <div className="mt-4 border-t border-line pt-4"><CoordinatorMenu compact /></div>
+            </div>
+          )}
         </div>
       </header>
       <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
@@ -248,25 +252,24 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
 }
 
 /** «Сообщения» в меню фонда — со значком новых от волонтёров. */
-function MessagesLabel() {
-  const unread = useUnread(null, "coordinator");
+function MessagesLabel(props: { unread: number }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      Сообщения <UnreadBadge count={unread} />
+      Сообщения <UnreadBadge count={props.unread} />
     </span>
   );
 }
 
 /** Справа в шапке кабинета фонда: кто вошёл и «Выйти». */
-function CoordinatorMenu() {
+function CoordinatorMenu(props: { compact?: boolean }) {
   const account = getAccount();
   return (
-    <div className="ml-auto flex items-center gap-3">
+    <div className={`flex items-center gap-3 ${props.compact ? "justify-between" : "ml-auto"}`}>
       <span className="flex items-center gap-2" title={account?.email}>
         <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-full bg-soft font-display font-semibold uppercase">
           {account?.email[0]}
         </span>
-        <span className="hidden max-w-[14rem] truncate text-hint lg:inline">{account?.email}</span>
+        <span className={`${props.compact ? "max-w-[14rem]" : "hidden max-w-[14rem] lg:inline"} truncate text-hint`}>{account?.email}</span>
       </span>
       <button
         type="button"
@@ -280,6 +283,18 @@ function CoordinatorMenu() {
       </button>
     </div>
   );
+}
+
+function AdminLinks(props: { path: string; unread: number }) {
+  return <>
+    <NavLink to="/admin" path={props.path} exact>Сводка</NavLink>
+    <NavLink to="/admin/search" path={props.path}>Умный поиск</NavLink>
+    <NavLink to="/admin/volunteers" path={props.path}>База</NavLink>
+    <NavLink to="/admin/opportunities" path={props.path}>Возможности</NavLink>
+    <NavLink to="/admin/analytics" path={props.path}>Аналитика</NavLink>
+    <NavLink to="/admin/messages" path={props.path}><MessagesLabel unread={props.unread} /></NavLink>
+    <NavLink to="/admin/settings" path={props.path}>Настройки</NavLink>
+  </>;
 }
 
 function NavLink(props: { to: string; path: string; exact?: boolean; children: ReactNode }) {

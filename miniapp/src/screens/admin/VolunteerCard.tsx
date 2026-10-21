@@ -51,7 +51,7 @@ export default function VolunteerCard(props: { id: number }) {
           <div className="flex flex-wrap items-center gap-3">
             <Contact contact={v.contact} />
             {/* переписка на сайте: волонтёр ответит из личного кабинета */}
-            <Button onClick={() => navigate(`/admin/messages/${v.id}`)}>Написать</Button>
+            <Button variant="secondary" onClick={() => navigate(`/admin/messages/${v.id}`)}>Написать на сайте</Button>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-5">
@@ -105,7 +105,7 @@ function StatusCard(props: { v: Volunteer; onSaved: (v: Volunteer) => void }) {
           return (
             <Button
               key={a.status}
-              variant={current ? "primary" : "secondary"}
+              variant={props.v.status === "trained" && a.status === "approved" ? "primary" : "secondary"}
               loading={saving === a.status}
               disabled={saving !== null}
               onClick={() => !current && change(a.status)}
@@ -168,7 +168,7 @@ function HoursCard(props: { v: Volunteer; onSaved: (v: Volunteer) => void }) {
                 aria-label="Часы"
               />
             </div>
-            <Button type="submit" loading={saving}>
+            <Button type="submit" variant="secondary" loading={saving}>
               Сохранить
             </Button>
           </div>

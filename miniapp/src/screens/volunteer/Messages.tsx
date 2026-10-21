@@ -55,6 +55,7 @@ export default function Messages() {
 function Messenger(props: { volunteerId: number }) {
   const { volunteerId } = props;
   const openKey = useSearchParam("about");
+  const question = useSearchParam("question");
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [error, setError] = useState("");
   // новые от координатора; гаснут, когда открыли их чат (на сервере «прочитано» — сразу на всю переписку)
@@ -141,6 +142,7 @@ function Messenger(props: { volunteerId: number }) {
               volunteerId={volunteerId}
               theirReadId={dialog.their_read_id}
               error={error}
+              initialText={openKey === FUND ? question ?? "" : ""}
               onSent={sent}
             />
           ) : (
@@ -251,10 +253,11 @@ function ChatPane(props: {
   volunteerId: number;
   theirReadId: number;
   error: string;
+  initialText?: string;
   onSent: (m: Message) => void;
 }) {
   const { chat } = props;
-  const [text, setText] = useState("");
+  const [text, setText] = useState(() => props.initialText ?? "");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
