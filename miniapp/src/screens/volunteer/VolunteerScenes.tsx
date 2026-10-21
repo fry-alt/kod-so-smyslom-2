@@ -3,16 +3,16 @@
 // При «уменьшении движения» в системе анимации выключаются.
 import type { ReactNode } from "react";
 
-const SKIN = { light: "#f2c7a5", mid: "#c98e6b", dark: "#8d5a3b" };
-const HAIR = { grey: "#c9ccd3", brown: "#6b4a3a", dark: "#1f2430" };
-const FURNITURE = "#c7d3e6";
-const FURNITURE_DARK = "#9fb2cf";
-const CLAY = "#c98a5e";
+export const SKIN = { light: "#f2c7a5", mid: "#c98e6b", dark: "#8d5a3b" };
+export const HAIR = { grey: "#c9ccd3", brown: "#6b4a3a", dark: "#1f2430" };
+export const FURNITURE = "var(--p-soft)";
+export const FURNITURE_DARK = "color-mix(in srgb, var(--p-accent) 35%, var(--p-soft))";
+export const CLAY = "#c98a5e";
 
 type HairStyle = "bun" | "short" | "long" | "curly" | "beanie";
 
 /** Человечек: (x, y) — центр головы, s — масштаб (ребёнок ≈ 0.8). */
-function Person(props: {
+export function Person(props: {
   x: number;
   y: number;
   s?: number;
@@ -58,7 +58,7 @@ function Person(props: {
   );
 }
 
-function Arm(props: { from: [number, number]; to: [number, number]; skin: string; w?: number; className?: string }) {
+export function Arm(props: { from: [number, number]; to: [number, number]; skin: string; w?: number; className?: string }) {
   return (
     <path
       className={props.className}
