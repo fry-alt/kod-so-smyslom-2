@@ -70,15 +70,44 @@ def test_validates_email_and_password(client):
     assert client.post("/auth/register", json=short).status_code == 422
 
 
-def test_coordinator_code(client, monkeypatch):
-    monkeypatch.setenv("COORDINATOR_CODE", "deti")
-    get_settings.cache_clear()
+def test_coordinator_code_defaults_to_1111(client):
     no_code = {"email": "c@fund.ru", "password": "secret1", "role": "coordinator"}
     assert client.post("/auth/register", json=no_code).status_code == 400
-    auth = register(client, email="c@fund.ru", role="coordinator", code="deti")
+    auth = register(client, email="c@fund.ru", role="coordinator", code="1111")
     assert auth["account"]["role"] == "coordinator"
     # волонтёру код не нужен
     register(client, email="v@mail.ru")
+
+
+def test_coordinator_code_from_env(client, monkeypatch):
+    monkeypatch.setenv("COORDINATOR_CODE", "deti")
+    get_settings.cache_clear()
+    wrong = {"email": "c@fund.ru", "password": "secret1", "role": "coordinator", "code": "1111"}
+    assert client.post("/auth/register", json=wrong).status_code == 400
+    register(client, email="c@fund.ru", role="coordinator", code="deti")
+
+
+def test_coordinator_changes_fund_code(client):
+    coord = bearer(register(client, email="c@fund.ru", role="coordinator", code="1111")["token"])
+    assert client.get("/auth/fund-code", headers=coord).json() == {"code": "1111"}
+    r = client.put("/auth/fund-code", json={"code": " deti2026 "}, headers=coord)
+    assert r.status_code == 200, r.text
+    assert client.get("/auth/fund-code", headers=coord).json() == {"code": "deti2026"}
+    # старый код больше не подходит, новый — подходит
+    old = {"email": "c2@fund.ru", "password": "secret1", "role": "coordinator", "code": "1111"}
+    assert client.post("/auth/register", json=old).status_code == 400
+    register(client, email="c2@fund.ru", role="coordinator", code="deti2026")
+    # слишком короткий код не сохраняем
+    assert client.put("/auth/fund-code", json={"code": "12"}, headers=coord).status_code == 422
+
+
+def test_fund_code_only_for_coordinator(client):
+    assert client.get("/auth/fund-code").status_code == 401
+    volunteer = bearer(register(client)["token"])
+    assert client.get("/auth/fund-code", headers=volunteer).status_code == 403
+    assert (
+        client.put("/auth/fund-code", json={"code": "0000"}, headers=volunteer).status_code == 403
+    )
 
 
 def test_questionnaire_links_to_account(client):
@@ -93,6 +122,6 @@ def test_questionnaire_links_to_account(client):
 
 
 def test_coordinator_questionnaire_is_not_linked(client):
-    auth = register(client, email="c@fund.ru", role="coordinator")
+    auth = register(client, email="c@fund.ru", role="coordinator", code="1111")
     client.post("/volunteers", json=FORM, headers=bearer(auth["token"]))
     assert client.get("/auth/me", headers=bearer(auth["token"])).json()["volunteer_id"] is None

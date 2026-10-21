@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ChatMessage(BaseModel):
@@ -533,6 +533,14 @@ class AccountOut(BaseModel):
     email: str
     role: AccountRole
     volunteer_id: int | None = None  # None — анкета ещё не заполнена
+
+
+class FundCode(BaseModel):
+    """GET/PUT /auth/fund-code — код фонда, без которого нельзя зарегистрироваться координатором."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    code: str = Field(min_length=4, max_length=100, pattern=r"^\S+$", description="без пробелов")
 
 
 class AuthOut(BaseModel):
