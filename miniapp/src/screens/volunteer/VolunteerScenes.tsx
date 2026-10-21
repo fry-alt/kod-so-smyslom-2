@@ -351,8 +351,8 @@ function SceneCard({ s }: { s: (typeof SCENES)[number] }) {
 }
 
 /** 3D-бегущая лента (как 3d-marquee у Aceternity, без библиотеки): 3 колонки по 4 своих сцены
- *  на наклонённой плоскости, соседние колонки едут в разные стороны. Каждая колонка повторена дважды
- *  для бесшовной прокрутки — повтор появляется только когда прежняя копия ушла из кадра. */
+ *  на наклонённой плоскости, соседние колонки едут в разные стороны. Каждая колонка повторена трижды и едет
+ *  со средней копии: сверху и снизу всегда есть карточки, пустых краёв в кадре нет. */
 export default function VolunteerScenes() {
   const columns = [0, 1, 2].map((c) => SCENES.filter((_, i) => i % 3 === c));
   return (
@@ -368,7 +368,7 @@ export default function VolunteerScenes() {
         <div className="marquee3d-plane grid grid-cols-3 gap-4">
           {columns.map((col, c) => (
             <div key={c} className={`marquee3d-col flex flex-col gap-4 ${c % 2 ? "marquee3d-down" : "marquee3d-up"}`} style={{ animationDuration: `${[44, 52, 48][c]}s` }}>
-              {[...col, ...col].map((s, i) => (
+              {[...col, ...col, ...col].map((s, i) => (
                 <SceneCard key={`${s.title}-${i}`} s={s} />
               ))}
             </div>

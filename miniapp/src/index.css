@@ -781,15 +781,16 @@ body {
 
 /* 3D-бегущая лента сцен (VolunteerScenes.tsx): плоскость наклонена, колонки едут вверх и вниз по очереди. */
 .marquee3d {
-  -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, #000 70%, transparent 100%);
-  mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, #000 70%, transparent 100%);
+  /* широкое мягкое растворение по краям: карточки плавно проявляются и уходят, а не выскакивают */
+  -webkit-mask-image: radial-gradient(ellipse 72% 68% at 50% 50%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 72% 68% at 50% 50%, #000 35%, transparent 100%);
 }
 .marquee3d-plane {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 135%;
-  transform: translate(-50%, -44%) rotateX(50deg) rotateZ(-36deg);
+  width: 190%;
+  transform: translate(-50%, -50%) rotateX(50deg) rotateZ(-36deg);
   transform-origin: center;
 }
 .marquee3d-col {
@@ -799,20 +800,23 @@ body {
 .marquee3d-down {
   animation-name: marquee-down;
 }
+/* колонка = 3 одинаковые копии, плоскость центрирована по середине колонки.
+   Копия = (высота + gap) / 3; едем симметрично вокруг середины — от +½ копии до −½ копии,
+   поэтому сверху и снизу кадра всегда есть карточки, а сдвиг ровно на копию даёт бесшовный повтор. */
 @keyframes marquee-up {
   from {
-    transform: translateY(0);
+    transform: translateY(calc((100% + 1rem) / 6));
   }
   to {
-    transform: translateY(calc(-50% - 0.5rem));
+    transform: translateY(calc((-100% - 1rem) / 6));
   }
 }
 @keyframes marquee-down {
   from {
-    transform: translateY(calc(-50% - 0.5rem));
+    transform: translateY(calc((-100% - 1rem) / 6));
   }
   to {
-    transform: translateY(0);
+    transform: translateY(calc((100% + 1rem) / 6));
   }
 }
 
