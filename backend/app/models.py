@@ -146,3 +146,10 @@ class Account(SQLModel, table=True):
     token: str = Field(
         index=True, unique=True
     )  # ключ входа: сайт присылает его в заголовке Authorization
+
+
+class FundSetting(SQLModel, table=True):
+    """Настройки фонда, которые координатор меняет в кабинете («Настройки»), например код фонда."""
+
+    key: str = Field(primary_key=True)
+    value: str

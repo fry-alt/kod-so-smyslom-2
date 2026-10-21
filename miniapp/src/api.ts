@@ -259,11 +259,15 @@ export type Account = { id: number; email: string; role: AccountRole; volunteer_
 export type AuthOut = { token: string; account: Account };
 export type RegisterIn = { email: string; password: string; role: AccountRole; code?: string };
 export type LoginIn = { email: string; password: string; role: AccountRole };
+/** Код фонда, без которого нельзя зарегистрироваться координатором. Меняет координатор в «Настройках». */
+export type FundCode = { code: string };
 
 export const authApi = {
   register: (data: RegisterIn) => post<AuthOut>("/auth/register", data),
   login: (data: LoginIn) => post<AuthOut>("/auth/login", data),
   me: () => request<Account>("GET", "/auth/me"),
+  fundCode: () => request<FundCode>("GET", "/auth/fund-code"),
+  setFundCode: (data: FundCode) => request<FundCode>("PUT", "/auth/fund-code", data),
 };
 
 /** Адрес сигнального WebSocket звонка: тот же бэкенд, что и BASE, но ws:// или wss://. */

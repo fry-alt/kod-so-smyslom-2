@@ -7,7 +7,7 @@ from sqlmodel import Session
 
 from app.db import get_session
 from app.models import Account
-from app.schemas import AccountOut, AuthOut, LoginIn, RegisterIn
+from app.schemas import AccountOut, AuthOut, FundCode, LoginIn, RegisterIn
 from app.services import accounts
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -43,3 +43,26 @@ def me(account: Account | None = Depends(current_account)) -> AccountOut:
     if account is None:
         raise HTTPException(401, "Войдите заново")
     return accounts.to_out(account)
+
+
+def coordinator(account: Account | None = Depends(current_account)) -> Account:
+    """Зависимость: пускает только координатора фонда."""
+    if account is None:
+        raise HTTPException(401, "Войдите заново")
+    if account.role != "coordinator":
+        raise HTTPException(403, "Это может только координатор фонда")
+    return account
+
+
+@router.get("/fund-code", response_model=FundCode)
+def get_fund_code(
+    _: Account = Depends(coordinator), session: Session = Depends(get_session)
+) -> FundCode:
+    return FundCode(code=accounts.coordinator_code(session))
+
+
+@router.put("/fund-code", response_model=FundCode)
+def set_fund_code(
+    data: FundCode, _: Account = Depends(coordinator), session: Session = Depends(get_session)
+) -> FundCode:
+    return FundCode(code=accounts.set_coordinator_code(session, data.code))

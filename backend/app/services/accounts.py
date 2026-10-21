@@ -1,8 +1,8 @@
 """Аккаунты сайта: регистрация и вход по почте и паролю, роль «волонтёр» или «координатор».
 
 Пароль хранится только хэшем (PBKDF2 из стандартной библиотеки — без новых зависимостей).
-Почта и пароль в LLM и в индекс не уходят. Координатором можно стать с кодом фонда
-(COORDINATOR_CODE в .env); если код не задан — без него, как на демо.
+Почта и пароль в LLM и в индекс не уходят. Координатором можно стать только с кодом фонда:
+координатор меняет его в кабинете («Настройки»), а пока не менял — COORDINATOR_CODE из .env, иначе 1111.
 """
 
 import hashlib
@@ -12,10 +12,12 @@ import secrets
 from sqlmodel import Session, select
 
 from app.config import get_settings
-from app.models import Account
+from app.models import Account, FundSetting
 from app.schemas import AccountOut, AuthOut, LoginIn, RegisterIn
 
 ITERATIONS = 200_000
+DEFAULT_CODE = "1111"
+CODE_KEY = "coordinator_code"
 
 
 class AuthError(ValueError):
@@ -55,11 +57,28 @@ def by_token(session: Session, token: str) -> Account | None:
     return session.exec(select(Account).where(Account.token == token)).first()
 
 
+def coordinator_code(session: Session) -> str:
+    """Код фонда для регистрации координатора: из кабинета, иначе из .env, иначе 1111."""
+    stored = session.get(FundSetting, CODE_KEY)
+    if stored:
+        return stored.value
+    return get_settings().coordinator_code.strip() or DEFAULT_CODE
+
+
+def set_coordinator_code(session: Session, code: str) -> str:
+    stored = session.get(FundSetting, CODE_KEY) or FundSetting(key=CODE_KEY, value="")
+    stored.value = code.strip()
+    session.add(stored)
+    session.commit()
+    return stored.value
+
+
 def register(session: Session, data: RegisterIn) -> AuthOut:
     if by_email(session, data.email):
         raise AuthError("Эта почта уже зарегистрирована — войдите")
-    code = get_settings().coordinator_code
-    if data.role == "coordinator" and code and not hmac.compare_digest(data.code.strip(), code):
+    if data.role == "coordinator" and not hmac.compare_digest(
+        data.code.strip().encode(), coordinator_code(session).encode()
+    ):
         raise AuthError("Неверный код фонда. Его выдаёт руководитель фонда")
     account = Account(
         email=data.email.strip().lower(),

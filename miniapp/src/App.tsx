@@ -1,7 +1,7 @@
 // Одно приложение — две части:
 //   /        — лендинг; /login — регистрация и вход по почте (волонтёр или координатор)
 //   /me      — личный кабинет волонтёра: анкета, путь, занятия, обучение, часы (сайт и Telegram Mini App)
-//   /admin   — кабинет фонда (ноутбук, только после входа координатора): сводка, умный поиск, база, аналитика
+//   /admin   — кабинет фонда (ноутбук, только после входа координатора): сводка, умный поиск, база, аналитика, настройки
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
 import type { ReactNode } from "react";
 
@@ -18,6 +18,7 @@ import AdminOpportunities from "./screens/admin/Opportunities";
 import OpportunityCard from "./screens/admin/OpportunityCard";
 import OpportunityForm from "./screens/admin/OpportunityForm";
 import Search from "./screens/admin/Search";
+import Settings from "./screens/admin/Settings";
 import Summary from "./screens/admin/Summary";
 import VolunteerCard from "./screens/admin/VolunteerCard";
 import Volunteers from "./screens/admin/Volunteers";
@@ -52,6 +53,7 @@ const ADMIN_ROUTES: Route[] = [
   ["/admin", () => (new URLSearchParams(location.search).has("opportunity") ? <Search /> : <Summary />)],
   ["/admin/search", () => <Search />],
   ["/admin/analytics", () => <Analytics />],
+  ["/admin/settings", () => <Settings />],
   ["/admin/volunteers", () => <Volunteers />],
   ["/admin/volunteers/:id", (p) => <VolunteerCard id={Number(p.id)} />],
   ["/admin/opportunities", () => <AdminOpportunities />],
@@ -196,6 +198,9 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
             </NavLink>
             <NavLink to="/admin/analytics" path={props.path}>
               Аналитика
+            </NavLink>
+            <NavLink to="/admin/settings" path={props.path}>
+              Настройки
             </NavLink>
           </nav>
           <CoordinatorMenu />
