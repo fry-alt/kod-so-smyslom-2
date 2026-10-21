@@ -119,14 +119,14 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
   const chat = props.path === "/messages" && !auth;
   return (
     <div
-      className={`mx-auto flex flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : chat ? "pb-4 md:pb-6" : wide ? "pb-24" : "pb-10"}`}
+      className={`mx-auto flex w-full min-w-0 flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${focus ? "pb-0" : chat ? "pb-4 md:pb-6" : wide ? "pb-24" : "pb-10"}`}
     >
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Logo />
         {!auth && <AccountNav path={props.path} />}
       </header>
       <MockBanner />
-      <main className={focus ? "flex flex-1 flex-col" : chat ? "flex min-h-0 flex-1 flex-col" : undefined}>{props.children}</main>
+      <main className={`w-full min-w-0 ${focus ? "flex flex-1 flex-col" : chat ? "flex min-h-0 flex-1 flex-col" : ""}`}>{props.children}</main>
       {/* на странице входа подвала нет — ничего не отвлекает от формы */}
       {!auth && !focus && !chat && <Footer />}
     </div>
@@ -239,7 +239,7 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
           <CoordinatorMenu />
         </div>
       </header>
-      <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
+      <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-6">
         <MockBanner />
         {props.children}
       </main>

@@ -18,9 +18,9 @@ export default function Messages(props: { volunteerId?: number }) {
   }, [reload]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4">
       <h1 className="text-3xl font-bold">Сообщения</h1>
-      <div className="grid items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
         <Card className={`flex flex-col gap-1 p-2 ${props.volunteerId ? "max-lg:hidden" : ""}`}>
           {loading && !data && <Loading />}
           {error && !data && <ErrorBox text={error} onRetry={reload} />}

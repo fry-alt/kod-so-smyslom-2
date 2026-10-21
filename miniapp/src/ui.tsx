@@ -75,7 +75,7 @@ export function Link(props: { to: string; children: ReactNode; className?: strin
 }
 
 export function Card(props: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-3xl bg-surface p-5 ${props.className ?? ""}`}>{props.children}</div>;
+  return <div className={`min-w-0 rounded-3xl bg-surface p-5 ${props.className ?? ""}`}>{props.children}</div>;
 }
 
 export function Badge(props: { children: ReactNode; className?: string; title?: string }) {

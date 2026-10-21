@@ -69,8 +69,8 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-[26rem]">
-      <section className="flex flex-col gap-6 rounded-[2rem] bg-surface p-5 shadow-[0_24px_60px_-40px_var(--p-ink)] sm:p-7">
+    <div className="mx-auto grid w-full min-w-0 max-w-[26rem]">
+      <section className="flex min-w-0 flex-col gap-6 rounded-[2rem] bg-surface p-5 shadow-[0_24px_60px_-40px_var(--p-ink)] sm:p-7">
         {sent ? (
           <CodeStep sent={sent} onBack={() => setSent(null)} onDone={enter} />
         ) : (
@@ -93,7 +93,7 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
             <form onSubmit={submit} noValidate className="flex flex-col gap-5">
               {register && <fieldset className="flex flex-col gap-2">
                 <legend className="mb-2 font-semibold">Зарегистрироваться как</legend>
-                <div className="grid grid-cols-2 gap-2" role="radiogroup">
+            <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2" role="radiogroup">
                   {(Object.keys(ROLE) as AccountRole[]).map((r) => {
                     const on = role === r;
                     return (

@@ -15,8 +15,8 @@ import VolunteerScenes from "./VolunteerScenes";
 
 export default function Welcome() {
   return (
-    <div className="flex flex-col gap-14 pb-6">
-      <section className="grid items-center gap-8 md:grid-cols-[1fr_1.15fr] md:gap-12">
+    <div className="flex min-w-0 flex-col gap-14 pb-6">
+      <section className="grid min-w-0 items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] md:gap-12">
         <div className="flex flex-col gap-6">
           {tgUser && <p className="text-lg text-hint">{tgUser.first_name}, здравствуйте!</p>}
           <h1 className="font-display text-[2.1rem] leading-[1.12] font-semibold tracking-tight text-balance md:text-[3rem]">
