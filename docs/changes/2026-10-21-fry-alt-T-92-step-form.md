@@ -2,7 +2,7 @@
 date: 2026-10-21
 author: fry-alt
 task: T-92 (#92)
-pr: https://github.com/fry-alt/kod-so-smyslom-2/pulls?q=head%3Aa%2FT-92-step-form
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/93
 areas: [интерфейс]
 ---
 
