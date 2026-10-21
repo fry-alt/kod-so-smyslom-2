@@ -7,6 +7,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import NaiveDatetime
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
@@ -66,3 +67,30 @@ class QuizAttempt(SQLModel, table=True):
     volunteer_id: int = Field(foreign_key="volunteer.id", index=True)
     module_id: str
     score: int  # % правильных
+
+
+class Opportunity(SQLModel, table=True):
+    """Задача или мероприятие фонда, на которое зовём волонтёров."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=_now)
+    title: str
+    description: str = ""
+    role_code: str | None = None  # роль из data/roles.json
+    starts_at: NaiveDatetime  # местное время мероприятия, по нему считаем «будни утром» и т. п.
+    region: str = "moscow"  # schemas.Region
+    format: str = "offline"  # schemas.Format
+    place: str = ""
+    slots: int = 1
+    hours: float = 3  # сколько часов начислить за участие
+
+
+class Participation(SQLModel, table=True):
+    """Отклик или приглашение волонтёра на возможность. Одна запись на пару «волонтёр — возможность»."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=_now)
+    opportunity_id: int = Field(foreign_key="opportunity.id", index=True)
+    volunteer_id: int = Field(foreign_key="volunteer.id", index=True)
+    status: str = "responded"  # schemas.ParticipationStatus
+    hours: float = 0  # начислено после attended

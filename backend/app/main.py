@@ -12,6 +12,7 @@ from app.api import (
     chat,
     documents,
     health,
+    opportunities,
     roles,
     search,
     telegram_auth,
@@ -51,5 +52,16 @@ async def llm_error_handler(_: Request, exc: LLMError) -> JSONResponse:
     return JSONResponse(status_code=502, content={"detail": str(exc)})
 
 
-for module in (health, chat, documents, telegram_auth, case, volunteers, roles, search, training):
+for module in (
+    health,
+    chat,
+    documents,
+    telegram_auth,
+    case,
+    volunteers,
+    roles,
+    search,
+    training,
+    opportunities,
+):
     app.include_router(module.router)

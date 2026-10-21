@@ -5,7 +5,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from app.schemas import VolunteerIn
+from app.schemas import OpportunityIn, VolunteerIn
 
 DEMO_DIR = Path(__file__).resolve().parents[2] / "data" / "demo"
 
@@ -55,3 +55,19 @@ def test_seed_through_api(client):
         assert client.post("/volunteers", json=v).status_code == 200
     ids = sorted(v["id"] for v in client.get("/volunteers").json())
     assert ids == list(range(1, 41))  # номер анкеты в файле = id на пустой базе
+
+
+def test_demo_opportunities_valid_and_seed_through_api(client):
+    items = [OpportunityIn.model_validate(o) for o in load("opportunities.json")]
+    assert 6 <= len(items) <= 8
+    roles = {r["code"] for r in load_roles_file()}
+    assert all(o.role_code in roles for o in items)
+    assert {o.region for o in items} >= {"moscow", "yaroslavl", "north_ossetia"}
+    assert any(o.format == "online" for o in items)
+    for o in load("opportunities.json"):
+        assert client.post("/opportunities", json=o).status_code == 200
+    assert len(client.get("/opportunities").json()) == len(items)
+
+
+def load_roles_file():
+    return json.loads((DEMO_DIR.parent / "roles.json").read_text(encoding="utf-8"))

@@ -38,7 +38,7 @@ make dev-miniapp  # сайт + Mini App :5173 (/ — волонтёр, /admin �
 make dev-bot
 make up / down / logs   # всё в Docker
 make ingest       # документы фонда → Chroma (бэкенд должен работать)
-make seed         # 40 демо-анкет волонтёров → пустая БД (бэкенд должен работать)
+make seed         # 40 демо-анкет и 8 возможностей → пустая БД (бэкенд должен работать)
 make test         # pytest на провайдере fake
 make lint / fmt   # ruff + tsc
 make smoke        # smoke-тест живого бэкенда
