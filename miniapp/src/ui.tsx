@@ -61,13 +61,62 @@ export function Badge(props: { children: ReactNode; className?: string }) {
   );
 }
 
-export function Field(props: { label: string; hint?: string; children: ReactNode }) {
+export function Field(props: {
+  label: string;
+  hint?: ReactNode;
+  error?: string;
+  required?: boolean;
+  /** div вместо label — для групп кнопок (Chips), где label ломает клики */
+  group?: boolean;
+  children: ReactNode;
+}) {
+  const Tag = props.group ? "div" : "label";
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="font-semibold">{props.label}</span>
+    <Tag className="flex flex-col gap-1.5" data-error={props.error ? "" : undefined}>
+      <span className="font-semibold">
+        {props.label}
+        {props.required && <span className="text-accent"> *</span>}
+      </span>
       {props.hint && <span className="text-sm text-hint">{props.hint}</span>}
       {props.children}
-    </label>
+      {props.error && <span className="text-sm font-medium text-red-700">{props.error}</span>}
+    </Tag>
+  );
+}
+
+/** Выбор из вариантов крупными «чипсами»: один (multiple=false) или несколько. */
+export function Chips<T extends string>(props: {
+  options: Record<T, string>;
+  value: T[];
+  onChange: (value: T[]) => void;
+  multiple?: boolean;
+}) {
+  const keys = Object.keys(props.options) as T[];
+  function toggle(k: T) {
+    if (!props.multiple) return props.onChange([k]);
+    props.onChange(props.value.includes(k) ? props.value.filter((x) => x !== k) : [...props.value, k]);
+  }
+  return (
+    <div className="flex flex-wrap gap-2" role={props.multiple ? "group" : "radiogroup"}>
+      {keys.map((k) => {
+        const on = props.value.includes(k);
+        return (
+          <button
+            key={k}
+            type="button"
+            role={props.multiple ? "checkbox" : "radio"}
+            aria-checked={on}
+            onClick={() => toggle(k)}
+            className={`min-h-12 rounded-2xl border px-4 py-2 transition ${
+              on ? "border-accent bg-accent text-accent-text" : "border-line bg-page"
+            }`}
+          >
+            {props.multiple && (on ? "✓ " : "")}
+            {props.options[k]}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -131,5 +180,7 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[] = []) {
 export function errorText(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/failed to fetch|networkerror|load failed/i.test(msg)) return "Нет связи с сервером. Проверьте интернет.";
+  if (/internal server error|bad gateway|service unavailable|gateway time-?out/i.test(msg))
+    return "Сервер сейчас не отвечает. Попробуйте ещё раз через минуту.";
   return msg || "Что-то пошло не так.";
 }
