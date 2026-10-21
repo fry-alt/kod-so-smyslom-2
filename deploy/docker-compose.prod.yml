@@ -1,0 +1,81 @@
+# Прод на сервере Yapp (201.34.157.90). Лежит там в ~/deti вместе с .env, data/ и src/ (код из main);
+# всё это при каждом пуше в main заливает .github/workflows/deploy.yml.
+# Образы собираются на сервере из src/, слои кешируются между выкладками.
+#
+# Порты 80/443 на сервере заняты Caddy от Yapp. Он подключает наш сайт из /opt/yapp/sites/deti.caddy
+# и ходит в контейнеры miniapp и web по общей сети yapp_default.
+
+name: deti
+
+x-python: &python
+  image: deti-python
+  pull_policy: never
+  env_file: .env
+  restart: unless-stopped
+  logging: &logging
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  backend:
+    <<: *python
+    build:
+      context: ./src
+      dockerfile: docker/python.Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./data:/app/data # SQLite, Chroma, загруженные файлы и данные фонда из репозитория
+    mem_limit: 800m # на сервере живёт и Yapp — не даём хакатонному стеку съесть всю память
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    <<: *python
+    command: python -m bot.main
+    environment:
+      BACKEND_URL: http://backend:8000
+    restart: on-failure # без токена бот штатно завершается и не перезапускается
+    mem_limit: 200m
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  web:
+    <<: *python
+    command: >
+      streamlit run web/streamlit_app.py
+      --server.address 0.0.0.0 --server.port 8501 --server.headless true
+      --server.baseUrlPath demo
+      --browser.gatherUsageStats false
+    environment:
+      BACKEND_URL: http://backend:8000
+    mem_limit: 300m
+    networks:
+      default:
+      yapp:
+        aliases: [deti-web]
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  miniapp:
+    build: ./src/miniapp
+    environment:
+      BACKEND_HOST: backend:8000
+    restart: unless-stopped
+    mem_limit: 100m
+    logging: *logging
+    networks:
+      default:
+      yapp:
+        aliases: [deti-miniapp]
+    depends_on:
+      - backend
+
+networks:
+  yapp:
+    external: true
+    name: yapp_default

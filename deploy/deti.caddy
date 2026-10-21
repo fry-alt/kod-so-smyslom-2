@@ -1,0 +1,16 @@
+# Наш сайт в Caddy от Yapp: деплой подставляет домен вместо __DOMAIN__ и кладёт файл
+# в /opt/yapp/sites/deti.caddy (Caddyfile Yapp делает `import /etc/caddy/sites/*.caddy`).
+#
+#   https://DOMAIN/        → Mini App (она же проксирует /api → бэкенд)
+#   https://DOMAIN/demo    → Streamlit
+__DOMAIN__ {
+	encode gzip
+
+	handle /demo* {
+		reverse_proxy deti-web:8501
+	}
+
+	handle {
+		reverse_proxy deti-miniapp:80
+	}
+}

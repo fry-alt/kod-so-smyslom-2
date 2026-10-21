@@ -3,10 +3,9 @@
 SHELL := bash
 .DEFAULT_GOAL := help
 
-# DEPLOY_HOST, DEPLOY_DIR, BACKEND_URL можно задать в .env
+# BACKEND_URL можно задать в .env
 -include .env
 BACKEND_URL ?= http://localhost:8000
-DEPLOY_DIR ?= kod-so-smyslom-2
 export BACKEND_URL
 # UTF-8 для вывода Python на Windows (логи и кириллица при перенаправлении в файл)
 export PYTHONUTF8 := 1
@@ -81,6 +80,6 @@ tunnel: ## публичный https-адрес для Mini App через cloudf
 		fi; sleep 2; \
 	done; echo "No tunnel URL yet, see: docker compose logs cloudflared"; exit 1
 
-deploy: ## деплой на сервер: git pull + docker compose --profile prod
-	@test -n "$(DEPLOY_HOST)" || (echo "Set DEPLOY_HOST=user@server in .env" && exit 1)
-	ssh $(DEPLOY_HOST) 'cd $(DEPLOY_DIR) && git pull --ff-only && docker compose --profile prod up -d --build'
+deploy: ## перевыложить main на сервер (GitHub Actions → Deploy; сам запускается при мерже в main)
+	gh workflow run deploy.yml --ref main
+	@echo "Started. Progress: gh run watch, site: https://deti.201-34-157-90.sslip.io"
