@@ -267,6 +267,7 @@ function EventCard({ o }: { o: Opportunity }) {
 
 function QuickActions(props: { hasForm: boolean }) {
   const items = [
+    { icon: "📹", title: "Собеседование", sub: "Запись на видеозвонок с координатором", to: "/interview" },
     { icon: "🎓", title: "Обучение", sub: "Курс и тест перед занятиями", to: "/training" },
     { icon: "⏱", title: "История и часы", sub: "Где вы были и сколько помогли", to: "/history", needsForm: true },
     { icon: "💬", title: "Спросить о фонде", sub: "Ответим по документам фонда", to: "/ask" },
@@ -296,7 +297,7 @@ function QuickActions(props: { hasForm: boolean }) {
 // ===== Видеособеседование =====
 
 /** Ближайшее назначенное собеседование. Опоздавшего ещё пускаем: звонок виден 2 часа после начала. */
-function nextCall(list: Interview[]): Interview | null {
+export function nextCall(list: Interview[]): Interview | null {
   const from = Date.now() - 2 * 3600_000;
   return (
     list
@@ -306,7 +307,7 @@ function nextCall(list: Interview[]): Interview | null {
 }
 
 /** «22 октября в 15:00». */
-function callWhen(iso: string): string {
+export function callWhen(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   const day = d.toLocaleDateString("ru", { day: "numeric", month: "long" });
@@ -364,9 +365,14 @@ function Path(props: { v: Volunteer | null; interviews: Interview[]; participati
 
   const hint: Record<StepKey, ReactNode> = {
     form: "Расскажите о себе: что умеете, когда свободны, чем хотите помогать. Кнопка «Заполнить анкету» — выше.",
-    interview: props.upcoming
-      ? `Назначено на ${callWhen(props.upcoming.starts_at)}. Кнопка «Войти в звонок» — выше.`
-      : "Координатор пригласит вас на короткий видеозвонок. Ссылка придёт в Telegram и появится здесь.",
+    interview: props.upcoming ? (
+      `Назначено на ${callWhen(props.upcoming.starts_at)}. Кнопка «Войти в звонок» — выше.`
+    ) : (
+      <>
+        <span>Короткий видеозвонок с координатором — 30 минут. Выберите удобное время сами.</span>
+        <Button onClick={() => navigate("/interview")}>Записаться на собеседование</Button>
+      </>
+    ),
     training: (
       <>
         <span>Короткий курс о наших подопечных и правилах фонда, в конце — тест.</span>
