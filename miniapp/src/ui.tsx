@@ -182,5 +182,6 @@ export function errorText(e: unknown): string {
   if (/failed to fetch|networkerror|load failed/i.test(msg)) return "Нет связи с сервером. Проверьте интернет.";
   if (/internal server error|bad gateway|service unavailable|gateway time-?out/i.test(msg))
     return "Сервер сейчас не отвечает. Попробуйте ещё раз через минуту.";
+  if (/^not found$/i.test(msg)) return "Эта функция на сервере ещё не готова.";
   return msg || "Что-то пошло не так.";
 }
