@@ -52,13 +52,6 @@ function Dashboard({ d }: { d: DashboardToday }) {
   const c = d.counters;
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat value={num(c.volunteers)} label={`${plural(c.volunteers, "волонтёр", "волонтёра", "волонтёров")} в базе`} to="/admin/volunteers" dot="bg-logo-blue" />
-        <Stat value={num(c.active)} label="активных — участвовали за 60 дней" to="/admin/analytics" dot="bg-accent" />
-        <Stat value={num(c.hours_total)} label={`${plural(Math.round(c.hours_total), "час", "часа", "часов")} волонтёрства всего`} dot="bg-logo-berry" />
-        <Stat value={num(c.hours_month)} label={`${plural(Math.round(c.hours_month), "час", "часа", "часов")} в этом месяце`} dot="bg-pop" />
-      </div>
-
       <Interviews d={d} />
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -192,63 +185,68 @@ function Dashboard({ d }: { d: DashboardToday }) {
           )}
         </Panel>
       </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat value={num(c.volunteers)} label={`${plural(c.volunteers, "волонтёр", "волонтёра", "волонтёров")} в базе`} to="/admin/volunteers" dot="bg-logo-blue" />
+        <Stat value={num(c.active)} label="активных — участвовали за 60 дней" to="/admin/analytics" dot="bg-accent" />
+        <Stat value={num(c.hours_total)} label={`${plural(Math.round(c.hours_total), "час", "часа", "часов")} волонтёрства всего`} dot="bg-logo-berry" />
+        <Stat value={num(c.hours_month)} label={`${plural(Math.round(c.hours_month), "час", "часа", "часов")} в этом месяце`} dot="bg-pop" />
+      </div>
     </>
   );
 }
 
 function Interviews({ d }: { d: DashboardToday }) {
   const overdue = d.interviews.filter((i) => i.overdue).length;
+  const today = d.interviews.filter((i) => !i.overdue);
+  const needsResult = d.interviews.filter((i) => i.overdue);
   return (
-    <Panel
-      title="Собеседования сегодня"
-      dot="bg-logo-blue"
-      count={d.interviews.length}
-      hint={
-        overdue > 0
-          ? `${overdue} ${plural(overdue, "прошло", "прошли", "прошли")} без итога — откройте карточку и запишите, как всё прошло.`
-          : "Ссылка на звонок открывается в новой вкладке."
-      }
-    >
-      {d.interviews.length === 0 ? (
-        <AllClear>Сегодня собеседований нет</AllClear>
-      ) : (
-        <ul className="grid gap-2 md:grid-cols-2">
-          {d.interviews.map((i) => (
-            <li
-              key={i.interview_id}
-              className={`flex flex-col gap-3 rounded-2xl px-4 py-3 ${
-                i.overdue ? "bg-[color-mix(in_srgb,var(--p-cta)_10%,var(--p-page))]" : "bg-page"
-              }`}
-            >
-              <div className="flex items-center gap-4">
-                <span className="font-display text-2xl font-semibold tabular-nums">{timeOf(i.starts_at)}</span>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <PersonLink {...i.volunteer} />
-                  {i.overdue ? (
-                    <span className="font-medium">⚠ {dayLabel(i.starts_at)} · итога ещё нет</span>
-                  ) : (
-                    <span className="text-hint">видеозвонок на сайте</span>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {/* звонок сегодняшний — можно открыть и с опозданием; вчерашний — только записать итог */}
-                {isToday(i.starts_at) && (
-                  <LinkButton to={coordinatorCallUrl(i.token, i.interview_id, i.volunteer.id)} newTab>
-                    Открыть звонок
-                  </LinkButton>
-                )}
-                {i.overdue && (
-                  <LinkButton to={`/admin/volunteers/${i.volunteer.id}#interview`} variant="secondary">
-                    Записать итог
-                  </LinkButton>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+    <>
+      <Panel
+        title="Собеседования сегодня"
+        dot="bg-logo-blue"
+        count={today.length}
+        hint="Ссылку на видеозвонок можно открыть в новой вкладке."
+      >
+        {today.length === 0 ? <AllClear>Сегодня собеседований нет</AllClear> : <InterviewList items={today} />}
+      </Panel>
+      {needsResult.length > 0 && (
+        <Panel
+          title="Нужно записать итог"
+          dot="bg-cta"
+          count={needsResult.length}
+          hint={`${overdue} ${plural(overdue, "собеседование прошло", "собеседования прошли", "собеседований прошло")} без итога.`}
+        >
+          <InterviewList items={needsResult} />
+        </Panel>
       )}
-    </Panel>
+    </>
+  );
+}
+
+function InterviewList({ items }: { items: DashboardToday["interviews"] }) {
+  return (
+    <ul className="grid gap-2 md:grid-cols-2">
+      {items.map((i) => (
+        <li key={i.interview_id} className={`flex flex-col gap-3 rounded-2xl px-4 py-3 ${i.overdue ? "bg-[color-mix(in_srgb,var(--p-cta)_10%,var(--p-page))]" : "bg-page"}`}>
+          <div className="flex items-center gap-4">
+            <span className="font-display text-2xl font-semibold tabular-nums">{timeOf(i.starts_at)}</span>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <PersonLink {...i.volunteer} />
+              {i.overdue ? <span className="font-medium">⚠ {dayLabel(i.starts_at)}</span> : <span className="text-hint">видеозвонок на сайте</span>}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {!i.overdue && isToday(i.starts_at) && (
+              <LinkButton to={coordinatorCallUrl(i.token, i.interview_id, i.volunteer.id)} newTab>Открыть звонок</LinkButton>
+            )}
+            {i.overdue && (
+              <LinkButton to={`/admin/volunteers/${i.volunteer.id}#interview`} variant="secondary">Записать итог</LinkButton>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

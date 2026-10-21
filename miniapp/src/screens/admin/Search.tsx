@@ -3,9 +3,9 @@
 // Открыт из возможности (/admin/search?opportunity=3) — подбор под неё и кнопка «Пригласить».
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
-import type { Candidate, Opportunity, ParsedQuery, Role, SearchRequest, SearchResponse, VolunteerStatus } from "../../api";
+import type { Availability, Candidate, Format, Opportunity, ParsedQuery, Regularity, Region, Role, SearchRequest, SearchResponse, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
-import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
+import { AVAILABILITY, formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
 import { navigate, useSearchParam } from "../../router";
 import { Badge, Button, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link } from "../../ui";
 
@@ -114,46 +114,47 @@ export default function Search() {
 
       {!opportunityId && (
         <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-2">
-            {EXAMPLES.map((q) => (
-              <button
-                key={q}
-                type="button"
-                onClick={() => {
-                  setQuery(q);
-                  run({ query: q });
-                }}
-                className="rounded-full border border-line px-4 py-2 text-left hover:border-accent"
-              >
-                {q}
-              </button>
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="text-hint">Например:</span>
+            {EXAMPLES.map((q, index) => (
+              <span key={q}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery(q);
+                    run({ query: q });
+                  }}
+                  className="text-link underline-offset-4 hover:underline"
+                >
+                  {q}
+                </button>
+                {index < EXAMPLES.length - 1 && <span aria-hidden="true" className="text-hint"> · </span>}
+              </span>
             ))}
           </div>
           {roles.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-hint">Или найти под роль:</span>
-              {roles.map((r) => (
-                <button
-                  key={r.code}
-                  type="button"
-                  title={r.description}
-                  onClick={() => {
-                    setQuery("");
-                    run({ query: "", role_code: r.code });
-                  }}
-                  className="rounded-full bg-surface px-4 py-2 hover:bg-accent hover:text-accent-text"
-                >
-                  {r.title}
-                </button>
-              ))}
-            </div>
+            <label className="flex flex-col gap-1.5 font-semibold sm:max-w-sm">
+              Найти под роль
+              <select
+                value=""
+                onChange={(event) => {
+                  if (!event.target.value) return;
+                  setQuery("");
+                  run({ query: "", role_code: event.target.value });
+                }}
+                className={inputClass}
+              >
+                <option value="">Выберите роль</option>
+                {roles.map((r) => <option key={r.code} value={r.code}>{r.title}</option>)}
+              </select>
+            </label>
           )}
         </div>
       )}
 
       <div className="flex flex-col gap-2">
         <span className="font-semibold">
-          Показывать только: <span className="font-normal text-hint">{statuses.length ? "" : "все, кроме «на паузе»"}</span>
+          Статус: <span className="font-normal text-hint">{statuses.length ? "выбраны отмеченные" : "любой, кроме «На паузе»"}</span>
         </span>
         <Chips<VolunteerStatus>
           multiple
@@ -197,6 +198,9 @@ function OpportunityHeader(props: { opportunity: Opportunity | null }) {
 
 function Results(props: { result: SearchResponse; opportunity: Opportunity | null; opportunities: Opportunity[] }) {
   const { parsed, candidates, total_checked } = props.result;
+  const [draftParsed, setDraftParsed] = useState(parsed);
+  const [activeParsed, setActiveParsed] = useState(parsed);
+  const [newSkill, setNewSkill] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
   const [invited, setInvited] = useState<number[]>([]);
   const [inviting, setInviting] = useState(false);
@@ -205,6 +209,14 @@ function Results(props: { result: SearchResponse; opportunity: Opportunity | nul
   const [inviteOpportunityId, setInviteOpportunityId] = useState("");
   const opp = props.opportunity ?? props.opportunities.find((item) => String(item.id) === inviteOpportunityId) ?? null;
   const top = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setDraftParsed(parsed);
+    setActiveParsed(parsed);
+    setNewSkill("");
+  }, [parsed]);
+
+  const matchingCandidates = candidates.filter((candidate) => matchesParsed(candidate, activeParsed));
 
   // новые результаты — прокрутить к ним, чтобы не искать их ниже подсказок
   useEffect(() => {
@@ -239,16 +251,28 @@ function Results(props: { result: SearchResponse; opportunity: Opportunity | nul
 
   return (
     <div ref={top} className="flex scroll-mt-4 flex-col gap-4">
-      <ParsedChips parsed={parsed} />
-      {candidates.length === 0 ? (
+      <ParsedEditor
+        parsed={draftParsed}
+        newSkill={newSkill}
+        setNewSkill={setNewSkill}
+        onChange={setDraftParsed}
+        onApply={() => setActiveParsed(draftParsed)}
+      />
+      {activeParsed !== parsed && (
+        <p className="text-sm text-hint">
+          Уточнение применено к уже подобранным кандидатам. Повторный разбор запроса пока не поддерживается API.
+        </p>
+      )}
+      {matchingCandidates.length === 0 ? (
         <Empty>
-          Подходящих волонтёров не нашли среди {total_checked} анкет. Попробуйте описать задачу иначе или снять фильтр по
-          статусу.
+          {candidates.length === 0
+            ? `Подходящих волонтёров не нашли среди ${total_checked} анкет. Попробуйте изменить запрос или фильтр статуса.`
+            : "Среди показанных кандидатов нет совпадений. Снимите часть условий или отредактируйте разбор запроса."}
         </Empty>
       ) : (
         <>
           <p className="text-hint">
-            Проверили анкет: {total_checked}. Лучшие совпадения — сверху.
+            Проверили анкет: {total_checked}. По текущим условиям подходят {matchingCandidates.length} из {candidates.length} показанных кандидатов.
           </p>
           {!props.opportunity && (
             props.opportunities.length > 0 ? (
@@ -273,12 +297,12 @@ function Results(props: { result: SearchResponse; opportunity: Opportunity | nul
               </label>
             ) : (
               <p className="rounded-2xl bg-soft px-4 py-3 text-hint">
-                Чтобы пригласить человека, сначала создайте возможность в разделе «Возможности».
+                Чтобы пригласить человека, сначала создайте занятие в разделе «Занятия и события».
               </p>
             )
           )}
           <div className="grid gap-4 lg:grid-cols-2">
-            {candidates.map((c) => (
+            {matchingCandidates.map((c) => (
               <CandidateCard
                 key={c.volunteer.id}
                 c={c}
@@ -317,32 +341,96 @@ function Results(props: { result: SearchResponse; opportunity: Opportunity | nul
   );
 }
 
-/** «Как я понял запрос» — чтобы координатор видел, что система поняла его правильно. */
-function ParsedChips({ parsed }: { parsed: ParsedQuery }) {
-  const chips: { icon: string; text: string }[] = [
-    ...parsed.skills.map((s) => ({ icon: "🛠", text: s })),
-    ...parsed.availability.map((a) => ({ icon: "🕒", text: AVAILABILITY[a] })),
-    ...(parsed.kind !== "any" ? [{ icon: "🔁", text: REGULARITY[parsed.kind] }] : []),
-    ...(parsed.region ? [{ icon: "📍", text: REGION[parsed.region] }] : []),
-    ...(parsed.format ? [{ icon: "💻", text: FORMAT[parsed.format] }] : []),
-  ];
+/** Редактируемые условия поиска. Изменения применяются к уже возвращённым кандидатам без повторного разбора запроса. */
+function ParsedEditor(props: {
+  parsed: ParsedQuery;
+  newSkill: string;
+  setNewSkill: (value: string) => void;
+  onChange: (value: ParsedQuery) => void;
+  onApply: () => void;
+}) {
+  const p = props.parsed;
+  function change(next: Partial<ParsedQuery>) {
+    props.onChange({ ...p, ...next });
+  }
   return (
-    <Card className="flex flex-col gap-2 py-4">
-      <span className="font-semibold">Как я понял запрос</span>
-      {chips.length === 0 && !parsed.notes ? (
-        <span className="text-hint">Особых условий не нашёл — ищу по смыслу всего запроса.</span>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {chips.map((c) => (
-            <Badge key={c.icon + c.text} className="bg-page">
-              {c.icon} {c.text}
-            </Badge>
-          ))}
-          {parsed.notes && <Badge className="bg-page">💬 {parsed.notes}</Badge>}
-        </div>
-      )}
+    <Card className="flex flex-col gap-4 py-4">
+      <div>
+        <span className="font-semibold">Как я понял запрос</span>
+        <p className="mt-1 text-sm text-hint">Измените условия и примените их к найденным кандидатам.</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5 font-semibold sm:col-span-2">
+          Навыки
+          <div className="flex flex-wrap gap-2">
+            {p.skills.map((skill) => (
+              <button key={skill} type="button" onClick={() => change({ skills: p.skills.filter((item) => item !== skill) })}
+                aria-label={`Убрать навык ${skill}`} className="rounded-full bg-page px-3 py-2 text-left">
+                🛠 {skill} <span aria-hidden="true">×</span>
+              </button>
+            ))}
+          </div>
+          <span className="flex gap-2">
+            <input value={props.newSkill} onChange={(event) => props.setNewSkill(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && props.newSkill.trim()) {
+                  event.preventDefault();
+                  change({ skills: [...p.skills, props.newSkill.trim()] });
+                  props.setNewSkill("");
+                }
+              }} placeholder="Добавить навык" className={inputClass} />
+            <Button type="button" variant="secondary" disabled={!props.newSkill.trim()} onClick={() => {
+              if (props.newSkill.trim()) change({ skills: [...p.skills, props.newSkill.trim()] });
+              props.setNewSkill("");
+            }}>Добавить</Button>
+          </span>
+        </label>
+        <label className="flex flex-col gap-1.5 font-semibold">
+          Регион
+          <select value={p.region ?? "any"} onChange={(event) => change({ region: event.target.value === "any" ? null : event.target.value as Region })} className={inputClass}>
+            <option value="any">Любой регион</option>
+            {Object.entries(REGION).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 font-semibold">
+          Формат
+          <select value={p.format ?? "any"} onChange={(event) => change({ format: event.target.value === "any" ? null : event.target.value as Format })} className={inputClass}>
+            <option value="any">Любой</option>
+            {Object.entries(FORMAT).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 font-semibold">
+          Регулярность
+          <select value={p.kind} onChange={(event) => change({ kind: event.target.value as Regularity })} className={inputClass}>
+            {Object.entries(REGULARITY).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="flex flex-col gap-2">
+        <span className="font-semibold">Когда может</span>
+        <Chips<Availability> multiple options={AVAILABILITY} value={p.availability} onChange={(availability) => change({ availability })} />
+      </div>
+      {p.notes && <p className="text-sm text-hint">Дополнительно: {p.notes}</p>}
+      <div>
+        <Button onClick={props.onApply}>Применить условия</Button>
+      </div>
     </Card>
   );
+}
+
+function matchesParsed(candidate: Candidate, parsed: ParsedQuery): boolean {
+  const v = candidate.volunteer;
+  const searchableSkills = [
+    ...(v.profile?.skills ?? []),
+    ...(v.profile?.interests ?? []),
+    v.answers.skills,
+  ].join(" ").toLocaleLowerCase("ru");
+  if (parsed.skills.some((skill) => !searchableSkills.includes(skill.toLocaleLowerCase("ru")))) return false;
+  if (parsed.availability.length && !parsed.availability.some((time) => v.answers.availability.includes(time))) return false;
+  if (parsed.region && v.answers.region !== parsed.region) return false;
+  if (parsed.format && !v.answers.formats.includes(parsed.format)) return false;
+  if (parsed.kind !== "any" && v.answers.regularity !== parsed.kind) return false;
+  return true;
 }
 
 function CandidateCard(props: {
@@ -375,7 +463,7 @@ function CandidateCard(props: {
 
       <p>{reason}</p>
       {!ai && (
-        <p className="text-sm text-hint">⚙️ Оценка без AI — по совпадению навыков и времени (AI сейчас недоступен).</p>
+        <p className="text-sm text-hint">Автоматическая оценка недоступна — совпадение рассчитано по навыкам и времени.</p>
       )}
 
       {matched_skills.length > 0 && (
@@ -393,7 +481,7 @@ function CandidateCard(props: {
         <Badge className="bg-page">
           {v.training_score !== null ? `Обучение: ${v.training_score}%` : "Обучение не проходил"}
         </Badge>
-        <span className="text-sm text-hint">🕒 {v.answers.availability.map((a) => AVAILABILITY[a]).join(", ") || "время не указано"}</span>
+        <span className="text-sm text-hint">🕒 {formatAvailability(v.answers.availability) || "время не указано"}</span>
       </div>
 
       <Contact contact={v.contact} />

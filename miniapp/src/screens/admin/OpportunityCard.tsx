@@ -12,17 +12,17 @@ import { Badge, Button, Card, Empty, ErrorBox, errorText, formatHours, formatWhe
 const ACTIONS: Record<ParticipationStatus, { status: ParticipationStatus; label: string }[]> = {
   responded: [
     { status: "confirmed", label: "Подтвердить" },
-    { status: "attended", label: "Участвовал" },
-    { status: "declined", label: "Отказ" },
+    { status: "attended", label: "Отметить участие" },
+    { status: "declined", label: "Отклонить отклик" },
   ],
   invited: [
     { status: "confirmed", label: "Подтвердить" },
-    { status: "attended", label: "Участвовал" },
-    { status: "declined", label: "Отказ" },
+    { status: "attended", label: "Отметить участие" },
+    { status: "declined", label: "Отклонить отклик" },
   ],
   confirmed: [
-    { status: "attended", label: "Участвовал" },
-    { status: "declined", label: "Отказ" },
+    { status: "attended", label: "Отметить участие" },
+    { status: "declined", label: "Отклонить отклик" },
   ],
   attended: [],
   declined: [{ status: "confirmed", label: "Подтвердить" }],
@@ -46,8 +46,8 @@ export default function OpportunityCard(props: { id: number }) {
   if (!o) {
     return (
       <div className="flex flex-col gap-3">
-        <Link to="/admin/opportunities">← Возможности</Link>
-        <Empty>Такой возможности нет — возможно, её удалили.</Empty>
+      <Link to="/admin/opportunities">← Занятия</Link>
+      <Empty>Такого занятия нет — возможно, его удалили.</Empty>
       </div>
     );
   }
@@ -58,7 +58,7 @@ export default function OpportunityCard(props: { id: number }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <Link to="/admin/opportunities">← Возможности</Link>
+      <Link to="/admin/opportunities">← Занятия</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold">{o.title}</h1>

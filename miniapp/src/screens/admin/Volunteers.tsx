@@ -1,24 +1,51 @@
 // База волонтёров (T-09): все анкеты с фильтром по статусу.
 // На ноутбуке — таблица, на телефоне — карточки. Клик по человеку → его карточка.
-import { useState, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 
-import type { Volunteer, VolunteerStatus } from "../../api";
+import type { Availability, Region, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
-import { AVAILABILITY, STATUS, STATUS_COLOR } from "../../labels";
+import { AVAILABILITY, formatAvailability, REGION, STATUS, STATUS_COLOR } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Chips, Empty, ErrorBox, Link, Loading, useLoad } from "../../ui";
+import { Badge, Chips, Empty, ErrorBox, inputClass, Link, Loading, useLoad } from "../../ui";
 
 type Filter = VolunteerStatus | "all";
 
 const FILTER: Record<Filter, string> = { all: "Все", ...STATUS };
+type SortBy = "hours" | "created_at";
 
 /** Сколько навыков показывать в строке — остальные в карточке. */
 const MAX_SKILLS = 4;
 
 export default function Volunteers() {
   const [filter, setFilter] = useState<Filter>("all");
+  const [search, setSearch] = useState("");
+  const [region, setRegion] = useState<Region | "all">("all");
+  const [availability, setAvailability] = useState<Availability | "all">("all");
+  const [sortBy, setSortBy] = useState<SortBy>("created_at");
+  const [descending, setDescending] = useState(true);
   const status = filter === "all" ? undefined : filter;
   const { data, error, loading, reload } = useLoad(() => backend.list(status), [status]);
+  const list = useMemo(() => {
+    const needle = search.trim().toLocaleLowerCase("ru");
+    return [...(data ?? [])]
+      .filter((v) => !needle || `${v.name} ${v.contact}`.toLocaleLowerCase("ru").includes(needle))
+      .filter((v) => region === "all" || v.answers.region === region)
+      .filter((v) => availability === "all" || v.answers.availability.includes(availability))
+      .sort((a, b) => {
+        const order = sortBy === "hours"
+          ? a.hours - b.hours
+          : a.created_at.localeCompare(b.created_at);
+        return descending ? -order : order;
+      });
+  }, [data, search, region, availability, sortBy, descending]);
+
+  function toggleSort(field: SortBy) {
+    if (sortBy === field) setDescending((value) => !value);
+    else {
+      setSortBy(field);
+      setDescending(true);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -32,20 +59,49 @@ export default function Volunteers() {
         <Chips<Filter> options={FILTER} value={[filter]} onChange={(v) => setFilter(v[0])} />
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="flex flex-col gap-1.5 font-semibold">
+          Найти по имени или контакту
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Имя, телефон или почта"
+            className={inputClass}
+            type="search"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 font-semibold">
+          Регион
+          <select value={region} onChange={(event) => setRegion(event.target.value as Region | "all")} className={inputClass}>
+            <option value="all">Все регионы</option>
+            {Object.entries(REGION).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5 font-semibold">
+          Когда может
+          <select value={availability} onChange={(event) => setAvailability(event.target.value as Availability | "all")} className={inputClass}>
+            <option value="all">Любое время</option>
+            {Object.entries(AVAILABILITY).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </label>
+      </div>
+
       {loading && <Loading />}
       {error && !loading && <ErrorBox text={`Не удалось загрузить базу: ${error}`} onRetry={reload} />}
       {data && !loading && !error && (
-        data.length === 0 ? (
+        list.length === 0 ? (
           <Empty>
-            {filter === "all"
-              ? "В базе пока никого нет. Анкеты появятся, когда волонтёры их заполнят."
-              : `Волонтёров со статусом «${STATUS[filter]}» нет.`}
+            {data.length === 0
+              ? filter === "all"
+                ? "В базе пока никого нет. Анкеты появятся, когда волонтёры их заполнят."
+                : `Волонтёров со статусом «${STATUS[filter]}» нет.`
+              : "По этим условиям никого не нашли. Измените поиск или фильтры."}
           </Empty>
         ) : (
           <>
-            <p className="text-hint">Всего: {data.length}</p>
-            <Table list={data} />
-            <CardList list={data} />
+            <p className="text-hint">Найдено: {list.length} из {data.length}</p>
+            <Table list={list} sortBy={sortBy} descending={descending} onSort={toggleSort} />
+            <CardList list={list} />
           </>
         )
       )}
@@ -54,7 +110,12 @@ export default function Volunteers() {
 }
 
 /** Ноутбук: таблица. Вся строка кликабельна, имя — обычная ссылка (можно открыть в новой вкладке). */
-function Table({ list }: { list: Volunteer[] }) {
+function Table({ list, sortBy, descending, onSort }: {
+  list: Volunteer[];
+  sortBy: SortBy;
+  descending: boolean;
+  onSort: (field: SortBy) => void;
+}) {
   function open(e: MouseEvent, id: number) {
     if ((e.target as HTMLElement).closest("a")) return; // по ссылке переход уже сделан
     navigate(`/admin/volunteers/${id}`);
@@ -68,7 +129,11 @@ function Table({ list }: { list: Volunteer[] }) {
           <th className="py-3 pr-4 font-medium">Навыки</th>
           <th className="py-3 pr-4 font-medium">Когда может</th>
           <th className="py-3 pr-4 font-medium">Обучение</th>
-          <th className="py-3 text-right font-medium">Часы</th>
+          <th className="py-3 text-right font-medium">
+            <button type="button" onClick={() => onSort("hours")} aria-label={`Сортировать по часам ${sortBy === "hours" ? (descending ? "по убыванию" : "по возрастанию") : "по убыванию"}`}>
+              Часы {sortBy === "hours" ? (descending ? "↓" : "↑") : "↕"}
+            </button>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -143,7 +208,7 @@ function Skills({ v }: { v: Volunteer }) {
 }
 
 function availability(v: Volunteer): string {
-  return v.answers.availability.map((a) => AVAILABILITY[a]).join(", ") || "не указано";
+  return formatAvailability(v.answers.availability) || "не указано";
 }
 
 function training(v: Volunteer): string {

@@ -12,6 +12,7 @@ export function Button(props: {
   loading?: boolean;
   loadingLabel?: string;
   wide?: boolean;
+  ariaPressed?: boolean;
 }) {
   const variant = props.variant ?? "primary";
   const look = {
@@ -24,6 +25,7 @@ export function Button(props: {
       type={props.type ?? "button"}
       onClick={props.onClick}
       disabled={props.disabled || props.loading}
+      aria-pressed={props.ariaPressed}
       {...(variant === "ghost" ? {} : flairHandlers)}
       className={`min-h-12 rounded-full px-6 py-3 font-semibold disabled:opacity-50 ${look} ${props.wide ? "w-full" : ""}`}
     >
@@ -197,11 +199,11 @@ export function Contact({ contact }: { contact: string }) {
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-page px-4 py-2">
       <span className="font-medium">{contact}</span>
       <button type="button" onClick={copy} className="text-link hover:underline">
-        {copied ? "Скопировано ✓" : "Копировать"}
+        {copied ? "Контакт скопирован ✓" : "Скопировать контакт"}
       </button>
       {username && (
         <a href={`https://t.me/${username}`} target="_blank" rel="noreferrer" className="text-link hover:underline">
-          Написать в Telegram
+          Открыть Telegram
         </a>
       )}
     </div>

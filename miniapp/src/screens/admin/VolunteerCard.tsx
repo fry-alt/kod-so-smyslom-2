@@ -6,16 +6,16 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import type { Note, Role, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
-import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
+import { formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
 import { navigate } from "../../router";
 import { Badge, Button, Card, Contact, Empty, ErrorBox, errorText, inputClass, Link, Loading, useLoad } from "../../ui";
 import InterviewBlock from "./interview/InterviewBlock";
 
 /** Кнопки смены статуса: что делает координатор → какой статус ставим. */
 const STATUS_ACTIONS: { status: VolunteerStatus; label: string }[] = [
-  { status: "approved", label: "Допустить" },
+  { status: "approved", label: "Допущен" },
   { status: "active", label: "Активен" },
-  { status: "paused", label: "Пауза" },
+  { status: "paused", label: "На паузе" },
 ];
 
 export default function VolunteerCard(props: { id: number }) {
@@ -51,7 +51,7 @@ export default function VolunteerCard(props: { id: number }) {
           <div className="flex flex-wrap items-center gap-3">
             <Contact contact={v.contact} />
             {/* переписка на сайте: волонтёр ответит из личного кабинета */}
-            <Button onClick={() => navigate(`/admin/messages/${v.id}`)}>Написать</Button>
+            <Button onClick={() => navigate(`/admin/messages/${v.id}`)}>Написать на сайте</Button>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-5">
@@ -97,9 +97,9 @@ function StatusCard(props: { v: Volunteer; onSaved: (v: Volunteer) => void }) {
     <Card className="flex flex-col gap-3">
       <h2 className="text-xl font-semibold">Статус</h2>
       <p>
-        Сейчас: <Badge className={STATUS_COLOR[props.v.status]}>{STATUS[props.v.status]}</Badge>
+        Статус: <Badge className={STATUS_COLOR[props.v.status]}>{STATUS[props.v.status]}</Badge>
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" role="group" aria-label={`Статус: ${STATUS[props.v.status]}`}>
         {STATUS_ACTIONS.map((a) => {
           const current = props.v.status === a.status;
           return (
@@ -108,6 +108,7 @@ function StatusCard(props: { v: Volunteer; onSaved: (v: Volunteer) => void }) {
               variant={current ? "primary" : "secondary"}
               loading={saving === a.status}
               disabled={saving !== null}
+              ariaPressed={current}
               onClick={() => !current && change(a.status)}
             >
               {current ? `✓ ${a.label}` : a.label}
@@ -205,9 +206,9 @@ function ProfileCard({ v }: { v: Volunteer }) {
   const p = v.profile;
   return (
     <Card className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold">Профиль от AI</h2>
+      <h2 className="text-xl font-semibold">Краткий профиль (составлен автоматически)</h2>
       {!p ? (
-        <p className="text-hint">AI ещё не разобрал анкету. Ответы волонтёра — ниже.</p>
+        <p className="text-hint">Краткий профиль ещё готовится. Ответы волонтёра — ниже.</p>
       ) : (
         <>
           {p.summary && <p>{p.summary}</p>}
@@ -250,7 +251,7 @@ function AnswersCard({ v }: { v: Volunteer }) {
         <Answer title="Что умеет">{a.skills}</Answer>
         <Answer title="Чем хочет помогать">{a.wishes}</Answer>
         <Answer title="Опыт волонтёрства">{a.experience}</Answer>
-        <Answer title="Когда может">{a.availability.map((x) => AVAILABILITY[x]).join(", ")}</Answer>
+        <Answer title="Когда может">{formatAvailability(a.availability)}</Answer>
         <Answer title="Формат">{a.formats.map((x) => FORMAT[x]).join(", ")}</Answer>
         <Answer title="Как часто">{REGULARITY[a.regularity]}</Answer>
         <Answer title="Регион">{REGION[a.region]}</Answer>

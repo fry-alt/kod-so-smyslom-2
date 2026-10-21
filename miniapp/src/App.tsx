@@ -197,8 +197,8 @@ function pageTitle(path: string, search: string): string {
   if (path.startsWith("/admin/analytics")) return "Аналитика";
   if (path.startsWith("/admin/volunteers/")) return "Карточка волонтёра";
   if (path.startsWith("/admin/volunteers")) return "Волонтёры";
-  if (path.startsWith("/admin/opportunities/")) return "Карточка возможности";
-  if (path.startsWith("/admin/opportunities")) return "Возможности";
+  if (path.startsWith("/admin/opportunities/")) return "Карточка занятия";
+  if (path.startsWith("/admin/opportunities")) return "Занятия";
   if (path.startsWith("/admin/messages")) return "Сообщения";
   if (path.startsWith("/admin/settings")) return "Настройки";
   return "Страница не найдена";
