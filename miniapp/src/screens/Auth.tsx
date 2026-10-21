@@ -57,7 +57,7 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
   }
 
   return (
-    <div className="grid items-start gap-8 md:grid-cols-[minmax(0,26rem)_1fr] md:gap-10 lg:gap-14">
+    <div className="grid gap-8 md:grid-cols-[minmax(0,26rem)_1fr] md:gap-10 lg:gap-14">
       <section className="flex flex-col gap-6 rounded-[2rem] bg-surface p-5 shadow-[0_24px_60px_-40px_var(--p-ink)] sm:p-7">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-balance">
@@ -160,7 +160,7 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
           )}
         </form>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-5">
+        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-5">
           <span className="text-hint">{register ? "Уже есть аккаунт?" : "Ещё нет аккаунта?"}</span>
           <button
             type="button"
@@ -221,7 +221,7 @@ function Showcase(props: { role: AccountRole }) {
           ))}
         </ul>
       </div>
-      <div className="relative">
+      <div className="relative flex flex-1 flex-col justify-center">
         <VolunteerScenes />
       </div>
     </section>
