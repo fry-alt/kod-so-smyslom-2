@@ -2,7 +2,7 @@
 date: 2026-10-21
 author: fry-alt
 task: T-15 (#15)
-pr: будет добавлена после создания PR
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/52
 areas: [бэкенд]
 ---
 
