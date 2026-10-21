@@ -1,5 +1,5 @@
 // Общие элементы интерфейса. Крупные: среди волонтёров пенсионеры, координатор не айтишник.
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type PointerEvent, type ReactNode } from "react";
 
 import { navigate } from "./router";
 
@@ -14,23 +14,45 @@ export function Button(props: {
 }) {
   const variant = props.variant ?? "primary";
   const look = {
-    primary: "bg-accent text-accent-text shadow-sm",
-    secondary: "bg-surface text-ink border border-line",
-    ghost: "text-link",
+    primary: `btn-flair bg-accent text-accent-text shadow-sm ${FLAIR.primary}`,
+    secondary: `btn-flair border-2 border-line bg-surface text-ink ${FLAIR.secondary}`,
+    ghost: "text-link transition active:scale-[.98]",
   }[variant];
   return (
     <button
       type={props.type ?? "button"}
       onClick={props.onClick}
       disabled={props.disabled || props.loading}
-      className={`min-h-12 rounded-2xl px-5 py-3 font-semibold transition active:scale-[.98] disabled:opacity-50 ${look} ${
-        props.wide ? "w-full" : ""
-      }`}
+      {...(variant === "ghost" ? {} : flairHandlers)}
+      className={`min-h-12 rounded-full px-6 py-3 font-semibold disabled:opacity-50 ${look} ${props.wide ? "w-full" : ""}`}
     >
       {props.loading ? "Загрузка…" : props.children}
     </button>
   );
 }
+
+/** Цвет заливки при наведении (класс btn-flair в index.css): главная — жёлтым, второстепенная — зелёным. */
+export const FLAIR = {
+  primary: "[--flair:var(--p-pop)] [--flair-text:var(--p-ink)]",
+  secondary: "[--flair:var(--p-accent)] [--flair-text:var(--p-accent-text)] hover:border-accent",
+};
+
+function flairAt(e: PointerEvent<HTMLElement>, on: boolean) {
+  const el = e.currentTarget;
+  const r = el.getBoundingClientRect();
+  el.style.setProperty("--flair-x", `${e.clientX - r.left}px`);
+  el.style.setProperty("--flair-y", `${e.clientY - r.top}px`);
+  el.classList.toggle("is-flair", on);
+}
+
+/** Обработчики для кнопок с заливкой: круг растёт из точки входа курсора (или касания) и уходит в точку выхода. */
+export const flairHandlers = {
+  onPointerEnter: (e: PointerEvent<HTMLElement>) => flairAt(e, true),
+  onPointerLeave: (e: PointerEvent<HTMLElement>) => flairAt(e, false),
+  // на телефоне pointerleave после касания приходит не всегда — убираем заливку при отпускании
+  onPointerUp: (e: PointerEvent<HTMLElement>) => e.pointerType !== "mouse" && flairAt(e, false),
+  onPointerCancel: (e: PointerEvent<HTMLElement>) => flairAt(e, false),
+};
 
 /** Ссылка внутри приложения: переход без перезагрузки страницы. */
 export function Link(props: { to: string; children: ReactNode; className?: string }) {
