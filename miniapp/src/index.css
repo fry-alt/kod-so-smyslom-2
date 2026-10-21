@@ -348,7 +348,7 @@ body {
   overflow: hidden;
   isolation: isolate;
   transition:
-    color 0.25s ease,
+    color 0.4s ease,
     border-color 0.25s ease,
     transform 0.15s ease;
 }
@@ -363,7 +363,7 @@ body {
   border-radius: 50%;
   background: var(--flair);
   transform: translate(-50%, -50%) scale(0);
-  transition: transform 0.55s cubic-bezier(0.19, 1, 0.22, 1);
+  transition: transform 0.9s cubic-bezier(0.19, 1, 0.22, 1);
   pointer-events: none;
 }
 .btn-flair.is-flair::before {
