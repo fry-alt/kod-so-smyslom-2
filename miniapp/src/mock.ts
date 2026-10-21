@@ -168,24 +168,89 @@ const notes: Note[] = [
   { id: 1, volunteer_id: 3, text: "Провела 4 занятия по керамике, участники в восторге.", author: "Координатор", created_at: "2026-10-18T15:00:00" },
 ];
 
+// Модули — как data/training/*.md на бэкенде (id = имя файла), тексты сокращены.
 const modules: TrainingModule[] = [
-  { id: "about", title: "О фонде «Дети Марии»", required: true,
-    text: "# О фонде\n\nФонд помогает детям-сиротам, выпускникам детских домов и людям с ментальными особенностями.\n\n- Творческие мастерские\n- Индивидуальное сопровождение" },
-  { id: "audience", title: "С кем мы работаем", required: true,
-    text: "# Наши участники\n\nДети и взрослые из интернатов и ПНИ. Главное — уважение, терпение и предсказуемость." },
-  { id: "rules", title: "Правила волонтёра", required: true,
-    text: "# Правила\n\n- Не фотографировать участников без разрешения\n- Не обещать того, что не можете выполнить\n- Приходить вовремя" },
+  { id: "01-about", title: "О фонде «Дети Марии»", required: true,
+    text: `## Кто мы
+
+Фонд «Дети Марии» работает больше 30 лет. Он вырос из волонтёрской инициативы,
+и волонтёры до сих пор — **сердце фонда**.
+
+## Кому мы помогаем
+
+- детям-сиротам и выпускникам детских домов;
+- детям и взрослым с ментальными особенностями;
+- молодым людям, которые растут вне семьи.
+
+## Как стать волонтёром
+
+1. Анкета — расскажите о себе.
+2. Обучение — прочитайте материалы и пройдите короткий тест.
+3. Координатор пригласит на подходящее занятие.` },
+  { id: "02-wards", title: "Наши подопечные и как с ними общаться", required: true,
+    text: `## Главные правила общения
+
+**Обращайтесь к человеку, а не к сопровождающему.** Говорите с ним самим, по имени.
+
+**Говорите просто и спокойно.** Короткие фразы, одна просьба за раз.
+
+**Дайте время.** Не делайте за человека то, что он может сделать сам.
+
+**Не обещайте того, чего не сможете выполнить.** Для ребят из детских домов это особенно важно.` },
+  { id: "03-safety", title: "Безопасность на мастерской", required: true,
+    text: `## Перед занятием
+
+- Приходите за 15 минут.
+- Узнайте, где аптечка и запасной выход.
+- Заболели — не приходите и предупредите координатора.
+
+## Если что-то случилось
+
+1. Сохраняйте спокойствие.
+2. Сразу позовите педагога или координатора.
+3. Если человеку плохо — звоните **112**.` },
+  { id: "04-mentoring", title: "Как стать значимым взрослым", required: false,
+    text: `> Дополнительный модуль: для допуска не обязателен.
+
+Значимый взрослый — тот, кто приходит **регулярно** и держит слово. Доверие строится месяцами.` },
 ];
 
-const quizzes: Record<string, { questions: Quiz["questions"]; right: number[] }> = Object.fromEntries(
-  modules.map((m) => [m.id, {
+// Вопросы теста; на бэкенде их сочиняет LLM по тексту модуля.
+const quizzes: Record<string, { questions: Quiz["questions"]; right: number[] }> = {
+  "01-about": {
     questions: [
-      { question: `Вопрос 1 по модулю «${m.title}»`, options: ["Верный ответ", "Неверный", "Неверный"] },
-      { question: `Вопрос 2 по модулю «${m.title}»`, options: ["Неверный", "Верный ответ", "Неверный"] },
+      { question: "Кому помогает фонд?", options: ["Только пожилым людям", "Детям-сиротам и людям с ментальными особенностями", "Бездомным животным"] },
+      { question: "Что идёт после анкеты?", options: ["Сразу занятие", "Обучение и короткий тест", "Собеседование в офисе"] },
+      { question: "Сколько лет работает фонд?", options: ["Больше 30 лет", "Около года", "5 лет"] },
     ],
-    right: [0, 1],
-  }]),
-);
+    right: [1, 1, 0],
+  },
+  "02-wards": {
+    questions: [
+      { question: "К кому обращаться на занятии?", options: ["К сопровождающему", "К самому человеку, по имени", "Лучше молчать"] },
+      { question: "Участник долго не справляется с заданием. Что делать?", options: ["Сразу сделать за него", "Дать время и спросить: «Помочь?»", "Пересадить к другому"] },
+      { question: "Можно ли обещать прийти, если не уверены?", options: ["Да, это подбадривает", "Нет, обещайте только то, что выполните", "Можно, если потом извиниться"] },
+    ],
+    right: [1, 1, 1],
+  },
+  "03-safety": {
+    questions: [
+      { question: "За сколько минут лучше прийти на занятие?", options: ["Ровно к началу", "За 15 минут", "За час"] },
+      { question: "Вы заболели накануне занятия. Как поступить?", options: ["Прийти в маске", "Не приходить и предупредить координатора", "Ничего не говорить"] },
+      { question: "Человеку стало плохо. Куда звонить?", options: ["112", "Родственникам волонтёра", "Никуда, подождать"] },
+    ],
+    right: [1, 1, 0],
+  },
+  "04-mentoring": {
+    questions: [
+      { question: "Что важнее всего для значимого взрослого?", options: ["Дорогие подарки", "Приходить регулярно и держать слово", "Строгость"] },
+    ],
+    right: [1],
+  },
+};
+
+/** Лучший балл волонтёра по каждому модулю — чтобы статус считался по всем обязательным. */
+const quizScores: Record<number, Record<string, number>> = {};
 
 // Возможности и участия тоже сохраняются в localStorage: путь «пригласить в /admin → подтвердить у волонтёра»
 // проходит через перезагрузку страницы или две вкладки. Сбросить: localStorage.removeItem("mock_opportunities"),
@@ -381,20 +446,24 @@ export const mockApi: typeof volunteersApi = {
   get: (id) => (findVolunteer(id) ? wait(findVolunteer(id)!) : notFound("Волонтёр")),
   roles: () => wait(roles),
   training: () => wait(modules),
-  quiz: (moduleId) =>
-    quizzes[moduleId] ? wait({ module_id: moduleId, questions: quizzes[moduleId].questions }, 800) : notFound("Модуль"),
+  quiz: (moduleId) => // задержка — как у LLM, который сочиняет вопросы
+    quizzes[moduleId] ? wait({ module_id: moduleId, questions: quizzes[moduleId].questions }, 4000) : notFound("Модуль"),
   submitQuiz: (data) => {
     const v = findVolunteer(data.volunteer_id);
     const quiz = quizzes[data.module_id];
     if (!v || !quiz) return notFound("Волонтёр или модуль");
     const correct = quiz.right.map((r, i) => data.answers[i] === r);
     const score = Math.round((100 * correct.filter(Boolean).length) / correct.length);
-    v.training_score = score;
+    const best = (quizScores[v.id] ??= {});
+    best[data.module_id] = Math.max(best[data.module_id] ?? 0, score);
+    // общий балл — средний по обязательным модулям; «обучение пройдено» — когда все они ≥ 70%
+    const required = modules.filter((m) => m.required).map((m) => best[m.id] ?? 0);
+    v.training_score = Math.round(required.reduce((a, b) => a + b, 0) / required.length);
     if (v.status === "new") v.status = "training";
-    if (score >= 70 && v.status === "training") v.status = "trained";
+    if (required.every((s) => s >= 70) && v.status === "training") v.status = "trained";
     save();
     const result: QuizResult = { score, passed: score >= 70, correct, status: v.status };
-    return wait(result);
+    return wait(result, 1200);
   },
   opportunities: (volunteerId) => {
     refresh();
