@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy import func
 from sqlmodel import Session, col, select
 
+from app.db import get_engine
 from app.llm.client import get_llm
 from app.llm.prompts import load_prompt
 from app.llm.providers import LLMError
@@ -174,6 +175,27 @@ def index_metadata(volunteer: Volunteer) -> dict[str, Any]:
         if answers[key]:
             metadata[key] = answers[key]
     return metadata
+
+
+def index_missing() -> int:
+    """При старте бэкенда: волонтёров, которых нет в векторном индексе, добавляем туда.
+    Так туда попадают анкеты, у которых эмбеддинг не получился при сохранении, и все анкеты
+    после смены провайдера эмбеддингов (у каждого своя коллекция). Возвращает, скольких добавили.
+    Ошибка не роняет бэкенд: поиск и без векторов работает (по навыкам и LLM)."""
+    added = 0
+    try:
+        with Session(get_engine()) as session:
+            everyone = {v.id: v for v in session.exec(select(Volunteer)).all()}
+            missing = sorted(set(everyone) - set(volunteer_index.indexed(list(everyone))))
+            for volunteer_id in missing:
+                v = everyone[volunteer_id]
+                volunteer_index.upsert(v.id, index_document(v), index_metadata(v))
+                added += 1
+    except Exception as e:  # сеть, ключи, лимиты — остальных добавим при следующем запуске
+        log.warning("Не все волонтёры попали в индекс при запуске (добавили %d): %s", added, e)
+    if added:
+        log.info("Добавили в индекс волонтёров: %d", added)
+    return added
 
 
 def get(session: Session, volunteer_id: int) -> Volunteer | None:

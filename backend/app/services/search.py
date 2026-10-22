@@ -16,6 +16,7 @@ import logging
 import re
 import time
 
+from chromadb.errors import ChromaError
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
@@ -225,7 +226,7 @@ def passes_filter(
 
 
 def vector_similarity(text: str, volunteer_ids: list[int], limit: int) -> dict[int, float]:
-    """{id: сходство 0..1} для limit ближайших. Эмбеддинги недоступны — пустой словарь."""
+    """{id: сходство 0..1} для limit ближайших. Эмбеддинги или индекс недоступны — пустой словарь."""
     if not volunteer_ids:
         return {}
     try:
@@ -233,7 +234,12 @@ def vector_similarity(text: str, volunteer_ids: list[int], limit: int) -> dict[i
     except LLMError as e:
         log.warning("Эмбеддинги недоступны, ранжируем по навыкам: %s", e)
         return {}
-    return volunteer_index.nearest(embedding, volunteer_ids, limit)
+    try:
+        return volunteer_index.nearest(embedding, volunteer_ids, limit)
+    except ChromaError as e:
+        # индекс сломан или не совпала размерность векторов — ищем без него, а не отвечаем 500
+        log.warning("Векторный индекс недоступен, ранжируем по навыкам: %s", e)
+        return {}
 
 
 def matched_skills(skills: list[str], document: str) -> list[str]:
