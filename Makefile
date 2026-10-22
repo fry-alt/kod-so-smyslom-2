@@ -7,6 +7,8 @@ SHELL := bash
 -include .env
 BACKEND_URL ?= http://localhost:8000
 export BACKEND_URL
+# служебный ключ для скриптов (seed, ingest, smoke, benchmark) — права координатора
+export SERVICE_KEY
 # UTF-8 для вывода Python на Windows (логи и кириллица при перенаправлении в файл)
 export PYTHONUTF8 := 1
 
@@ -21,6 +23,7 @@ setup: ## поставить зависимости, создать .env, вкл
 	uv sync
 	cd miniapp && npm install
 	@test -f .env || (cp .env.example .env && echo "Created .env from .env.example")
+	@grep -q '^SERVICE_KEY=.' .env || (echo "SERVICE_KEY=$$(uv run python -c 'import secrets; print(secrets.token_urlsafe(32))')" >> .env && echo "Added SERVICE_KEY to .env")
 	git config core.hooksPath .githooks
 	@echo "Done. Next: make up (Docker) or make dev (local backend)"
 

@@ -46,7 +46,16 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Код со смыслом 2 — API", version="0.1.0", lifespan=lifespan)
+# Swagger на проде выключен (API_DOCS=false): схема API — подсказка для взломщика
+docs = get_settings().api_docs
+app = FastAPI(
+    title="Код со смыслом 2 — API",
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url="/docs" if docs else None,
+    redoc_url="/redoc" if docs else None,
+    openapi_url="/openapi.json" if docs else None,
+)
 
 app.add_middleware(
     CORSMiddleware,

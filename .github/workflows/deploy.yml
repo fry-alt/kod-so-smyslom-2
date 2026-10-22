@@ -11,7 +11,8 @@
 #   SSH_KNOWN_HOSTS  — отпечаток сервера
 # Секреты репозитория (Settings → Secrets → Actions), каждый отдельно, все необязательные:
 #   TELEGRAM_BOT_TOKEN, YANDEX_API_KEY, YANDEX_FOLDER_ID, GIGACHAT_CREDENTIALS, GPT2GIGA_API_KEY,
-#   LLM_API_KEY, ANTHROPIC_API_KEY.  Задать: gh secret set TELEGRAM_BOT_TOKEN  (значение спросит сам)
+#   LLM_API_KEY, ANTHROPIC_API_KEY, COORDINATOR_CODE (код фонда, пока его не сменили в кабинете).
+#   Задать: gh secret set TELEGRAM_BOT_TOKEN  (значение спросит сам)
 # Пустые секреты и переменные в .env не попадают.
 name: Deploy
 
@@ -67,6 +68,7 @@ jobs:
           GPT2GIGA_API_KEY: ${{ secrets.GPT2GIGA_API_KEY }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          COORDINATOR_CODE: ${{ secrets.COORDINATOR_CODE }}
         run: |
           umask 077
           domain="${DOMAIN:-deti.${HOST//./-}.sslip.io}"
@@ -77,9 +79,13 @@ jobs:
             echo "CORS_ORIGINS=https://$domain"
             # без Postbox код в лог не печатаем: регистрация идёт без кода (deploy/mail-from-yapp.sh)
             echo "MAIL_LOG_CODES=false"
+            # Swagger и схему API наружу не показываем
+            echo "API_DOCS=false"
+            # служебный ключ бота: новый при каждой выкладке, бэкенд и бот читают один .env
+            echo "SERVICE_KEY=$(openssl rand -hex 32)"
             for name in LLM_MODEL LLM_BASE_URL YANDEX_MODEL GIGACHAT_MODEL \
                         TELEGRAM_BOT_TOKEN YANDEX_API_KEY YANDEX_FOLDER_ID GIGACHAT_CREDENTIALS \
-                        GPT2GIGA_API_KEY LLM_API_KEY ANTHROPIC_API_KEY; do
+                        GPT2GIGA_API_KEY LLM_API_KEY ANTHROPIC_API_KEY COORDINATOR_CODE; do
               if [ -n "${!name}" ]; then printf '%s=%s\n' "$name" "${!name}"; fi
             done
           } > deploy/.env

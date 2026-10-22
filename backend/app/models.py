@@ -185,14 +185,18 @@ class DialogMessage(SQLModel, table=True):
 
 
 class EmailCode(SQLModel, table=True):
-    """Заявка на регистрацию, пока не введён код из письма (services/email_codes.py).
+    """Код из письма, пока его не ввели (services/email_codes.py): регистрация или сброс пароля.
     Храним только хэши кодов и хэш пароля — ни самого кода, ни пароля."""
 
+    # своё имя таблицы: прежняя «emailcode» была без purpose, а коды живут 15 минут — переносить нечего
+    __tablename__ = "email_codes"
+
     email: str = Field(primary_key=True)  # в нижнем регистре
+    purpose: str = Field(primary_key=True)  # signup | reset
     code_hash: str  # до трёх хэшей через пробел: подходит и код из прошлого письма
     payload: dict[str, Any] = Field(
         sa_column=Column(JSON, nullable=False)
-    )  # почта, хэш пароля, роль
+    )  # регистрация: почта, хэш пароля, роль; сброс: пусто
     attempts: int = 0
     sent_at: float  # секунды (time.time())
     expires_at: float

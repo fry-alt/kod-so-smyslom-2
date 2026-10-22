@@ -136,9 +136,9 @@ export default function App() {
 }
 
 function VolunteerLayout(props: { path: string; children: ReactNode }) {
-  // лендинг, вход, кабинет, занятия, собеседование, анкета, сообщения и «Спросить о фонде» — широкие (колонки на компьютере),
+  // лендинг, вход, кабинет, обучение, занятия, собеседование, анкета, сообщения и «Спросить о фонде» — широкие (колонки на компьютере),
   // остальные — узкие, как в телефоне
-  const wide = ["/", "/login", "/me", "/opportunities", "/form", "/interview", "/messages", "/ask"].includes(props.path);
+  const wide = ["/", "/login", "/me", "/training", "/opportunities", "/form", "/interview", "/messages", "/ask"].includes(props.path);
   // анкета — на весь экран и без подвала: ничего не отвлекает от заполнения
   const focus = props.path === "/form";
   const auth = props.path === "/login" || needsAccount() && ["/me", "/form", "/interview", "/messages"].includes(props.path);

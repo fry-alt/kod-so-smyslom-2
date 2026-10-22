@@ -1,12 +1,14 @@
 """Вход на сайт: регистрация, вход и «кто я». Сайт присылает ключ в заголовке Authorization: Bearer <token>."""
 
+import hmac
 import time
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from sqlmodel import Session
 
 from app.api.telegram_auth import verified_telegram_id
+from app.config import get_settings
 from app.db import get_session
 from app.models import Account
 from app.schemas import (
@@ -18,6 +20,8 @@ from app.schemas import (
     LoginIn,
     Look,
     RegisterIn,
+    ResetConfirmIn,
+    ResetIn,
     VerifyIn,
 )
 from app.services import accounts, email_codes, mail
@@ -75,9 +79,8 @@ def register(
     try:
         if not mail.enabled():
             return _with_telegram(session, accounts.register(session, data), telegram_id)
-        payload = accounts.prepare(
-            session, data
-        )  # сначала понятные ошибки формы, потом лимит писем
+        # сначала понятные ошибки формы, потом лимит писем
+        payload = accounts.prepare(session, data)
         _limit_letters(request)
         return email_codes.start_signup(session, payload)
     except accounts.AuthError as e:
@@ -107,6 +110,39 @@ def register_verify(
     except accounts.AuthError as e:
         raise _code_error(e) from e
     return _with_telegram(session, out, telegram_id)
+
+
+@router.post("/reset", response_model=CodeSent)
+def reset(
+    data: ResetIn,
+    request: Request,
+    background: BackgroundTasks,
+    session: Session = Depends(get_session),
+) -> CodeSent:
+    """«Забыли пароль?»: код на почту. Ответ одинаковый, есть такой аккаунт или нет,
+    а письмо уходит после ответа — чтобы нельзя было узнать, кто зарегистрирован."""
+    if not mail.enabled():
+        raise HTTPException(
+            503, "Сбросить пароль пока нельзя — напишите координатору фонда, он поможет"
+        )
+    _limit_letters(request)
+    email = data.email.strip().lower()
+    try:
+        code = email_codes.request_reset(session, email)
+    except accounts.AuthError as e:
+        raise _code_error(e) from e
+    if code:
+        background.add_task(email_codes.send_reset_letter, email, code)
+    return CodeSent(email=email, resend_after=email_codes.RESEND_AFTER)
+
+
+@router.post("/reset/confirm", response_model=AuthOut)
+def reset_confirm(data: ResetConfirmIn, session: Session = Depends(get_session)) -> AuthOut:
+    """Верный код — новый пароль, человек сразу вошёл; на других устройствах — выход."""
+    try:
+        return email_codes.finish_reset(session, data.email, data.code, data.password)
+    except accounts.AuthError as e:
+        raise _code_error(e) from e
 
 
 @router.post("/login", response_model=AuthOut)
@@ -149,8 +185,19 @@ def save_look(
     return accounts.save_look(session, account, look)
 
 
-def coordinator(account: Account | None = Depends(current_account)) -> Account:
-    """Зависимость: пускает только координатора фонда."""
+def is_service(key: str | None) -> bool:
+    """Служебный ключ бота и скриптов (SERVICE_KEY в .env). Пустой ключ в настройках — никого не пускает."""
+    expected = get_settings().service_key
+    return bool(expected) and hmac.compare_digest((key or "").encode(), expected.encode())
+
+
+def coordinator(
+    account: Account | None = Depends(current_account),
+    x_service_key: Annotated[str | None, Header()] = None,
+) -> Account | None:
+    """Зависимость: пускает только координатора фонда — или бота и скрипты со служебным ключом (тогда None)."""
+    if is_service(x_service_key):
+        return None
     if account is None:
         raise HTTPException(401, "Войдите заново")
     if account.role != "coordinator":

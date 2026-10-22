@@ -1043,6 +1043,18 @@ export const mockAuthApi: typeof authApi = {
     saveAccounts([...loadAccounts(), a]);
     return wait(authOut(a), 400);
   },
+  // «Забыли пароль?»: как на бэкенде, ответ одинаковый, есть такой аккаунт или нет. Код — тот же 123456.
+  reset: (email) => wait({ pending: true as const, email: email.trim().toLowerCase(), resend_after: 60 }, 500),
+  resetConfirm: (data) => {
+    const list = loadAccounts();
+    const a = list.find((x) => x.email === data.email.trim().toLowerCase());
+    if (!a || data.code.replace(/\D/g, "") !== MOCK_CODE)
+      return Promise.reject(new Error("Неверный код. В моках код — 123456"));
+    a.password = data.password;
+    a.token = `mock-${Date.now()}`;
+    saveAccounts(list);
+    return wait(authOut(a), 400);
+  },
   login: (data) => {
     const a = loadAccounts().find((x) => x.email === data.email.trim().toLowerCase());
     if (!a || a.password !== data.password) return Promise.reject(new Error("Неверная почта или пароль"));

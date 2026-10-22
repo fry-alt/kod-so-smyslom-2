@@ -4,7 +4,7 @@
 from tests.test_auth import bearer, register
 from tests.test_volunteers import FORM
 
-from conftest import make_init_data, telegram_headers
+from conftest import FUND_CODE, make_init_data, telegram_headers
 
 
 def submit(client, headers: dict | None = None, token: str | None = None) -> dict:
@@ -64,7 +64,7 @@ def test_login_in_telegram_adds_telegram_to_site_form(client):
 
 def test_coordinator_login_in_telegram_links_nothing(client):
     submit(client, telegram_headers(999))
-    auth = register(client, email="coord@example.ru", role="coordinator", code="1111")
+    auth = register(client, email="coord@example.ru", role="coordinator", code=FUND_CODE)
     login = {"email": "coord@example.ru", "password": "secret1"}
     r = client.post("/auth/login", json=login, headers=telegram_headers(999))
     assert r.json()["account"]["volunteer_id"] is None

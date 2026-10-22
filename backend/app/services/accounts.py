@@ -2,7 +2,8 @@
 
 Пароль хранится только хэшем (PBKDF2 из стандартной библиотеки — без новых зависимостей).
 Имя, почта и пароль в LLM и в индекс не уходят. Координатором можно стать только с кодом фонда:
-координатор меняет его в кабинете («Настройки»), а пока не менял — COORDINATOR_CODE из .env, иначе 1111.
+координатор меняет его в кабинете («Настройки»), а пока не менял — COORDINATOR_CODE из .env.
+Нет ни того, ни другого — регистрация координатора закрыта.
 """
 
 import hashlib
@@ -17,7 +18,6 @@ from app.schemas import AccountOut, AuthOut, LoginIn, Look, RegisterIn
 from app.services import volunteers
 
 ITERATIONS = 200_000
-DEFAULT_CODE = "1111"
 CODE_KEY = "coordinator_code"
 
 
@@ -59,11 +59,11 @@ def by_token(session: Session, token: str) -> Account | None:
 
 
 def coordinator_code(session: Session) -> str:
-    """Код фонда для регистрации координатора: из кабинета, иначе из .env, иначе 1111."""
+    """Код фонда для регистрации координатора: из кабинета, иначе из .env. Пустая строка — кода нет."""
     stored = session.get(FundSetting, CODE_KEY)
     if stored:
         return stored.value
-    return get_settings().coordinator_code.strip() or DEFAULT_CODE
+    return get_settings().coordinator_code.strip()
 
 
 def set_coordinator_code(session: Session, code: str) -> str:
@@ -78,10 +78,12 @@ def prepare(session: Session, data: RegisterIn) -> dict:
     """Проверить данные регистрации. Возвращает заявку (с хэшем пароля, не самим паролем) для create()."""
     if by_email(session, data.email):
         raise AuthError("Эта почта уже зарегистрирована — войдите")
-    if data.role == "coordinator" and not hmac.compare_digest(
-        data.code.strip().encode(), coordinator_code(session).encode()
-    ):
-        raise AuthError("Неверный код фонда. Его выдаёт руководитель фонда")
+    if data.role == "coordinator":
+        code = coordinator_code(session)
+        if not code:
+            raise AuthError("Регистрация координатора закрыта: код фонда ещё не задан")
+        if not hmac.compare_digest(data.code.strip().encode(), code.encode()):
+            raise AuthError("Неверный код фонда. Его выдаёт руководитель фонда")
     name = " ".join(data.name.split())
     if not name:
         raise AuthError("Напишите, как вас зовут")
@@ -104,6 +106,16 @@ def create(session: Session, payload: dict) -> AuthOut:
         role=payload["role"],
         token=secrets.token_urlsafe(32),
     )
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return _auth(account)
+
+
+def set_password(session: Session, account: Account, password: str) -> AuthOut:
+    """Новый пароль после кода из письма. Ключ входа тоже новый — на других устройствах выйдет."""
+    account.password_hash = hash_password(password)
+    account.token = secrets.token_urlsafe(32)
     session.add(account)
     session.commit()
     session.refresh(account)

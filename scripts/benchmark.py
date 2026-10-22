@@ -19,6 +19,8 @@ import urllib.request
 from pathlib import Path
 
 BASE_URL = os.environ.get("BACKEND_URL", "http://localhost:8000").rstrip("/")
+# служебный ключ из .env (make передаёт его сам): анкеты и поиск — только для фонда
+HEADERS = {"Content-Type": "application/json", "X-Service-Key": os.environ.get("SERVICE_KEY", "")}
 DEMO = Path(__file__).resolve().parents[1] / "data" / "demo"
 TIMEOUT = 120  # секунд на запрос: разбор и переранжирование — два вызова LLM
 RETRIES = 10  # обрыв соединения до ответа (бывает по пути до сервера) — пробуем ещё раз
@@ -30,9 +32,7 @@ last_seconds = 0.0  # сколько шла последняя удачная п
 def call(method: str, path: str, body: dict | None = None):
     global last_seconds
     data = json.dumps(body).encode() if body is not None else None
-    request = urllib.request.Request(
-        BASE_URL + path, data=data, method=method, headers={"Content-Type": "application/json"}
-    )
+    request = urllib.request.Request(BASE_URL + path, data=data, method=method, headers=HEADERS)
     for attempt in range(RETRIES):
         started = time.perf_counter()
         try:

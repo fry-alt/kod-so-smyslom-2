@@ -31,6 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       LLM_PROVIDER: fake
+      # служебный ключ для smoke-теста: бэкенд и scripts/smoke_test.sh читают его из окружения
+      SERVICE_KEY: ci-smoke-key
     steps:
       - uses: actions/checkout@v4
         with:

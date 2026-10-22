@@ -1,8 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.api.auth import coordinator
 from app.services.case import CaseInput, CaseResult, run_case
 
-router = APIRouter(prefix="/case", tags=["case"])
+router = APIRouter(prefix="/case", tags=["case"], dependencies=[Depends(coordinator)])
 
 
 @router.post("/run", response_model=CaseResult)

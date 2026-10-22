@@ -7,6 +7,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
+from app.api.auth import coordinator
 from app.db import get_session
 from app.models import Volunteer
 from app.schemas import DialogOut, DialogSummary, Message, MessageIn, ReadIn, Sender, UnreadOut
@@ -22,7 +23,7 @@ def _volunteer_or_404(session: Session, volunteer_id: int) -> Volunteer:
     return volunteer
 
 
-@router.get("/dialogs", response_model=list[DialogSummary])
+@router.get("/dialogs", response_model=list[DialogSummary], dependencies=[Depends(coordinator)])
 def list_dialogs(session: Session = Depends(get_session)) -> list[DialogSummary]:
     """Все переписки фонда для координатора: свежие сверху, с числом новых сообщений."""
     return chat.dialogs(session)
