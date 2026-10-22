@@ -4,9 +4,9 @@ import { useState } from "react";
 
 import type { TrainingModule, VolunteerStatus } from "../../api";
 import { backend, getVolunteerId, setVolunteerId } from "../../backend";
-import { STATUS, STATUS_COLOR } from "../../labels";
+import { Icon } from "../../icons";
 import { navigate, useSearchParam } from "../../router";
-import { Badge, Button, ButtonLink, Card, ErrorBox, Link, Loading, useLoad } from "../../ui";
+import { Badge, Button, ButtonLink, Card, ErrorBox, Link, Loading, StatusBadge, useLoad } from "../../ui";
 import Markdown from "./training/Markdown";
 import { loadProgress, saveAttempt, type Progress } from "./training/progress";
 import QuizView from "./training/QuizView";
@@ -99,7 +99,7 @@ export default function Training() {
         <Card className="flex flex-col gap-2">
           <div>
             <span className="text-hint">Ваш статус: </span>
-            <Badge className={STATUS_COLOR[currentStatus]}>{STATUS[currentStatus]}</Badge>
+            <StatusBadge status={currentStatus} />
           </div>
           {required.length > 0 && (
             <p>
@@ -107,7 +107,9 @@ export default function Training() {
             </p>
           )}
           {currentStatus === "trained" && (
-            <p className="font-semibold">🎉 Обучение пройдено! Теперь запишитесь на собеседование с координатором.</p>
+            <p className="font-semibold">
+              <Icon name="sparkles" className="mr-1.5 size-[1.15em] align-[-0.2em] text-cta" />
+              Обучение пройдено! Теперь запишитесь на собеседование с координатором.</p>
           )}
         </Card>
       )}
@@ -145,7 +147,7 @@ export default function Training() {
                 <span className="text-lg font-semibold">{m.title}</span>
                 <span className="flex flex-wrap items-center gap-2 pt-1">
                   {done?.passed ? (
-                    <Badge className="bg-green-100 text-green-900">✓ Пройден · {done.score}%</Badge>
+                    <Badge className="bg-green-100 text-green-900"><span aria-hidden="true">✓ </span>Пройден · {done.score}%</Badge>
                   ) : done ? (
                     <Badge className="bg-amber-100 text-amber-900">Не сдан · {done.score}% — попробуйте ещё</Badge>
                   ) : (

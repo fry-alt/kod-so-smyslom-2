@@ -4,9 +4,10 @@ import { useMemo, useState, type MouseEvent } from "react";
 
 import type { Availability, Region, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
-import { AVAILABILITY, formatAvailability, REGION, STATUS, STATUS_COLOR } from "../../labels";
+import { Icon } from "../../icons";
+import { AVAILABILITY, formatAvailability, REGION, STATUS } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Chips, Empty, ErrorBox, inputClass, Link, Loading, useLoad } from "../../ui";
+import { Badge, Chips, Empty, ErrorBox, inputClass, Link, Loading, StatusBadge, useLoad } from "../../ui";
 
 type Filter = VolunteerStatus | "all";
 
@@ -56,7 +57,7 @@ export default function Volunteers() {
 
       <div className="flex flex-col gap-2">
         <span className="font-semibold">Статус</span>
-        <Chips<Filter> options={FILTER} value={[filter]} onChange={(v) => setFilter(v[0])} />
+        <Chips<Filter> label="Статус" options={FILTER} value={[filter]} onChange={(v) => setFilter(v[0])} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -149,7 +150,7 @@ function Table({ list, sortBy, descending, onSort }: {
               </Link>
             </td>
             <td className="py-3 pr-4">
-              <Badge className={`whitespace-nowrap ${STATUS_COLOR[v.status]}`}>{STATUS[v.status]}</Badge>
+              <StatusBadge status={v.status} className="whitespace-nowrap" />
             </td>
             <td className="py-3 pr-4">
               <Skills v={v} />
@@ -176,12 +177,16 @@ function CardList({ list }: { list: Volunteer[] }) {
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xl font-semibold text-link">{v.name}</span>
-              <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge>
+              <StatusBadge status={v.status} />
             </div>
             <Skills v={v} />
-            <span className="text-hint">🕒 {availability(v)}</span>
             <span className="text-hint">
-              🎓 {training(v)} · ⏱ Часов: <b className="text-ink">{v.hours.toLocaleString("ru")}</b>
+              <Icon name="clock" className="mr-1 size-[1.1em] align-[-0.18em]" />
+              {availability(v)}
+            </span>
+            <span className="text-hint">
+              <Icon name="graduation" className="mr-1 size-[1.1em] align-[-0.18em]" />
+              {training(v)} · Часов: <b className="text-ink">{v.hours.toLocaleString("ru")}</b>
             </span>
           </Link>
         </li>

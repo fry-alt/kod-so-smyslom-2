@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 
 import type { Dialog, Message, Sender } from "../api";
 import { backend } from "../backend";
+import { Icon } from "../icons";
 import { Button, ErrorBox, errorText, inputClass, Loading } from "../ui";
 
 export const POLL_MS = 5000;
@@ -131,7 +132,12 @@ export default function Thread(props: {
           ))
         )}
       </div>
-      {error && <p className="text-sm text-hint">⚠️ {error} Пробуем ещё раз…</p>}
+      {error && (
+        <p className="text-sm text-hint">
+          <Icon name="alert" className="mr-1 size-[1.1em] align-[-0.18em]" />
+          {error} Пробуем ещё раз…
+        </p>
+      )}
 
       <form onSubmit={send} className="flex flex-col gap-2">
         {about && (

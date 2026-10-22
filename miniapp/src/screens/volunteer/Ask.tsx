@@ -5,6 +5,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, ty
 
 import type { ChatMessage, Source } from "../../api";
 import { chatApi } from "../../backend";
+import { Icon } from "../../icons";
 import { tg } from "../../telegram";
 import { Button, ErrorBox, errorText } from "../../ui";
 import { navigate } from "../../router";
@@ -42,7 +43,8 @@ export default function Ask() {
           показывает, откуда взят ответ. Если в документах ответа нет, он честно об этом скажет.
         </p>
         <p className="hidden rounded-3xl bg-surface p-4 text-hint sm:block">
-          🔒 Не пишите сюда телефон, адрес и паспортные данные — их лучше передать координатору лично.
+          <Icon name="lock" className="mr-1 size-[1.1em] align-[-0.18em]" />
+          Не пишите сюда телефон, адрес и паспортные данные — их лучше передать координатору лично.
         </p>
       </header>
       <section aria-label="Переписка с помощником" className="flex min-w-0 flex-col gap-5 rounded-[2rem] bg-surface p-4 md:p-6 lg:min-h-[26rem]">
@@ -159,7 +161,10 @@ function AnswerBubble(props: { turn: Turn; question?: string }) {
           <span className="text-hint">Откуда ответ:</span>
           {sources.map((s) => (
             <details key={`${s.source}:${s.chunk}`}>
-              <summary className="cursor-pointer text-link">📄 {DOC_TITLES[s.source] ?? s.source}</summary>
+              <summary className="cursor-pointer text-link">
+                <Icon name="file" className="mr-1 size-[1.1em] align-[-0.18em]" />
+                {DOC_TITLES[s.source] ?? s.source}
+              </summary>
               <p className="mt-1 whitespace-pre-wrap text-hint">{plain(s.text)}</p>
             </details>
           ))}

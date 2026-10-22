@@ -5,9 +5,10 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import type { Availability, Candidate, Format, Opportunity, ParsedQuery, Regularity, Region, Role, SearchRequest, SearchResponse, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
-import { AVAILABILITY, formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
+import { AVAILABILITY, formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS } from "../../labels";
+import { Icon } from "../../icons";
 import { useSearchParam } from "../../router";
-import { Badge, Button, ButtonLink, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link } from "../../ui";
+import { Badge, Button, ButtonLink, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link, StatusBadge } from "../../ui";
 
 const EXAMPLES = [
   "Фотограф на четверг утром, разово",
@@ -159,6 +160,7 @@ export default function Search() {
         <Chips<VolunteerStatus>
           multiple
           options={STATUS_FILTER as Record<VolunteerStatus, string>}
+          label="Статус"
           value={statuses}
           onChange={changeStatuses}
         />
@@ -366,7 +368,8 @@ function ParsedEditor(props: {
             {p.skills.map((skill) => (
               <button key={skill} type="button" onClick={() => change({ skills: p.skills.filter((item) => item !== skill) })}
                 aria-label={`Убрать навык ${skill}`} className="rounded-full bg-page px-3 py-2 text-left">
-                🛠 {skill} <span aria-hidden="true">×</span>
+                <Icon name="wrench" className="mr-1 size-[1.1em] align-[-0.18em] text-hint" />
+                {skill} <span aria-hidden="true">×</span>
               </button>
             ))}
           </div>
@@ -408,7 +411,7 @@ function ParsedEditor(props: {
       </div>
       <div className="flex flex-col gap-2">
         <span className="font-semibold">Когда может</span>
-        <Chips<Availability> multiple options={AVAILABILITY} value={p.availability} onChange={(availability) => change({ availability })} />
+        <Chips<Availability> multiple label="Когда может" options={AVAILABILITY} value={p.availability} onChange={(availability) => change({ availability })} />
       </div>
       {p.notes && <p className="text-sm text-hint">Дополнительно: {p.notes}</p>}
       <div>
@@ -470,18 +473,22 @@ function CandidateCard(props: {
         <div className="flex flex-wrap gap-2">
           {matched_skills.map((s) => (
             <Badge key={s} className="bg-green-100 text-green-900">
-              ✓ {s}
+              <span aria-hidden="true">✓ </span>
+              {s}
             </Badge>
           ))}
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge>
+        <StatusBadge status={v.status} />
         <Badge className="bg-page">
           {v.training_score !== null ? `Обучение: ${v.training_score}%` : "Обучение не проходил"}
         </Badge>
-        <span className="text-sm text-hint">🕒 {formatAvailability(v.answers.availability) || "время не указано"}</span>
+        <span className="text-sm text-hint">
+          <Icon name="clock" className="mr-1 size-[1.1em] align-[-0.18em]" />
+          {formatAvailability(v.answers.availability) || "время не указано"}
+        </span>
       </div>
 
       <Contact contact={v.contact} />
