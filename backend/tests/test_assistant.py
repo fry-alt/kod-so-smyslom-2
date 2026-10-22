@@ -7,7 +7,7 @@ import pytest
 from app.llm.client import get_llm
 from app.llm.prompts import PROMPTS_DIR
 from app.llm.providers import FakeProvider, LLMError
-from app.rag.ingest import autoload_if_empty, ingest_path
+from app.rag.ingest import autoload_documents, ingest_path
 from app.rag.store import get_collection
 from app.schemas import ChatMessage
 from app.services import assistant
@@ -200,7 +200,37 @@ def test_autoload_fills_empty_knowledge_base_once(monkeypatch):
 
     get_settings.cache_clear()
     assert get_collection().count() == 0
-    assert autoload_if_empty() > 0
+    assert autoload_documents() > 0
     count = get_collection().count()
-    assert autoload_if_empty() == 0  # база уже не пустая — не трогаем
+    assert autoload_documents() == 0  # ничего не поменялось — не трогаем
     assert get_collection().count() == count
+
+
+def test_autoload_adds_new_and_changed_files(tmp_path, monkeypatch):
+    """На проде база уже заполнена — новый или исправленный документ из репозитория всё равно догружается."""
+    demo = tmp_path / "data" / "demo"
+    demo.mkdir(parents=True)
+    (demo / "rules.md").write_text("Мастерские проходят по субботам.", encoding="utf-8")
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    assert autoload_documents() == 1
+
+    (demo / "interview.md").write_text(
+        "Собеседование по будням с 10:00 до 18:00.", encoding="utf-8"
+    )
+    assert autoload_documents() == 1  # только новый файл
+    (demo / "rules.md").write_text(
+        "Мастерские проходят по субботам и воскресеньям.", encoding="utf-8"
+    )
+    assert autoload_documents() == 1  # только изменённый
+    texts = get_collection().get(where={"source": "rules.md"})["documents"]
+    assert texts == ["Мастерские проходят по субботам и воскресеньям."]
+
+
+def test_interview_question_finds_volunteer_journey():
+    """Со скриншота: «во сколько можно придти на собес» — ответ в «Пути волонтёра»."""
+    ingest_path(DEMO_DIR)
+    chunks = assistant.find_chunks("во сколько можно придти на собес", [])
+    assert any(c.source == "volunteer_journey.md" and "10:00 до 18:00" in c.text for c in chunks)

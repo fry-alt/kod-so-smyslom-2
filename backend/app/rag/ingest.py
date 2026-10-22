@@ -9,6 +9,7 @@ CLI (бэкенд при этом должен быть остановлен —
 
 import argparse
 import csv
+import hashlib
 import logging
 import re
 from pathlib import Path
@@ -99,8 +100,9 @@ def split_text(text: str, size: int, overlap: int) -> list[str]:
     return chunks
 
 
-def ingest_file(path: Path, name: str | None = None) -> int:
-    """Индексирует один файл. Повторная загрузка файла с тем же именем заменяет старые чанки."""
+def ingest_file(path: Path, name: str | None = None, digest: str = "") -> int:
+    """Индексирует один файл. Повторная загрузка файла с тем же именем заменяет старые чанки.
+    digest — хеш файла из репозитория, по нему autoload_documents() видит, что файл поменялся."""
     s = get_settings()
     name = name or path.name
     chunks = split_text(read_text(path), s.chunk_size, s.chunk_overlap)
@@ -114,7 +116,7 @@ def ingest_file(path: Path, name: str | None = None) -> int:
         ids=[f"{name}:{i}" for i in range(len(chunks))],
         embeddings=vectors,
         documents=chunks,
-        metadatas=[{"source": name, "chunk": i} for i in range(len(chunks))],
+        metadatas=[{"source": name, "chunk": i, "hash": digest} for i in range(len(chunks))],
     )
     log.info("%s: %d чанков", name, len(chunks))
     return len(chunks)
@@ -125,23 +127,36 @@ def ingest_path(path: Path) -> dict[str, int]:
     return {f.name: ingest_file(f) for f in files if f.suffix.lower() in SUPPORTED_SUFFIXES}
 
 
-def autoload_if_empty() -> int:
-    """База знаний пуста (новый сервер, пересоздали data/chroma) — загружаем документы фонда
-    из data/demo и data/training, как make ingest. Возвращает число чанков.
-    Ошибка не роняет бэкенд: помощник тогда отвечает по краткой справке о фонде."""
+def autoload_documents() -> int:
+    """При старте бэкенда загружаем документы фонда из data/demo и data/training, которых ещё нет
+    в базе знаний или которые поменялись в репозитории (сверяем по хешу файла). Так новый
+    документ из репозитория попадает на сервер сам, без make ingest. Возвращает число новых чанков.
+    Ошибка не роняет бэкенд: помощник тогда отвечает по тому, что уже есть, и краткой справке о фонде."""
     try:
-        if get_collection().count():
-            return 0
+        metas = get_collection().get(include=["metadatas"])["metadatas"] or []
+        known = {m["source"]: m.get("hash", "") for m in metas}
         data_dir = get_settings().data_dir
         total = 0
         for name in ("demo", "training"):
-            if (data_dir / name).is_dir():
-                total += sum(ingest_path(data_dir / name).values())
-        log.info("База знаний была пустой — загрузили документы фонда: %d чанков", total)
+            folder = data_dir / name
+            if not folder.is_dir():
+                continue
+            for path in sorted(folder.rglob("*")):
+                if path.suffix.lower() not in SUPPORTED_SUFFIXES:
+                    continue
+                digest = file_hash(path)
+                if known.get(path.name) != digest:
+                    total += ingest_file(path, digest=digest)
+        if total:
+            log.info("Загрузили новые и изменённые документы фонда: %d чанков", total)
         return total
     except Exception as e:  # сеть, ключи, битый файл — бэкенд всё равно должен подняться
         log.warning("Не удалось загрузить документы фонда при запуске: %s", e)
         return 0
+
+
+def file_hash(path: Path) -> str:
+    return hashlib.md5(path.read_bytes()).hexdigest()
 
 
 def main() -> None:
