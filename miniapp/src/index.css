@@ -166,21 +166,6 @@ html:has(form [data-step]) {
   --fund-num-tone: #f3c6ee;
 }
 
-/* Детский рисунок (VolunteerScenes.tsx, Journey.tsx): акварельный пёстрый фон и контур фломастером.
-   Фон — шум feTurbulence в data-URI: браузер растрирует его один раз как обычную картинку,
-   поэтому движения в сценах и бегущая лента не пересчитывают фильтр на каждом кадре. */
-.kid-art {
-  border-radius: 1.1rem;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='480'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.007 0.011' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='1.4 0 0 0 0.17 0 1.4 0 0 0.17 0 0 1.4 0 0.19 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E")
-    0 0 / 520px 416px #fff7fb;
-}
-/* фигуры без своей обводки (стол, прилавок, колёса) обводим тем же фломастером, что и человечков */
-.kid-art :is(rect, circle, ellipse, path):not([stroke]):not([fill="none"]):not(g[stroke] *) {
-  stroke: #2b2140;
-  stroke-width: 1.3px;
-  stroke-linejoin: round;
-}
-
 /* Сцены «что делают волонтёры» (VolunteerScenes.tsx): короткие спокойные движения по кругу. */
 .anim-spin,
 .anim-bob,
@@ -361,7 +346,22 @@ html:has(form [data-step]) {
 }
 
 .journey-step {
-  animation: step-glow 9s ease-in-out infinite;
+  position: relative;
+  animation: step-lift 9s ease-in-out infinite;
+}
+.journey-step::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--p-accent) 65%, transparent),
+    0 16px 32px -22px var(--p-accent);
+  opacity: 0;
+  pointer-events: none;
+  animation: step-ring 9s ease-in-out infinite;
+  animation-delay: inherit;
+  animation-play-state: inherit;
 }
 .journey-step-2 {
   animation-delay: 3s;
@@ -369,18 +369,33 @@ html:has(form [data-step]) {
 .journey-step-3 {
   animation-delay: 6s;
 }
-@keyframes step-glow {
+/* подсветка мягкая: только opacity рамки и подъём transform, без анимации box-shadow */
+@keyframes step-lift {
   0%,
   33%,
   100% {
-    box-shadow: 0 0 0 0 transparent;
     transform: none;
   }
-  4%,
+  5%,
   29% {
-    box-shadow: 0 0 0 3px var(--p-accent), 0 14px 30px -18px var(--p-accent);
-    transform: translateY(-4px);
+    transform: translateY(-3px);
   }
+}
+@keyframes step-ring {
+  0%,
+  33%,
+  100% {
+    opacity: 0;
+  }
+  5%,
+  29% {
+    opacity: 1;
+  }
+}
+/* пока блок не доехал до экрана (IntersectionObserver в Journey.tsx), всё стоит в начальном кадре:
+   шаги загораются по очереди именно тогда, когда человек на них смотрит */
+.journey:not(.is-playing) :is(.journey-step, .journey-arrow, .journey-head, .jr-art *) {
+  animation-play-state: paused;
 }
 
 .journey-arrow {
@@ -430,12 +445,258 @@ html:has(form [data-step]) {
   .anim-fill,
   .anim-check,
   .journey-step,
+  .journey-step::after,
   .journey-arrow,
   .journey-head {
     animation: none;
   }
   .journey-arrow {
     stroke-dashoffset: 0;
+  }
+}
+
+/* Иллюстрации «Как всё устроено» (JourneyArt.tsx). Только transform и opacity — плавно и на телефонах.
+   Idle-движения — ease-in-out, появления — с пружинкой cubic-bezier(.34, 1.56, .64, 1).
+   Точки опоры (transform-origin) заданы в px внутри viewBox прямо в разметке. */
+.jr-breathe {
+  animation: jr-breathe 3.6s ease-in-out infinite;
+}
+@keyframes jr-breathe {
+  50% {
+    transform: scale(1.015);
+  }
+}
+.jr-head {
+  transform-origin: 97px 100px;
+  animation: jr-sway 5.2s ease-in-out infinite;
+}
+@keyframes jr-sway {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  35% {
+    transform: rotate(-1.6deg);
+  }
+  70% {
+    transform: rotate(1deg);
+  }
+}
+/* моргание раз в ~4 с; --d сдвигает его у разных персонажей, чтобы не моргали хором */
+.jr-blink {
+  animation: jr-blink 4.3s ease-in-out var(--d, 1.2s) infinite;
+}
+@keyframes jr-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95.5% {
+    transform: scaleY(0.12);
+  }
+}
+.jr-tap {
+  animation: jr-tap 1.5s ease-in-out infinite;
+}
+@keyframes jr-tap {
+  0%,
+  55%,
+  100% {
+    transform: translate(0, 0);
+  }
+  70% {
+    transform: translate(2.4px, -2.6px);
+  }
+  80% {
+    transform: translate(1.6px, -1.6px);
+  }
+}
+.jr-fill {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: jr-fill 4.5s ease-in-out infinite;
+}
+.jr-fill-2 {
+  animation-delay: 0.45s;
+}
+.jr-fill-3 {
+  animation-delay: 0.9s;
+}
+@keyframes jr-fill {
+  0%,
+  8% {
+    transform: scaleX(0);
+  }
+  32%,
+  92% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+.jr-check {
+  animation: jr-check 4.5s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+@keyframes jr-check {
+  0%,
+  58% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  68%,
+  92% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+.jr-fill-slow {
+  animation-duration: 6s;
+  animation-delay: 0.6s;
+}
+/* бабушка кивает: два коротких кивка и пауза */
+.jr-nod {
+  animation: jr-nod 4.6s ease-in-out infinite;
+}
+@keyframes jr-nod {
+  0%,
+  50%,
+  100% {
+    transform: rotate(0);
+  }
+  58%,
+  74% {
+    transform: rotate(5deg);
+  }
+  66% {
+    transform: rotate(1deg);
+  }
+}
+/* верхняя карточка курса переворачивается вокруг левого края */
+.jr-flip {
+  animation: jr-flip 4s ease-in-out infinite;
+}
+@keyframes jr-flip {
+  0%,
+  60%,
+  100% {
+    transform: scaleX(1);
+  }
+  75% {
+    transform: scaleX(0.05);
+  }
+}
+.jr-steam {
+  animation: jr-steam 3s ease-in-out infinite;
+}
+@keyframes jr-steam {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-2px);
+  }
+}
+/* сердечко над героями пульсирует и чуть поднимается */
+.jr-heart {
+  animation: jr-heart 2.6s ease-in-out infinite;
+}
+@keyframes jr-heart {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-3px) scale(1.1);
+  }
+  45% {
+    transform: translateY(-4px) scale(1.02);
+  }
+  60% {
+    transform: translateY(-5px) scale(1.08);
+  }
+}
+/* блик бежит по глине — гончарный круг крутится */
+.jr-spin {
+  animation: jr-spin 1.3s linear infinite;
+}
+@keyframes jr-spin {
+  from {
+    transform: translateX(-12px);
+  }
+  to {
+    transform: translateX(34px);
+  }
+}
+/* руки лепят по очереди */
+.jr-mold {
+  animation: jr-mold 1.8s ease-in-out infinite;
+}
+.jr-mold-late {
+  animation-delay: -0.9s;
+}
+@keyframes jr-mold {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+/* «оживают» при наведении: чуть подпрыгивают с пружинкой */
+.jr-alive {
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@media (hover: hover) {
+  .journey-step:hover .jr-alive {
+    transform: translateY(-3px);
+  }
+  .journey-step:hover .jr-alive-late {
+    transition-delay: 0.08s;
+  }
+}
+/* наведение на карточку шага (мышь): улыбка шире */
+.jr-smile,
+.jr-smile-wide {
+  transition: opacity 0.3s ease-in-out;
+}
+.jr-smile-wide {
+  opacity: 0;
+}
+@media (hover: hover) {
+  .journey-step:hover .jr-smile {
+    opacity: 0;
+  }
+  .journey-step:hover .jr-smile-wide {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jr-breathe,
+  .jr-head,
+  .jr-blink,
+  .jr-tap,
+  .jr-fill,
+  .jr-check,
+  .jr-nod,
+  .jr-flip,
+  .jr-steam,
+  .jr-heart,
+  .jr-spin,
+  .jr-mold {
+    animation: none;
+  }
+  .jr-alive {
+    transition: none;
   }
 }
 
