@@ -1,28 +1,71 @@
 // Анкета волонтёра (T-07): сайт и Telegram Mini App.
+// Вопросы — дословно как в анкете фонда (T-143, Яндекс Форма «Анкета волонтёра фонда „Дети Марии“»),
+// плюс наш шаг «Когда и где удобно» — по нему работает умный поиск.
 // Пошагово: один экран — одна тема, в конце «Проверьте ответы». Так не страшно начать и легко закончить.
-// Имя и контакт хранятся только в нашей базе. Ответы о себе — обезличенно — разбирает AI.
+// Имя, дата рождения и контакты хранятся только в нашей базе. Остальные ответы — обезличенно — разбирает AI.
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import type { Answers, Availability, Format, Occupation, Region, Regularity, Role, Volunteer } from "../../api";
+import type {
+  Answers,
+  AnswerRegularity,
+  Availability,
+  ContactWay,
+  Direction,
+  Occupation,
+  PersonalData,
+  Region,
+  Role,
+  SpecialNeeds,
+  Volunteer,
+} from "../../api";
 import { backend, getAccount, saveAccount, setVolunteerId } from "../../backend";
-import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY } from "../../labels";
+import { ANSWER_REGULARITY, AVAILABILITY, CONTACT_WAY, DIRECTION, OCCUPATION, REGION, SPECIAL_NEEDS } from "../../labels";
 import { FUND_DOCS } from "../../Footer";
 import { Icon, type IconName } from "../../icons";
 import { navigate } from "../../router";
 import { tg, tgUser } from "../../telegram";
 import { Badge, Button, Card, ErrorBox, errorText, FLAIR, flairHandlers, inputClass } from "../../ui";
 
-type Draft = { name: string; contact: string; consent: boolean; step: number; answers: Answers };
+/** Формат участия — один ответ, как у фонда. В контракт уходит списком: «оба» — оба, «не знаю» — пусто. */
+type FormatChoice = "offline" | "online" | "both" | "unsure";
+type YesNo = "yes" | "no";
+
+/** Вопросы с выбором без ответа по умолчанию (null) — у фонда они обязательные, человек выбирает сам. */
+type Draft = {
+  name: string;
+  consent: boolean;
+  step: number;
+  personal: PersonalData;
+  volunteerExperience: YesNo | null;
+  specialNeeds: SpecialNeeds | null;
+  format: FormatChoice | null;
+  regularity: AnswerRegularity | null;
+  answers: Answers;
+};
 
 const DRAFT_KEY = "form_draft";
 
-/** Шаги анкеты по порядку. fields — какие ошибки проверяем перед переходом дальше. */
+/** Шаги анкеты по порядку: первые три — разделы анкеты фонда. fields — какие ошибки проверяем перед переходом дальше. */
 const STEPS = [
-  { title: "Давайте знакомиться", short: "Знакомство", icon: "hand", fields: ["name", "contact"] },
-  { title: "Немного о жизни", short: "О жизни", icon: "house", fields: [] },
-  { title: "Расскажите о себе", short: "О себе", icon: "pencil", fields: ["about"] },
-  { title: "Чем хочется помогать", short: "Желания", icon: "heart", fields: [] },
-  { title: "Когда и как удобно", short: "Время", icon: "calendar", fields: ["availability", "formats"] },
+  {
+    title: "Немного о вас",
+    short: "О вас",
+    icon: "hand",
+    fields: ["name", "birth_date", "phone", "email", "contact_ways"],
+  },
+  {
+    title: "Опыт и навыки",
+    short: "Опыт",
+    icon: "pencil",
+    fields: ["volunteer_experience", "special_needs", "skills"],
+  },
+  {
+    title: "Направления волонтёрства и формат работы",
+    short: "Направления",
+    icon: "heart",
+    fields: ["directions", "format", "regularity", "source"],
+  },
+  { title: "Когда и где вам удобно", short: "Время", icon: "calendar", fields: ["availability"] },
   { title: "Проверьте анкету", short: "Проверка", icon: "check", fields: ["consent"] },
 ] as const;
 
@@ -51,20 +94,22 @@ const AVAILABILITY_SUB: Partial<Record<Availability, string>> = {
   weekend: "Мастерские по субботам",
 };
 
-const FORMAT_ICON: Record<Format, IconName> = { offline: "handshake", online: "chat" };
-const FORMAT_SUB: Record<Format, string> = {
-  offline: "Приезжать на занятия и события",
-  online: "Помогать из дома: тексты, дизайн, переводы",
+const FORMAT_CHOICE: Record<FormatChoice, string> = {
+  offline: "Очно",
+  online: "Онлайн",
+  both: "Подходит и очный, и онлайн-формат",
+  unsure: "Пока не знаю — хочу обсудить варианты на встрече",
+};
+const FORMAT_LIST: Record<FormatChoice, Answers["formats"]> = {
+  offline: ["offline"],
+  online: ["online"],
+  both: ["offline", "online"],
+  unsure: [],
 };
 
-const REGULARITY_ICON: Record<Regularity, IconName> = { regular: "repeat", episodic: "pin", any: "shuffle" };
-const REGULARITY_SUB: Record<Regularity, string> = {
-  regular: "По графику, раз в неделю или чаще",
-  episodic: "На отдельные события и ярмарки",
-  any: "Как позволит время",
-};
+const YES_NO: Record<YesNo, string> = { yes: "Да", no: "Нет" };
 
-/** Готовые слова для полей «Что вы умеете» и «Чем хотели бы помогать» — по ролям фонда (data/roles.json). */
+/** Готовые слова для поля про навыки — по ролям фонда (data/roles.json). */
 const SKILL_IDEAS = [
   "Рисование",
   "Шитьё и рукоделие",
@@ -81,44 +126,54 @@ const SKILL_IDEAS = [
   "Вожу машину",
 ];
 
-const WISH_IDEAS = [
-  "Помогать на занятиях в мастерской",
-  "Сопровождать ребят из интерната",
-  "Снимать фото и видео",
-  "Помогать на ярмарках",
-  "Подвозить на своей машине",
-  "Помогать онлайн из дома",
-];
-
 function emptyDraft(): Draft {
   const tgName = [tgUser?.first_name, tgUser?.last_name].filter(Boolean).join(" ");
   return {
     // имя: из Telegram или то, что человек написал при регистрации
     name: tgName || (getAccount()?.name ?? ""),
-    // контакт подставляем сам: ник из Telegram или почта, с которой человек зарегистрировался
-    contact: tgUser?.username ? `@${tgUser.username}` : (getAccount()?.email ?? ""),
     consent: false,
     step: 0,
+    // что уже знаем, подставляем сами: ник из Telegram и почту, с которой человек зарегистрировался
+    personal: {
+      birth_date: null,
+      phone: "",
+      email: getAccount()?.email ?? "",
+      telegram: tgUser?.username ? `@${tgUser.username}` : "",
+      contact_ways: [],
+    },
+    volunteerExperience: null,
+    specialNeeds: null,
+    format: null,
+    regularity: null,
     answers: {
       about: "",
       skills: "",
       wishes: "",
       experience: "",
+      directions: [],
+      source: "",
       availability: [],
       occupation: "other",
       region: "moscow",
-      formats: ["offline"],
+      formats: [],
       regularity: "any",
     },
   };
 }
 
-/** Черновик и шаг сохраняются на устройстве — чтобы не потерять текст, если человек отвлёкся. */
+/** Черновик и шаг сохраняются на устройстве — чтобы не потерять текст, если человек отвлёкся.
+    Черновик старой анкеты (без personal) не подходит — начинаем с пустого. */
 function loadDraft(): Draft {
   try {
     const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "null");
-    if (saved?.answers) {
-      const draft = { ...emptyDraft(), ...saved, answers: { ...emptyDraft().answers, ...saved.answers } };
+    if (saved?.answers && saved?.personal) {
+      const empty = emptyDraft();
+      const draft = {
+        ...empty,
+        ...saved,
+        personal: { ...empty.personal, ...saved.personal },
+        answers: { ...empty.answers, ...saved.answers },
+      };
       return { ...draft, step: Math.min(Math.max(Number(draft.step) || 0, 0), LAST) };
     }
   } catch {
@@ -127,19 +182,58 @@ function loadDraft(): Draft {
   return emptyDraft();
 }
 
-type Errors = Partial<Record<"name" | "contact" | "about" | "availability" | "formats" | "consent", string>>;
+type Field = (typeof STEPS)[number]["fields"][number];
+type Errors = Partial<Record<Field, string>>;
+
+const CHOOSE = "Выберите вариант";
+
+/** Дата рождения: настоящая дата, человеку от 10 до 100 лет. */
+function birthDateError(value: string | null): string | undefined {
+  if (!value) return "Укажите дату рождения";
+  const years = (Date.now() - new Date(value).getTime()) / (365.25 * 24 * 3600 * 1000);
+  if (Number.isNaN(years) || years < 10 || years > 100) return "Проверьте дату — похоже на опечатку";
+}
 
 function validate(d: Draft): Errors {
   const e: Errors = {};
-  if (!d.name.trim()) e.name = "Напишите, как к вам обращаться";
-  const c = d.contact.trim();
-  if (!c) e.contact = "Оставьте телефон, e-mail или ник в Telegram — иначе мы не сможем связаться";
-  else if (!/@|\d{5,}/.test(c.replace(/[\s()-]/g, ""))) e.contact = "Похоже на опечатку: нужен телефон, e-mail или @ник";
-  if (!d.answers.about.trim()) e.about = "Расскажите о себе хотя бы пару слов";
+  const p = d.personal;
+  if (!d.name.trim()) e.name = "Напишите имя и фамилию";
+  e.birth_date = birthDateError(p.birth_date);
+  const digits = p.phone.replace(/\D/g, "");
+  if (!digits) e.phone = "Оставьте номер телефона";
+  else if (digits.length < 10 || digits.length > 15) e.phone = "Проверьте номер: например, +7 900 000-00-00";
+  if (!p.email.trim()) e.email = "Оставьте электронную почту";
+  else if (!/^\S+@\S+\.\S+$/.test(p.email.trim())) e.email = "Похоже на опечатку: нужна почта вида name@mail.ru";
+  if (p.contact_ways.length === 0) e.contact_ways = "Отметьте хотя бы один вариант";
+  if (!d.volunteerExperience) e.volunteer_experience = CHOOSE;
+  if (!d.specialNeeds) e.special_needs = CHOOSE;
+  if (!d.answers.skills.trim()) e.skills = "Расскажите хотя бы пару слов";
+  if (!d.answers.directions?.length) e.directions = "Отметьте хотя бы один вариант";
+  if (!d.format) e.format = CHOOSE;
+  if (!d.regularity) e.regularity = CHOOSE;
+  if (!d.answers.source?.trim()) e.source = "Напишите хотя бы пару слов";
   if (d.answers.availability.length === 0) e.availability = "Отметьте хотя бы один вариант";
-  if (d.answers.formats.length === 0) e.formats = "Отметьте хотя бы один вариант";
   if (!d.consent) e.consent = "Без согласия мы не можем сохранить анкету";
+  for (const key of Object.keys(e) as Field[]) if (!e[key]) delete e[key];
   return e;
+}
+
+/** Ответы для контракта: выбор формата и регулярности переводим в поля Answers, тексты обрезаем. */
+function toAnswers(d: Draft): Answers {
+  const a = d.answers;
+  return {
+    ...a,
+    about: a.about.trim(),
+    skills: a.skills.trim(),
+    // «Другое» своими словами — только если отмечено «Другое»
+    wishes: a.directions?.includes("other") ? a.wishes.trim() : "",
+    experience: a.experience.trim(),
+    source: a.source?.trim() ?? "",
+    volunteer_experience: d.volunteerExperience ? d.volunteerExperience === "yes" : null,
+    special_needs: d.specialNeeds,
+    formats: d.format ? FORMAT_LIST[d.format] : [],
+    regularity: d.regularity ?? "any",
+  };
 }
 
 /** Ошибки только тех полей, что есть на шаге. */
@@ -213,6 +307,10 @@ export default function Form() {
     setErrors({});
     setDraft((d) => ({ ...d, answers: { ...d.answers, ...patch } }));
   };
+  const setPersonal = (patch: Partial<PersonalData>) => {
+    setErrors({});
+    setDraft((d) => ({ ...d, personal: { ...d.personal, ...patch } }));
+  };
 
   function goTo(next: number, opts: { fromCheck?: boolean } = {}) {
     setDirection(next > step ? "forward" : "back");
@@ -258,18 +356,14 @@ export default function Form() {
     setSending(true);
     setError("");
     try {
-      const a = draft.answers;
+      const p = draft.personal;
+      const personal = { ...p, phone: p.phone.trim(), email: p.email.trim(), telegram: p.telegram.trim() };
       const v = await backend.submit({
         name: draft.name.trim(),
-        contact: draft.contact.trim(),
+        contact: personal.phone, // главный контакт в карточках и поиске — телефон, остальное в personal
         telegram_id: tgUser?.id ?? null,
-        answers: {
-          ...a,
-          about: a.about.trim(),
-          skills: a.skills.trim(),
-          wishes: a.wishes.trim(),
-          experience: a.experience.trim(),
-        },
+        answers: toAnswers(draft),
+        personal,
       });
       setVolunteerId(v.id);
       // бэкенд уже привязал анкету к аккаунту — запоминаем и здесь, чтобы кабинет открылся сразу
@@ -293,7 +387,8 @@ export default function Form() {
   if (result) return <Thanks volunteer={result} />;
 
   const a = draft.answers;
-  const firstName = draft.name.trim().split(" ")[0];
+  const p = draft.personal;
+  const directions = a.directions ?? [];
 
   const reached = fromCheck ? LAST : step;
   const jump = (n: number) => goTo(n, { fromCheck: fromCheck && n !== LAST });
@@ -326,7 +421,7 @@ export default function Form() {
                 tabIndex={-1}
                 className="step-heading min-w-0 [overflow-wrap:anywhere] font-display text-[1.6rem] leading-tight font-semibold tracking-tight text-balance md:text-[2rem]"
               >
-                {step === 1 && firstName ? `${firstName}, немного о жизни` : STEPS[step].title}
+                {STEPS[step].title}
               </h1>
               <p className="text-hint">{STEP_INTRO[step]}</p>
             </div>
@@ -335,7 +430,7 @@ export default function Form() {
           <div ref={questionsRef} className="flex flex-col gap-6">
             {step === 0 && (
               <>
-                <Question label="Как вас зовут" required error={errors.name} errorId="err-name">
+                <Question label="Имя и Фамилия" required error={errors.name} errorId="err-name">
                   <input
                     className={inputClass}
                     aria-invalid={!!errors.name}
@@ -345,25 +440,75 @@ export default function Form() {
                     autoComplete="name"
                     enterKeyHint="next"
                     maxLength={100}
-                    placeholder="Имя и фамилия"
+                    placeholder="Мария Иванова"
+                  />
+                </Question>
+                <Question label="Дата Рождения" required error={errors.birth_date} errorId="err-birth-date">
+                  <input
+                    type="date"
+                    className={inputClass}
+                    aria-invalid={!!errors.birth_date}
+                    aria-describedby={errors.birth_date ? "err-birth-date" : undefined}
+                    value={p.birth_date ?? ""}
+                    onChange={(e) => setPersonal({ birth_date: e.target.value || null })}
+                    autoComplete="bday"
+                    min="1920-01-01"
+                    max={new Date().toISOString().slice(0, 10)}
+                  />
+                </Question>
+                <Question label="Номер телефона" required error={errors.phone} errorId="err-phone">
+                  <input
+                    type="tel"
+                    className={inputClass}
+                    aria-invalid={!!errors.phone}
+                    aria-describedby={errors.phone ? "err-phone" : undefined}
+                    value={p.phone}
+                    onChange={(e) => setPersonal({ phone: e.target.value })}
+                    autoComplete="tel"
+                    inputMode="tel"
+                    enterKeyHint="next"
+                    maxLength={50}
+                    placeholder="+7 900 000-00-00"
+                  />
+                </Question>
+                <Question label="Электронная почта" required error={errors.email} errorId="err-email">
+                  <input
+                    type="email"
+                    className={inputClass}
+                    aria-invalid={!!errors.email}
+                    aria-describedby={errors.email ? "err-email" : undefined}
+                    value={p.email}
+                    onChange={(e) => setPersonal({ email: e.target.value })}
+                    autoComplete="email"
+                    inputMode="email"
+                    enterKeyHint="next"
+                    maxLength={200}
+                    placeholder="name@mail.ru"
+                  />
+                </Question>
+                <Question label="Telegram" hint="Укажите, пожалуйста, ваш Telegram, если он отличается от номера телефона">
+                  <input
+                    className={inputClass}
+                    value={p.telegram}
+                    onChange={(e) => setPersonal({ telegram: e.target.value })}
+                    enterKeyHint="next"
+                    maxLength={100}
+                    placeholder="@nickname"
                   />
                 </Question>
                 <Question
-                  label="Как с вами связаться"
+                  label="Как с вами удобнее всего связываться?"
                   required
-                  hint="Телефон, e-mail или ник в Telegram. Его увидит только координатор фонда."
-                  error={errors.contact}
-                  errorId="err-contact"
+                  group
+                  hint="Можно выбрать несколько вариантов"
+                  error={errors.contact_ways}
+                  errorId="err-contact-ways"
                 >
-                  <input
-                    className={inputClass}
-                    aria-invalid={!!errors.contact}
-                    aria-describedby={errors.contact ? "err-contact" : undefined}
-                    value={draft.contact}
-                    onChange={(e) => set({ contact: e.target.value })}
-                    enterKeyHint="next"
-                    maxLength={200}
-                    placeholder="+7 900 000-00-00 или @nickname"
+                  <Choices<ContactWay>
+                    multiple
+                    options={CONTACT_WAY}
+                    value={p.contact_ways}
+                    onChange={(v) => setPersonal({ contact_ways: v })}
                   />
                 </Question>
               </>
@@ -371,72 +516,126 @@ export default function Form() {
 
             {step === 1 && (
               <>
-                <Question label="Чем вы сейчас заняты" group>
-                  <Choices<Occupation>
-                    options={OCCUPATION}
-                    icons={OCCUPATION_ICON}
-                    value={[a.occupation]}
-                    onChange={([v]) => setAnswers({ occupation: v })}
+                <Question
+                  label="Есть ли у вас опыт волонтёрской деятельности?"
+                  required
+                  group
+                  error={errors.volunteer_experience}
+                  errorId="err-volunteer-experience"
+                >
+                  <Choices<YesNo>
+                    options={YES_NO}
+                    value={draft.volunteerExperience ? [draft.volunteerExperience] : []}
+                    onChange={([v]) => set({ volunteerExperience: v })}
                   />
                 </Question>
                 <Question
-                  label="Где вы живёте"
+                  label="Есть ли у вас опыт работы или взаимодействия с людьми с особенностями развития?"
+                  required
                   group
-                  hint="Фонд работает в Москве, Подмосковье, Ярославской области и Северной Осетии"
+                  hint="В том числе с детьми и подростками, оставшимися без попечения родителей."
+                  error={errors.special_needs}
+                  errorId="err-special-needs"
                 >
-                  <Choices<Region> options={REGION} value={[a.region]} onChange={([v]) => setAnswers({ region: v })} />
+                  <Choices<SpecialNeeds>
+                    options={SPECIAL_NEEDS}
+                    value={draft.specialNeeds ? [draft.specialNeeds] : []}
+                    onChange={([v]) => set({ specialNeeds: v })}
+                  />
+                </Question>
+                <Question
+                  group
+                  labelId="q-skills"
+                  label="Расскажите о своих навыках, опыте или увлечениях, которые могут быть полезны в волонтёрской деятельности."
+                  required
+                  hint="Например: творчество, педагогика, психология, фотография, видеосъёмка, организация мероприятий, работа с социальными сетями и т.д."
+                  error={errors.skills}
+                  errorId="err-skills"
+                >
+                  <Ideas ideas={SKILL_IDEAS} value={a.skills} onChange={(v) => setAnswers({ skills: v })} />
+                  <TextBox
+                    errorId={errors.skills ? "err-skills" : undefined}
+                    value={a.skills}
+                    onChange={(v) => setAnswers({ skills: v })}
+                    placeholder="Например: 20 лет работала учителем рисования, люблю керамику, фотографирую"
+                    aria-labelledby="q-skills"
+                    meter
+                  />
                 </Question>
               </>
             )}
 
             {step === 2 && (
               <>
-                <Question label="Пара слов о вас" required error={errors.about} errorId="err-about">
-                  <TextBox
-                    errorId={errors.about ? "err-about" : undefined}
-                    value={a.about}
-                    onChange={(v) => setAnswers({ about: v })}
-                    placeholder="Например: я на пенсии, 20 лет работала учителем рисования, люблю возиться с детьми"
-                    meter
+                <Question
+                  label="В каких направлениях вам было бы интересно помогать?"
+                  required
+                  group
+                  hint="Можно выбрать несколько вариантов"
+                  error={errors.directions}
+                  errorId="err-directions"
+                >
+                  <Choices<Direction>
+                    multiple
+                    options={DIRECTION}
+                    value={directions}
+                    onChange={(v) => setAnswers({ directions: v })}
                   />
                 </Question>
-                <Question group labelId="q-skills" label="Что вы умеете" hint="Нажмите на подходящее или допишите своё">
-                  <Ideas ideas={SKILL_IDEAS} value={a.skills} onChange={(v) => setAnswers({ skills: v })} />
-                  <TextBox
-                    value={a.skills}
-                    onChange={(v) => setAnswers({ skills: v })}
-                    placeholder="Например: керамика, фотография, шитьё, монтаж видео, веду соцсети"
-                    aria-labelledby="q-skills"
+                {directions.includes("other") && (
+                  <Question label="Другое — что именно?">
+                    <TextBox
+                      value={a.wishes}
+                      onChange={(v) => setAnswers({ wishes: v })}
+                      placeholder="Например: подвозить ребят на своей машине, переводить тексты"
+                    />
+                  </Question>
+                )}
+                <Question
+                  label="Какой формат участия вам подходит?"
+                  required
+                  group
+                  error={errors.format}
+                  errorId="err-format"
+                >
+                  <Choices<FormatChoice>
+                    options={FORMAT_CHOICE}
+                    value={draft.format ? [draft.format] : []}
+                    onChange={([v]) => set({ format: v })}
+                  />
+                </Question>
+                <Question
+                  label="Какой формат волонтёрства вам подходит по регулярности?"
+                  required
+                  group
+                  error={errors.regularity}
+                  errorId="err-regularity"
+                >
+                  <Choices<AnswerRegularity>
+                    options={ANSWER_REGULARITY}
+                    value={draft.regularity ? [draft.regularity] : []}
+                    onChange={([v]) => set({ regularity: v })}
+                  />
+                </Question>
+                <Question label="Есть ли что-то ещё, что вы хотели бы рассказать о себе или своём желании помогать?">
+                  <TextBox value={a.about} onChange={(v) => setAnswers({ about: v })} placeholder="Необязательно" />
+                </Question>
+                <Question label="Откуда вы узнали о фонде «Дети Марии»?" required error={errors.source} errorId="err-source">
+                  <input
+                    className={inputClass}
+                    aria-invalid={!!errors.source}
+                    aria-describedby={errors.source ? "err-source" : undefined}
+                    value={a.source ?? ""}
+                    onChange={(e) => setAnswers({ source: e.target.value })}
+                    enterKeyHint="next"
+                    maxLength={500}
+                    placeholder="Например: от друзей, из Telegram-канала, на ярмарке"
                   />
                 </Question>
               </>
             )}
 
             {step === 3 && (
-              <>
-                <Question group labelId="q-wishes" label="Чем хотели бы помогать фонду" hint="Можно выбрать несколько или написать своими словами">
-                  <Ideas ideas={WISH_IDEAS} value={a.wishes} onChange={(v) => setAnswers({ wishes: v })} />
-                  <TextBox
-                    value={a.wishes}
-                    onChange={(v) => setAnswers({ wishes: v })}
-                    placeholder="Например: помогать на занятиях с детьми, снимать мероприятия"
-                    aria-labelledby="q-wishes"
-                  />
-                </Question>
-                <Question
-                  label="Ваш опыт"
-                  hint="Волонтёрство, работа с детьми или людьми с особенностями развития. Если опыта нет — это нормально, всему научим."
-                >
-                  <TextBox
-                    value={a.experience}
-                    onChange={(v) => setAnswers({ experience: v })}
-                    placeholder="Например: год помогала в приюте для животных; с особыми детьми не работала, но готова учиться"
-                  />
-                </Question>
-              </>
-            )}
-
-            {step === 4 && (
               <>
                 <Question
                   label="Когда вы обычно свободны"
@@ -460,23 +659,19 @@ export default function Form() {
                     onChange={(v) => setAnswers({ availability: v })}
                   />
                 </Question>
-                <Question label="Как удобнее помогать" required group error={errors.formats} errorId="err-formats">
-                  <Choices<Format>
-                    multiple
-                    options={FORMAT}
-                    icons={FORMAT_ICON}
-                    subs={FORMAT_SUB}
-                    value={a.formats}
-                    onChange={(v) => setAnswers({ formats: v })}
-                  />
+                <Question
+                  label="Где вы живёте"
+                  group
+                  hint="Фонд работает в Москве, Подмосковье, Ярославской области и Северной Осетии"
+                >
+                  <Choices<Region> options={REGION} value={[a.region]} onChange={([v]) => setAnswers({ region: v })} />
                 </Question>
-                <Question label="Как часто" group>
-                  <Choices<Regularity>
-                    options={REGULARITY}
-                    icons={REGULARITY_ICON}
-                    subs={REGULARITY_SUB}
-                    value={[a.regularity]}
-                    onChange={([v]) => setAnswers({ regularity: v })}
+                <Question label="Чем вы сейчас заняты" group>
+                  <Choices<Occupation>
+                    options={OCCUPATION}
+                    icons={OCCUPATION_ICON}
+                    value={[a.occupation]}
+                    onChange={([v]) => setAnswers({ occupation: v })}
                   />
                 </Question>
               </>
@@ -507,7 +702,7 @@ export default function Form() {
                     <a href={FUND_DOCS.privacy} target="_blank" rel="noreferrer" className="text-link underline underline-offset-4">
                       обработку персональных данных
                     </a>{" "}
-                    фондом «Дети Марии». Имя и контакт видит только координатор фонда, в AI-сервисы они не передаются.
+                    фондом «Дети Марии». Имя, дату рождения и контакты видит только координатор фонда, в AI-сервисы они не передаются.
                   </span>
                 </label>
                 {errors.consent && (
@@ -563,7 +758,7 @@ function StepList(props: { step: number; reached: number; saved: boolean; onJump
     <aside className="sticky top-6 hidden flex-col self-start gap-5 rounded-[2rem] bg-surface p-5 md:flex lg:p-6">
       <div className="flex flex-col gap-1">
         <span className="font-display text-lg leading-tight font-semibold">Анкета волонтёра</span>
-        <span className="text-sm text-hint">Займёт 5–7 минут</span>
+        <span className="text-sm text-hint">Займёт не более 10 минут</span>
       </div>
 
       <ol className="flex flex-col gap-1">
@@ -618,14 +813,16 @@ function StepList(props: { step: number; reached: number; saved: boolean; onJump
   );
 }
 
-/** Подзаголовок каждого шага — говорим, зачем это фонду. */
+/** Подзаголовок каждого шага. Первый — приветствие из анкеты фонда. */
 const STEP_INTRO = [
-  "Займёт 5–7 минут. Ответы сохраняются на этом устройстве — можно вернуться позже.",
-  "Так координатор поймёт, когда и где вам удобнее помогать.",
-  "Пишите как есть, своими словами — по этому тексту мы подберём занятия.",
-  "Можно выбрать готовое или написать своё. Не знаете — пропустите, подскажем на встрече.",
-  "Отметьте всё, что подходит.",
-  "Всё ли верно? Можно поправить любой ответ.",
+  "Мы рады, что вы решили стать волонтёром фонда «Дети Марии»! Заполните, пожалуйста, эту небольшую анкету, " +
+    "чтобы мы могли познакомиться с вами поближе, узнать о вашем опыте и интересах и понять, какое направление " +
+    "волонтёрства может вам подойти. Заполнение анкеты займёт не более 10 минут.",
+  "Если опыта нет — это нормально, всему научим.",
+  "Не знаете, что выбрать, — отметьте «Пока не знаю», обсудим на встрече.",
+  "Так координатор поймёт, когда и где вам удобнее помогать. Отметьте всё, что подходит.",
+  "Всё ли верно? Можно поправить любой ответ. Мы внимательно рассмотрим ответы и свяжемся с вами, " +
+    "чтобы договориться о встрече-знакомстве.",
 ];
 
 /** Сверху: «Шаг 2 из 6», полоска шагов и отметка «Сохранено». Пройденные шаги (до reached) можно открыть нажатием.
@@ -876,18 +1073,46 @@ function Ideas(props: { ideas: string[]; value: string; onChange: (v: string) =>
 function Review(props: { draft: Draft; onEdit: (step: number) => void }) {
   const d = props.draft;
   const a = d.answers;
+  const p = d.personal;
   const list = <T extends string>(labels: Record<T, string>, values: T[]) => values.map((v) => labels[v]).join(", ");
+  const directions = list(DIRECTION, a.directions ?? []);
+  const other = a.directions?.includes("other") && a.wishes.trim();
   const rows: { step: number; items: [string, string][] }[] = [
-    { step: 0, items: [["Имя", d.name], ["Контакт", d.contact]] },
-    { step: 1, items: [["Занятость", OCCUPATION[a.occupation]], ["Регион", REGION[a.region]]] },
-    { step: 2, items: [["О себе", a.about], ["Умею", a.skills]] },
-    { step: 3, items: [["Хочу помогать", a.wishes], ["Опыт", a.experience]] },
     {
-      step: 4,
+      step: 0,
+      items: [
+        ["Имя", d.name],
+        ["Дата рождения", p.birth_date ? new Date(p.birth_date).toLocaleDateString("ru-RU") : ""],
+        ["Телефон", p.phone],
+        ["Почта", p.email],
+        ["Telegram", p.telegram],
+        ["Связаться", list(CONTACT_WAY, p.contact_ways)],
+      ],
+    },
+    {
+      step: 1,
+      items: [
+        ["Опыт волонтёрства", d.volunteerExperience ? YES_NO[d.volunteerExperience] : ""],
+        ["Опыт с особенностями развития", d.specialNeeds ? SPECIAL_NEEDS[d.specialNeeds] : ""],
+        ["Навыки и увлечения", a.skills],
+      ],
+    },
+    {
+      step: 2,
+      items: [
+        ["Направления", other ? `${directions}: ${other}` : directions],
+        ["Формат", d.format ? FORMAT_CHOICE[d.format] : ""],
+        ["Регулярность", d.regularity ? ANSWER_REGULARITY[d.regularity] : ""],
+        ["Ещё о себе", a.about],
+        ["Откуда узнали", a.source ?? ""],
+      ],
+    },
+    {
+      step: 3,
       items: [
         ["Свободен(на)", list(AVAILABILITY, a.availability)],
-        ["Формат", list(FORMAT, a.formats)],
-        ["Как часто", REGULARITY[a.regularity]],
+        ["Регион", REGION[a.region]],
+        ["Занятость", OCCUPATION[a.occupation]],
       ],
     },
   ];

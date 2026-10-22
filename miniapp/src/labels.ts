@@ -1,13 +1,17 @@
 // Подписи для значений из контракта (api.ts). Все тексты интерфейса для этих полей — только отсюда.
 import type {
+  AnswerRegularity,
   Availability,
+  ContactWay,
   Decision,
+  Direction,
   Format,
   FunnelStep,
   Occupation,
   ParticipationStatus,
   Region,
   Regularity,
+  SpecialNeeds,
   VolunteerStatus,
 } from "./api";
 
@@ -54,6 +58,40 @@ export const REGULARITY: Record<Regularity, string> = {
   regular: "Постоянно",
   episodic: "Разово",
   any: "Как получится",
+};
+
+// Ответы анкеты — дословно как в анкете фонда.
+export const ANSWER_REGULARITY: Record<AnswerRegularity, string> = {
+  regular: "Хочу участвовать регулярно",
+  occasional: "Готов(а) помогать время от времени",
+  episodic: "Готов(а) участвовать в отдельных мероприятиях или проектах",
+  any: "Пока не знаю — хочу обсудить варианты на встрече",
+};
+
+export const DIRECTION: Record<Direction, string> = {
+  creative: "Проведение творческих занятий",
+  education: "Обучение и образовательные занятия",
+  assistant: "Помощь ведущему мастер-класса и ребятам на занятиях",
+  psychology: "Психологическая и дефектологическая помощь",
+  media: "Фото, медиа и создание контента",
+  events: "Помощь в организации событий и мероприятий",
+  market: "Помощь интернет-магазину, на маркетах и ярмарках",
+  other: "Другое",
+  unsure: "Пока не знаю, хочу обсудить варианты на встрече",
+};
+
+export const SPECIAL_NEEDS: Record<SpecialNeeds, string> = {
+  yes: "Да",
+  ready: "Нет, но я готов(а) попробовать",
+  discuss: "Нет, хотел(а) бы сначала обсудить это на встрече",
+};
+
+export const CONTACT_WAY: Record<ContactWay, string> = {
+  whatsapp: "WhatsApp",
+  telegram: "Telegram",
+  max: "Max",
+  email: "Электронная почта",
+  phone: "Телефонный звонок",
 };
 
 export const STATUS: Record<VolunteerStatus, string> = {

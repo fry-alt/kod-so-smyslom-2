@@ -1,7 +1,7 @@
 """Волонтёры: анкета → профиль (LLM) → векторный индекс; статусы, часы, заметки координатора.
 
 В LLM и в индекс уходят только ответы анкеты и теги профиля (answers_text, index_document).
-Имя, контакт, telegram_id и заметки остаются в БД.
+Имя, контакт, telegram_id, личные данные (PersonalData) и заметки остаются в БД.
 """
 
 import logging
@@ -13,10 +13,11 @@ from sqlmodel import Session, col, select
 from app.llm.client import get_llm
 from app.llm.prompts import load_prompt
 from app.llm.providers import LLMError
-from app.models import Note, QuizAttempt, Volunteer
+from app.models import Note, QuizAttempt, Volunteer, VolunteerPersonal
 from app.schemas import (
     Answers,
     NoteIn,
+    PersonalData,
     Profile,
     VolunteerIn,
     VolunteerOut,
@@ -52,7 +53,28 @@ REGION = {
     "other": "другой регион",
 }
 FORMAT = {"offline": "очно", "online": "онлайн"}
-REGULARITY = {"regular": "постоянно", "episodic": "разово", "any": "неважно"}
+REGULARITY = {
+    "regular": "постоянно",
+    "occasional": "время от времени",
+    "episodic": "разово, на отдельные мероприятия",
+    "any": "неважно",
+}
+DIRECTION = {
+    "creative": "проведение творческих занятий",
+    "education": "обучение и образовательные занятия",
+    "assistant": "помощь ведущему мастер-класса и ребятам на занятиях",
+    "psychology": "психологическая и дефектологическая помощь",
+    "media": "фото, медиа и создание контента",
+    "events": "организация событий и мероприятий",
+    "market": "помощь интернет-магазину, на маркетах и ярмарках",
+    "other": "другое",
+    "unsure": "пока не знает, хочет обсудить на встрече",
+}
+SPECIAL_NEEDS = {
+    "yes": "есть",
+    "ready": "нет, но готов(а) попробовать",
+    "discuss": "нет, хотел(а) бы сначала обсудить на встрече",
+}
 
 
 def create(session: Session, data: VolunteerIn) -> Volunteer:
@@ -65,6 +87,12 @@ def create(session: Session, data: VolunteerIn) -> Volunteer:
     )
     session.add(volunteer)
     session.commit()
+    if data.personal:
+        personal = VolunteerPersonal(
+            volunteer_id=volunteer.id, data=data.personal.model_dump(mode="json")
+        )
+        session.add(personal)
+        session.commit()
 
     profile = extract_profile(data.answers)
     if profile:
@@ -100,15 +128,22 @@ def extract_profile(answers: Answers) -> Profile | None:
 
 def answers_text(answers: Answers) -> str:
     """Ответы анкеты текстом — для промпта и для индекса. Персональных данных здесь нет."""
+    volunteer_experience = {True: "есть", False: "нет", None: ""}[answers.volunteer_experience]
     lines = [
         ("О себе", answers.about),
         ("Умеет", answers.skills),
+        ("Хочет помогать", ", ".join(DIRECTION[d] for d in answers.directions)),
         ("Хочет", answers.wishes),
         ("Опыт", answers.experience),
+        ("Опыт волонтёрства", volunteer_experience),
+        (
+            "Опыт с людьми с особенностями развития",
+            SPECIAL_NEEDS[answers.special_needs] if answers.special_needs else "",
+        ),
         ("Когда свободен", ", ".join(AVAILABILITY[a] for a in answers.availability)),
         ("Занятость", OCCUPATION[answers.occupation]),
         ("Регион", REGION[answers.region]),
-        ("Формат", ", ".join(FORMAT[f] for f in answers.formats)),
+        ("Формат", ", ".join(FORMAT[f] for f in answers.formats) or "пока не знает"),
         ("Регулярность", REGULARITY[answers.regularity]),
     ]
     return "\n".join(f"{label}: {value}" for label, value in lines if value)
@@ -190,6 +225,11 @@ def training_score(session: Session, volunteer_id: int) -> int | None:
     return round(sum(scores) / len(scores))
 
 
+def personal_data(session: Session, volunteer_id: int) -> PersonalData | None:
+    row = session.get(VolunteerPersonal, volunteer_id)
+    return PersonalData.model_validate(row.data) if row else None
+
+
 def to_out(session: Session, volunteer: Volunteer) -> VolunteerOut:
     return VolunteerOut(
         id=volunteer.id,
@@ -197,6 +237,7 @@ def to_out(session: Session, volunteer: Volunteer) -> VolunteerOut:
         contact=volunteer.contact,
         telegram_id=volunteer.telegram_id,
         answers=volunteer.answers,
+        personal=personal_data(session, volunteer.id),
         profile=volunteer.profile,
         status=volunteer.status,
         training_score=training_score(session, volunteer.id),
