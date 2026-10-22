@@ -2,7 +2,7 @@
 date: 2026-10-22
 author: fry-alt
 task: T-200 (#171)
-pr: https://github.com/fry-alt/kod-so-smyslom-2/pulls?q=T-200
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/172
 areas: [документы]
 ---
 
