@@ -25,7 +25,7 @@ from app.llm.client import get_llm
 from app.llm.prompts import load_prompt
 from app.llm.providers import LLMError
 from app.models import QuizAttempt, QuizCache, Volunteer
-from app.schemas import Quiz, QuizQuestion, QuizResult, TrainingModule
+from app.schemas import ModuleProgress, Quiz, QuizQuestion, QuizResult, TrainingModule
 from app.services import notify, volunteer_index, volunteers
 
 log = logging.getLogger(__name__)
@@ -167,3 +167,16 @@ def passed_modules(session: Session, volunteer_id: int) -> set[str]:
         .having(func.max(QuizAttempt.score) >= PASS_SCORE)
     )
     return set(session.exec(best).all())
+
+
+def progress(session: Session, volunteer_id: int) -> list[ModuleProgress]:
+    """Отметки по модулям для экрана «Обучение»: лучший балл; модули без попыток не попадают."""
+    best = (
+        select(QuizAttempt.module_id, func.max(QuizAttempt.score))
+        .where(QuizAttempt.volunteer_id == volunteer_id)
+        .group_by(QuizAttempt.module_id)
+    )
+    return [
+        ModuleProgress(module_id=module_id, score=score, passed=score >= PASS_SCORE)
+        for module_id, score in session.exec(best).all()
+    ]

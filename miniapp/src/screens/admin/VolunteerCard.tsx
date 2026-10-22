@@ -2,9 +2,10 @@
 // Собеседование (T-60, T-69): назначить звонок, план от AI и итог — в interview/InterviewBlock.tsx.
 // Всё, что меняет координатор, сразу сохраняется на сервере и видно после перезагрузки.
 // Заметки — только для фонда: в AI они не отправляются.
+// Благодарность (T-165): текст от фонда за часы и роли — скопировать или отправить в переписку.
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
-import type { Note, Role, Volunteer, VolunteerStatus } from "../../api";
+import type { Note, Role, Thanks, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
 import {
   ANSWER_REGULARITY,
@@ -69,6 +70,7 @@ export default function VolunteerCard(props: { id: number }) {
             <div className="flex min-w-0 flex-col gap-5 lg:order-2 lg:col-span-2">
               <StatusCard key={`s${v.id}`} v={v} onSaved={setSaved} />
               <HoursCard key={`h${v.id}`} v={v} onSaved={setSaved} />
+              <ThanksCard key={`t${v.id}`} v={v} />
               <TrainingCard v={v} />
               <Notes key={`n${v.id}`} id={v.id} />
             </div>
@@ -188,6 +190,92 @@ function HoursCard(props: { v: Volunteer; onSaved: (v: Volunteer) => void }) {
         {done && <p role="status" className="text-green-800"><span aria-hidden="true">✓ </span>Часы сохранены</p>}
         {error && <p className="font-medium text-red-700">{error}</p>}
       </form>
+    </Card>
+  );
+}
+
+/** Благодарность от фонда: сервер составляет текст по часам и ролям, координатор отправляет его сам. */
+function ThanksCard({ v }: { v: Volunteer }) {
+  const [thanks, setThanks] = useState<Thanks | null>(null);
+  const [busy, setBusy] = useState<"make" | "send" | null>(null);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState("");
+
+  async function make() {
+    setBusy("make");
+    setError("");
+    try {
+      setThanks(await backend.thanks(v.id));
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function send(text: string) {
+    setBusy("send");
+    setError("");
+    setDone("");
+    try {
+      await backend.sendMessage(v.id, { sender: "coordinator", text });
+      setDone("Отправлено — волонтёр увидит его в «Сообщениях»");
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function copy(text: string) {
+    setError("");
+    setDone("");
+    try {
+      await navigator.clipboard.writeText(text);
+      setDone("Скопировано — вставьте в сообщение волонтёру");
+    } catch {
+      setError("Не получилось скопировать. Выделите текст и скопируйте вручную.");
+    }
+  }
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <div>
+        <h2 className="text-xl font-semibold">Благодарность</h2>
+        <p className="text-sm text-hint">Тёплые слова от фонда за часы и помощь. Текст можно поправить перед отправкой.</p>
+      </div>
+      {!thanks ? (
+        <Button variant="secondary" loading={busy === "make"} onClick={make}>
+          Составить благодарность
+        </Button>
+      ) : (
+        <>
+          <textarea
+            value={thanks.text}
+            onChange={(e) => setThanks({ ...thanks, text: e.target.value })}
+            rows={6}
+            maxLength={1000}
+            className={inputClass}
+            aria-label="Текст благодарности"
+          />
+          {!thanks.ai && <p className="text-sm text-hint">Составлено по шаблону.</p>}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" onClick={() => copy(thanks.text)} disabled={!thanks.text.trim()}>
+              Скопировать
+            </Button>
+            <Button
+              variant="secondary"
+              loading={busy === "send"}
+              disabled={busy !== null || !thanks.text.trim()}
+              onClick={() => send(thanks.text.trim())}
+            >
+              Отправить на сайте
+            </Button>
+          </div>
+        </>
+      )}
+      {done && <p role="status" className="text-green-800"><span aria-hidden="true">✓ </span>{done}</p>}
+      {error && <ErrorBox text={error} />}
     </Card>
   );
 }

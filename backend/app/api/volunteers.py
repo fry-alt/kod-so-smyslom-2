@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session
 
-from app.api.auth import coordinator, current_account
+from app.api.auth import Viewer, check_owner, coordinator, current_account, viewer
 from app.api.telegram_auth import verified_telegram_id
 from app.db import get_session
 from app.models import Account, Volunteer
 from app.schemas import (
+    ModuleProgress,
     Note,
     NoteIn,
     Thanks,
@@ -14,7 +15,7 @@ from app.schemas import (
     VolunteerStatus,
     VolunteerUpdate,
 )
-from app.services import accounts, hours, volunteers
+from app.services import accounts, hours, training, volunteers
 
 router = APIRouter(prefix="/volunteers", tags=["volunteers"])
 
@@ -74,8 +75,23 @@ def export_csv(session: Session = Depends(get_session)) -> Response:
 
 
 @router.get("/{volunteer_id}", response_model=VolunteerOut)
-def get(volunteer_id: int, session: Session = Depends(get_session)) -> VolunteerOut:
-    return volunteers.to_out(session, _get_or_404(session, volunteer_id))
+def get(
+    volunteer_id: int, session: Session = Depends(get_session), who: Viewer = Depends(viewer)
+) -> VolunteerOut:
+    """Анкета — самому волонтёру и координатору."""
+    volunteer = _get_or_404(session, volunteer_id)
+    check_owner(who, volunteer)
+    return volunteers.to_out(session, volunteer)
+
+
+@router.get("/{volunteer_id}/training", response_model=list[ModuleProgress])
+def training_progress(
+    volunteer_id: int, session: Session = Depends(get_session), who: Viewer = Depends(viewer)
+) -> list[ModuleProgress]:
+    """Какие модули обучения волонтёр сдал — одинаково на телефоне, компьютере и в Telegram."""
+    volunteer = _get_or_404(session, volunteer_id)
+    check_owner(who, volunteer)
+    return training.progress(session, volunteer.id)
 
 
 @router.patch("/{volunteer_id}", response_model=VolunteerOut, dependencies=[Depends(coordinator)])
@@ -87,7 +103,7 @@ def update(
     return volunteers.to_out(session, volunteer)
 
 
-@router.get("/{volunteer_id}/thanks", response_model=Thanks)
+@router.get("/{volunteer_id}/thanks", response_model=Thanks, dependencies=[Depends(coordinator)])
 def thanks(volunteer_id: int, session: Session = Depends(get_session)) -> Thanks:
     """Благодарность от фонда за часы и роли — координатор копирует и отправляет сам."""
     return hours.thanks(session, _get_or_404(session, volunteer_id))

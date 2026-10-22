@@ -42,6 +42,23 @@ export default function Me() {
   }, []);
 
   if (id && loading) return <Loading />;
+  if (error && /войдите|другого волонтёра/i.test(error)) {
+    // анкету видит только её хозяин: на этом устройстве остался номер анкеты, а входа нет
+    return (
+      <div className="flex flex-col gap-4">
+        <ErrorBox text="Чтобы открыть личный кабинет, войдите по почте и паролю — или откройте приложение из Telegram-бота фонда." />
+        <Button
+          variant="primary"
+          onClick={() => {
+            logout();
+            navigate("/login?mode=login");
+          }}
+        >
+          Войти
+        </Button>
+      </div>
+    );
+  }
   if (error) {
     // например, анкету удалили или моки сбросились после перезагрузки
     return (

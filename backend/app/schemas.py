@@ -295,6 +295,14 @@ class QuizSubmit(BaseModel):
     answers: list[int] = Field(description="индекс выбранного варианта на каждый вопрос")
 
 
+class ModuleProgress(BaseModel):
+    """GET /volunteers/{id}/training — как волонтёр сдал модуль: лучший балл из его попыток теста."""
+
+    module_id: str
+    score: int = Field(ge=0, le=100, description="лучший % правильных")
+    passed: bool
+
+
 class QuizResult(BaseModel):
     score: int = Field(ge=0, le=100, description="% правильных")
     passed: bool

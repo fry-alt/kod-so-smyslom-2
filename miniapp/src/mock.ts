@@ -718,6 +718,12 @@ export const mockApi: typeof volunteersApi = {
     };
     return wait(result, 1200);
   },
+  trainingProgress: (volunteerId) =>
+    findVolunteer(volunteerId)
+      ? wait(
+          Object.entries(quizScores[volunteerId] ?? {}).map(([module_id, score]) => ({ module_id, score, passed: score >= 70 })),
+        )
+      : notFound("Волонтёр"),
   opportunities: (volunteerId) => {
     refresh();
     return wait(opportunities.map((o) => opportunityOut(o, volunteerId)));
