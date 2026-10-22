@@ -119,6 +119,22 @@ def respond(session: Session, opportunity: Opportunity, volunteer: Volunteer) ->
     return _save(session, participation)
 
 
+def cancel(session: Session, opportunity: Opportunity, volunteer: Volunteer) -> Participation:
+    """Волонтёр отменяет отклик, запись или приглашение («Не смогу»): место освобождается.
+
+    Потом можно откликнуться снова. Прошедшее участие с часами не отменяем.
+    """
+    participation = _find(session, opportunity.id, volunteer.id)
+    if participation is None:
+        raise ParticipationError("Вы не записаны на это занятие")
+    if participation.status == "attended":
+        raise ParticipationError("Занятие уже прошло — часы начислены, отменить нельзя")
+    if participation.status == "declined":
+        return participation
+    participation.status = "declined"
+    return _save(session, participation)
+
+
 def invite(
     session: Session, opportunity: Opportunity, volunteers: list[Volunteer]
 ) -> list[Participation]:

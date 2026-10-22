@@ -343,7 +343,7 @@ class Participation(BaseModel):
 
 
 class RespondIn(BaseModel):
-    """POST /opportunities/{id}/respond — волонтёр откликается."""
+    """POST /opportunities/{id}/respond и /cancel — волонтёр откликается или отменяет отклик."""
 
     volunteer_id: int
 

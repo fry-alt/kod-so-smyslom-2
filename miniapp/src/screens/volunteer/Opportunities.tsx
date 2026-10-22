@@ -125,22 +125,25 @@ function OpportunityItem(props: {
   const Title = props.nested ? "h3" : "h2";
   const volunteerId = getVolunteerId();
   const left = Math.max(0, o.slots - o.taken);
-  const [busy, setBusy] = useState<"" | "respond" | "confirm" | "decline">("");
+  const [busy, setBusy] = useState<"" | "respond" | "confirm" | "decline" | "cancel">("");
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [error, setError] = useState("");
 
-  async function act(kind: "respond" | "confirm" | "decline") {
+  async function act(kind: "respond" | "confirm" | "decline" | "cancel") {
     if (!volunteerId) return;
     setBusy(kind);
     setError("");
     try {
       if (kind === "respond") await backend.respond(o.id, volunteerId);
+      else if (kind === "decline" || kind === "cancel") await backend.cancelResponse(o.id, volunteerId);
       else if (!participation) throw new Error("Не нашли ваше приглашение. Обновите страницу.");
-      else await backend.updateParticipation(participation.id, kind === "confirm" ? "confirmed" : "declined");
+      else await backend.updateParticipation(participation.id, "confirmed");
       props.onDone(
         {
           respond: `Вы откликнулись на «${o.title}». Координатор свяжется с вами.`,
           confirm: `✓ Вы записаны: «${o.title}», ${formatWhen(o.starts_at)}. Ждём вас!`,
           decline: `Вы отказались от «${o.title}». Спасибо, что предупредили.`,
+          cancel: `Запись на «${o.title}» отменена. Спасибо, что предупредили. Если передумаете — откликнитесь снова.`,
         }[kind],
       );
     } catch (e) {
@@ -151,8 +154,12 @@ function OpportunityItem(props: {
   }
 
   const d = new Date(o.starts_at);
-  const status = o.my_status && !props.invite ? MY_STATUS[o.my_status] : "";
-  const canRespond = !props.invite && volunteerId && !o.my_status && left > 0;
+  // после отмены (declined) карточка снова как новая — можно откликнуться ещё раз
+  const myStatus = o.my_status === "declined" ? null : o.my_status;
+  const status = myStatus && !props.invite ? MY_STATUS[myStatus] : "";
+  const canRespond = !props.invite && volunteerId && !myStatus && left > 0;
+  // отклик или запись ещё до занятия — можно отменить
+  const canCancel = !props.invite && volunteerId && (myStatus === "responded" || myStatus === "confirmed");
   // откликнулся, приглашён или записан — можно задать вопрос координатору об этом занятии
   const canWrite = volunteerId && o.my_status && o.my_status !== "declined";
 
@@ -191,7 +198,7 @@ function OpportunityItem(props: {
 
       {o.description && <p className="leading-relaxed">{o.description}</p>}
 
-      {(status || error || props.invite || canRespond) && (
+      {(status || error || props.invite || canRespond || canCancel) && (
         <div className="mt-auto flex flex-col gap-2">
           {status && <p className="rounded-2xl bg-soft px-4 py-3 font-semibold">{status}</p>}
           {error && <ErrorBox text={error} />}
@@ -215,6 +222,24 @@ function OpportunityItem(props: {
               Написать координатору
             </Button>
           )}
+          {canCancel &&
+            (!confirmCancel ? (
+              <Button wide variant="ghost" onClick={() => setConfirmCancel(true)}>
+                Отменить запись
+              </Button>
+            ) : (
+              <div className="flex flex-col gap-2 rounded-2xl bg-soft p-3">
+                <p className="text-center text-lg font-semibold">Точно отменить запись?</p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button wide loading={busy === "cancel"} loadingLabel="Отменяем…" disabled={!!busy} onClick={() => act("cancel")}>
+                    Да, отменить
+                  </Button>
+                  <Button wide variant="secondary" disabled={!!busy} onClick={() => setConfirmCancel(false)}>
+                    Нет, остаюсь
+                  </Button>
+                </div>
+              </div>
+            ))}
         </div>
       )}
     </article>

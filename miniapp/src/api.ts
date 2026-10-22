@@ -370,6 +370,9 @@ export const volunteersApi = {
     request<Opportunity[]>("GET", "/opportunities" + (volunteerId ? `?volunteer_id=${volunteerId}` : "")),
   respond: (opportunityId: number, volunteerId: number) =>
     post<Participation>(`/opportunities/${opportunityId}/respond`, { volunteer_id: volunteerId }),
+  // отменить отклик или запись, отказаться от приглашения — участие станет declined
+  cancelResponse: (opportunityId: number, volunteerId: number) =>
+    post<Participation>(`/opportunities/${opportunityId}/cancel`, { volunteer_id: volunteerId }),
   myParticipations: (volunteerId: number) =>
     request<Participation[]>("GET", `/volunteers/${volunteerId}/participations`),
   // видеособеседование: список — и для «Я», и для карточки в /admin
