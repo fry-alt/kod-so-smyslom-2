@@ -9,17 +9,19 @@ from starlette.websockets import WebSocketDisconnect
 
 from app.config import Settings
 from app.services import interviews
+from conftest import telegram_headers
 
 FORM = {
     "name": "Ирина Собеседуемая",
     "contact": "+7 900 000-00-59",
-    "telegram_id": 590590,
     "answers": {"about": "Пенсионерка, вяжу и хочу помогать", "availability": ["weekday_day"]},
 }
 
 
-def create_volunteer(client, **changes) -> int:
-    r = client.post("/volunteers", json={**FORM, **changes})
+def create_volunteer(client, telegram_id: int | None = 590590) -> int:
+    """Анкета из Mini App — с подписью Telegram; telegram_id=None — анкета с сайта."""
+    headers = telegram_headers(telegram_id) if telegram_id else {}
+    r = client.post("/volunteers", json=FORM, headers=headers)
     assert r.status_code == 200, r.text
     return r.json()["id"]
 

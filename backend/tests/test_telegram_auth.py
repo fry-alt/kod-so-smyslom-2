@@ -1,26 +1,9 @@
-import hashlib
-import hmac
-import json
 import time
-from urllib.parse import urlencode
 
 import pytest
 
 from app.api.telegram_auth import InitDataError, validate_init_data
-from conftest import BOT_TOKEN
-
-
-def make_init_data(token: str = BOT_TOKEN, auth_date: int | None = None) -> str:
-    """Собирает initData так же, как Telegram, — для тестов и локальной отладки."""
-    fields = {
-        "auth_date": str(auth_date or int(time.time())),
-        "query_id": "AAH-test",
-        "user": json.dumps({"id": 42, "first_name": "Аня", "username": "anya"}),
-    }
-    check = "\n".join(f"{k}={v}" for k, v in sorted(fields.items()))
-    secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
-    fields["hash"] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
-    return urlencode(fields)
+from conftest import BOT_TOKEN, make_init_data
 
 
 def test_valid_init_data():

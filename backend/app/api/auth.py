@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from sqlmodel import Session
 
+from app.api.telegram_auth import verified_telegram_id
 from app.config import get_settings
 from app.db import get_session
 from app.models import Account
@@ -56,14 +57,28 @@ def _code_error(e: accounts.AuthError) -> HTTPException:
     return HTTPException(getattr(e, "status", 400), str(e))
 
 
+def _with_telegram(session: Session, out: AuthOut, telegram_id: int | None) -> AuthOut:
+    """Вошли внутри Telegram Mini App — связать аккаунт с анкетой из этого Telegram."""
+    if telegram_id is None:
+        return out
+    account = session.get(Account, out.account.id)
+    if account is None:
+        return out
+    accounts.link_telegram(session, account, telegram_id)
+    return AuthOut(token=out.token, account=accounts.to_out(account))
+
+
 @router.post("/register", response_model=AuthOut | CodeSent)
 def register(
-    data: RegisterIn, request: Request, session: Session = Depends(get_session)
+    data: RegisterIn,
+    request: Request,
+    session: Session = Depends(get_session),
+    telegram_id: int | None = Depends(verified_telegram_id),
 ) -> AuthOut | CodeSent:
     """Шаг 1: на почту уходит код (CodeSent). Почта на сервере не настроена — сразу AuthOut, как раньше."""
     try:
         if not mail.enabled():
-            return accounts.register(session, data)
+            return _with_telegram(session, accounts.register(session, data), telegram_id)
         # сначала понятные ошибки формы, потом лимит писем
         payload = accounts.prepare(session, data)
         _limit_letters(request)
@@ -84,12 +99,17 @@ def register_resend(
 
 
 @router.post("/register/verify", response_model=AuthOut)
-def register_verify(data: VerifyIn, session: Session = Depends(get_session)) -> AuthOut:
+def register_verify(
+    data: VerifyIn,
+    session: Session = Depends(get_session),
+    telegram_id: int | None = Depends(verified_telegram_id),
+) -> AuthOut:
     """Шаг 2: верный код из письма — аккаунт создан, можно входить."""
     try:
-        return email_codes.finish_signup(session, data.email, data.code)
+        out = email_codes.finish_signup(session, data.email, data.code)
     except accounts.AuthError as e:
         raise _code_error(e) from e
+    return _with_telegram(session, out, telegram_id)
 
 
 @router.post("/reset", response_model=CodeSent)
@@ -126,9 +146,13 @@ def reset_confirm(data: ResetConfirmIn, session: Session = Depends(get_session))
 
 
 @router.post("/login", response_model=AuthOut)
-def login(data: LoginIn, session: Session = Depends(get_session)) -> AuthOut:
+def login(
+    data: LoginIn,
+    session: Session = Depends(get_session),
+    telegram_id: int | None = Depends(verified_telegram_id),
+) -> AuthOut:
     try:
-        return accounts.login(session, data)
+        return _with_telegram(session, accounts.login(session, data), telegram_id)
     except accounts.AuthError as e:
         raise HTTPException(401, str(e)) from e
 

@@ -77,12 +77,13 @@ SPECIAL_NEEDS = {
 }
 
 
-def create(session: Session, data: VolunteerIn) -> Volunteer:
-    """Сначала сохраняем анкету — она не должна потеряться, даже если LLM недоступна."""
+def create(session: Session, data: VolunteerIn, telegram_id: int | None = None) -> Volunteer:
+    """Сначала сохраняем анкету — она не должна потеряться, даже если LLM недоступна.
+    telegram_id — только проверенный (из подписи Mini App), а не тот, что прислали в анкете."""
     volunteer = Volunteer(
         name=data.name,
         contact=data.contact,
-        telegram_id=data.telegram_id,
+        telegram_id=telegram_id,
         answers=data.answers.model_dump(),
     )
     session.add(volunteer)
@@ -177,6 +178,12 @@ def index_metadata(volunteer: Volunteer) -> dict[str, Any]:
 
 def get(session: Session, volunteer_id: int) -> Volunteer | None:
     return session.get(Volunteer, volunteer_id)
+
+
+def by_telegram(session: Session, telegram_id: int) -> Volunteer | None:
+    """Анкета человека из Telegram Mini App; если заполнял несколько раз — последняя."""
+    query = select(Volunteer).where(Volunteer.telegram_id == telegram_id)
+    return session.exec(query.order_by(col(Volunteer.id).desc())).first()
 
 
 def list_all(session: Session, status: VolunteerStatus | None = None) -> list[Volunteer]:

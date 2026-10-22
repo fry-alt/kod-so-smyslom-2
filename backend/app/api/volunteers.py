@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session
 
 from app.api.auth import coordinator, current_account
+from app.api.telegram_auth import verified_telegram_id
 from app.db import get_session
 from app.models import Account, Volunteer
 from app.schemas import (
@@ -30,11 +31,28 @@ def create(
     data: VolunteerIn,
     session: Session = Depends(get_session),
     account: Account | None = Depends(current_account),
+    telegram_id: int | None = Depends(verified_telegram_id),
 ) -> VolunteerOut:
-    """Анкета волонтёра. Если человек вошёл на сайт — анкета привязывается к его аккаунту."""
-    volunteer = volunteers.create(session, data)
+    """Анкета волонтёра. Если человек вошёл на сайт — анкета привязывается к его аккаунту.
+    telegram_id берём из подписи Mini App (X-Telegram-Init-Data), поле telegram_id в анкете не используется."""
+    volunteer = volunteers.create(session, data, telegram_id)
     if account is not None and volunteer.id is not None:
         accounts.link_volunteer(session, account, volunteer.id)
+    return volunteers.to_out(session, volunteer)
+
+
+@router.get("/by-telegram", response_model=VolunteerOut)
+def by_telegram(
+    session: Session = Depends(get_session),
+    telegram_id: int | None = Depends(verified_telegram_id),
+) -> VolunteerOut:
+    """Моя анкета в Telegram Mini App: по подписи Telegram, без входа по почте. Открыл бота
+    на другом телефоне — кабинет на месте. 404 — анкету из этого Telegram ещё не заполняли."""
+    if telegram_id is None:
+        raise HTTPException(401, "Откройте приложение из Telegram-бота фонда")
+    volunteer = volunteers.by_telegram(session, telegram_id)
+    if volunteer is None:
+        raise HTTPException(404, "Анкету из этого Telegram ещё не заполняли")
     return volunteers.to_out(session, volunteer)
 
 

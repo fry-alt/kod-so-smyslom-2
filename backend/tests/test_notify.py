@@ -5,18 +5,18 @@ import logging
 import httpx
 
 from app.services import notify
-from conftest import BOT_TOKEN
+from conftest import BOT_TOKEN, telegram_headers
 
 FORM = {
     "name": "Вера Уведомлённая",
     "contact": "+7 900 000-00-07",
-    "telegram_id": 700700,
     "answers": {"about": "Студентка, хочу помогать на мастерских", "availability": ["weekend"]},
 }
 
 
-def create(client, **changes) -> int:
-    r = client.post("/volunteers", json={**FORM, **changes})
+def create(client, telegram_id: int | None = 700700) -> int:
+    headers = telegram_headers(telegram_id) if telegram_id else {}
+    r = client.post("/volunteers", json=FORM, headers=headers)
     assert r.status_code == 200, r.text
     return r.json()["id"]
 
