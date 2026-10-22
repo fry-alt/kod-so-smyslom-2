@@ -11,7 +11,8 @@
 #   SSH_KNOWN_HOSTS  — отпечаток сервера
 # Секреты репозитория (Settings → Secrets → Actions), каждый отдельно, все необязательные:
 #   TELEGRAM_BOT_TOKEN, YANDEX_API_KEY, YANDEX_FOLDER_ID, GIGACHAT_CREDENTIALS, GPT2GIGA_API_KEY,
-#   LLM_API_KEY, ANTHROPIC_API_KEY, COORDINATOR_CODE (код фонда, пока его не сменили в кабинете).
+#   LLM_API_KEY, ANTHROPIC_API_KEY, COORDINATOR_CODE (код фонда, пока его не сменили в кабинете),
+#   TELEGRAM_API_BASE (прокси до Bot API; без него берётся прокси Yapp — deploy/telegram-from-yapp.sh).
 #   Задать: gh secret set TELEGRAM_BOT_TOKEN  (значение спросит сам)
 # Пустые секреты и переменные в .env не попадают.
 name: Deploy
@@ -62,6 +63,7 @@ jobs:
           GIGACHAT_MODEL: ${{ vars.GIGACHAT_MODEL }}
           # ключи — секреты репозитория
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_API_BASE: ${{ secrets.TELEGRAM_API_BASE }}
           YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
           YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
           GIGACHAT_CREDENTIALS: ${{ secrets.GIGACHAT_CREDENTIALS }}
@@ -84,7 +86,7 @@ jobs:
             # служебный ключ бота: новый при каждой выкладке, бэкенд и бот читают один .env
             echo "SERVICE_KEY=$(openssl rand -hex 32)"
             for name in LLM_MODEL LLM_BASE_URL YANDEX_MODEL GIGACHAT_MODEL \
-                        TELEGRAM_BOT_TOKEN YANDEX_API_KEY YANDEX_FOLDER_ID GIGACHAT_CREDENTIALS \
+                        TELEGRAM_BOT_TOKEN TELEGRAM_API_BASE YANDEX_API_KEY YANDEX_FOLDER_ID GIGACHAT_CREDENTIALS \
                         GPT2GIGA_API_KEY LLM_API_KEY ANTHROPIC_API_KEY COORDINATOR_CODE; do
               if [ -n "${!name}" ]; then printf '%s=%s\n' "$name" "${!name}"; fi
             done
@@ -131,6 +133,8 @@ jobs:
           ssh deploy@"$HOST" 'bash -s' < deploy/turn-from-yapp.sh
           # Письма с кодом подтверждения почты — Postbox Yapp: ключ берётся из его .env прямо на сервере.
           ssh deploy@"$HOST" 'bash -s' < deploy/mail-from-yapp.sh
+          # Бот и уведомления — через прокси Yapp до api.telegram.org: адрес из его .env прямо на сервере.
+          ssh deploy@"$HOST" 'bash -s' < deploy/telegram-from-yapp.sh
 
       - name: Выкладка
         run: |
@@ -151,3 +155,9 @@ jobs:
           done
           ssh deploy@"$HOST" "cd ~/deti && docker compose ps && docker compose logs --tail=50 && free -m && df -h /"
           exit 1
+
+      # Бот не отвечает — первым делом смотреть сюда: «Бот запущен» и нет ошибок TelegramNetworkError.
+      - name: Лог бота
+        run: |
+          sleep 20
+          ssh deploy@"$HOST" "cd ~/deti && docker compose ps bot && docker compose logs --tail=30 bot" || true

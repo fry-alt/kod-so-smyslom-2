@@ -4,6 +4,8 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.telegram import TelegramAPIServer
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
 
@@ -25,7 +27,7 @@ async def main() -> None:
         log.warning("TELEGRAM_BOT_TOKEN не задан — бот не запущен (остальные сервисы работают)")
         return
 
-    bot = Bot(settings.telegram_bot_token)
+    bot = Bot(settings.telegram_bot_token, session=make_session(settings.telegram_api_base))
     api = BackendClient(settings.backend_url, settings.backend_timeout, settings.service_key)
     dp = Dispatcher(storage=MemoryStorage())  # состояния в памяти: после рестарта режим сбросится
     # всё, что положено в dp[...], aiogram передаёт в хэндлеры по имени аргумента (api, settings)
@@ -40,6 +42,16 @@ async def main() -> None:
     finally:
         await api.close()
         await bot.session.close()
+
+
+def make_session(api_base: str) -> AiohttpSession:
+    """Сервер в России может не доставать до api.telegram.org — тогда ходим через прокси (TELEGRAM_API_BASE).
+    Прокси Yapp пропускает только команды /bot<токен>/<метод>: скачать файл (документ, голосовое) через него нельзя."""
+    if not api_base:
+        return AiohttpSession()
+    # адрес прокси не пишем: лог деплоя публичный
+    log.info("Telegram Bot API — через прокси TELEGRAM_API_BASE")
+    return AiohttpSession(api=TelegramAPIServer.from_base(api_base))
 
 
 async def setup_bot(bot: Bot, settings: BotSettings) -> None:

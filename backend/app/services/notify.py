@@ -2,6 +2,7 @@
 
 Пишем только тем, у кого есть telegram_id (анкета из Mini App), и только если задан
 TELEGRAM_BOT_TOKEN. Telegram недоступен — запрос координатора всё равно успешен.
+Если сервер не достаёт до api.telegram.org, ходим через прокси TELEGRAM_API_BASE.
 В логах — только id волонтёра и причина ошибки: без текста сообщения, токена и ПД.
 """
 
@@ -39,12 +40,14 @@ def status_changed(volunteer: Volunteer, old_status: str) -> None:
 def send(volunteer: Volunteer, text: str, what: str) -> bool:
     """Отправить волонтёру сообщение. False — не ушло (нет Telegram, токена или Telegram недоступен).
     what — короткое название сообщения для лога вместо его текста."""
-    token = get_settings().telegram_bot_token
+    settings = get_settings()
+    token = settings.telegram_bot_token
     if not token or not volunteer.telegram_id:
         return False
+    base = settings.telegram_api_base.rstrip("/") or "https://api.telegram.org"
     try:
         response = httpx.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
+            f"{base}/bot{token}/sendMessage",
             json={"chat_id": volunteer.telegram_id, "text": text},
             timeout=TIMEOUT,
         )
