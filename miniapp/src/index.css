@@ -1308,3 +1308,93 @@ html:has(form [data-step]) {
     transition: none;
   }
 }
+
+/* ===== Код из письма: шесть ячеек (Auth.tsx, CodeCells) ===== */
+.code-cell {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 5 / 6;
+  border: 2px solid color-mix(in srgb, var(--p-ink) 16%, transparent);
+  border-radius: 1rem;
+  background: var(--p-page);
+  font-family: var(--font-sans);
+  font-size: clamp(1.6rem, 7vw, 2.15rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--p-ink);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background-color 0.15s;
+}
+/* фокус видно по активной ячейке — общая рамка фокуса вокруг поля не нужна */
+.code-input:focus-visible {
+  outline: none;
+}
+.code-cell.is-filled {
+  border-color: color-mix(in srgb, var(--p-ink) 40%, transparent);
+  background: #fff;
+}
+.code-cell.is-active {
+  border-color: var(--p-accent);
+  background: #fff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--p-accent) 16%, transparent);
+}
+/* проверяем код — по ячейкам бежит волна */
+.code-cell.is-busy {
+  border-color: color-mix(in srgb, var(--p-accent) 45%, transparent);
+  animation: code-wave 0.9s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 70ms);
+}
+.code-digit {
+  animation: code-pop 0.18s ease-out;
+}
+.code-caret {
+  width: 2px;
+  height: 45%;
+  border-radius: 1px;
+  background: var(--p-accent);
+  animation: code-blink 1s steps(1) infinite;
+}
+.code-wrong {
+  animation: code-shake 0.4s ease-in-out;
+}
+.code-wrong .code-cell:not(.is-filled):not(.is-active) {
+  border-color: color-mix(in srgb, #dc2626 55%, transparent);
+}
+
+@keyframes code-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+@keyframes code-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes code-wave {
+  50% {
+    transform: translateY(-0.3rem);
+  }
+}
+@keyframes code-shake {
+  20%,
+  60% {
+    transform: translateX(-0.4rem);
+  }
+  40%,
+  80% {
+    transform: translateX(0.4rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-cell.is-busy,
+  .code-digit,
+  .code-wrong {
+    animation: none;
+  }
+}

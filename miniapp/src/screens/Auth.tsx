@@ -2,7 +2,7 @@
 // Регистрация в два шага: форма → код из письма (CodeStep) → кабинет. Если почта на сервере не настроена,
 // бэкенд регистрирует сразу, без кода.
 // После входа: волонтёр — в личный кабинет (/me), координатор — в кабинет фонда (/admin).
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 
 import type { AccountRole, AuthOut, CodeSent } from "../api";
 import { auth, saveSession } from "../backend";
@@ -230,6 +230,7 @@ function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: Aut
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
+  const [wrong, setWrong] = useState(0); // сколько раз ввели неверный код — ячейки вздрагивают
   const [resendAt, setResendAt] = useState(() => Date.now() + props.sent.resend_after * 1000);
   const [now, setNow] = useState(() => Date.now());
   const wait = Math.max(0, Math.ceil((resendAt - now) / 1000));
@@ -248,6 +249,7 @@ function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: Aut
     } catch (err) {
       setError(errorText(err));
       setCode("");
+      setWrong((n) => n + 1);
     } finally {
       setSending(false);
     }
@@ -294,16 +296,7 @@ function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: Aut
         className="flex flex-col gap-5"
       >
         <Label text="Код из письма">
-          <input
-            value={code}
-            onChange={(e) => type(e.target.value)}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            autoFocus
-            maxLength={6}
-            placeholder="••••••"
-            className={`${inputClass} text-center font-display text-3xl tracking-[0.4em]`}
-          />
+          <CodeCells value={code} onChange={type} busy={sending} wrong={wrong} />
         </Label>
 
         {error && <ErrorBox text={error} />}
@@ -334,6 +327,46 @@ function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: Aut
         </button>
       </div>
     </>
+  );
+}
+
+/** Поле кода — шесть ячеек. Под ними лежит настоящее прозрачное поле: работают вставка из буфера
+ * и подстановка кода из письма на телефоне, а ячейки только показывают цифры. */
+function CodeCells(props: { value: string; onChange: (value: string) => void; busy: boolean; wrong: number }) {
+  const [focused, setFocused] = useState(true);
+  const next = Math.min(props.value.length, 5);
+  return (
+    <div className="relative">
+      {/* key меняется после неверного кода — анимация «вздрагивания» запускается заново */}
+      <div key={props.wrong} className={`grid grid-cols-6 gap-2 ${props.wrong ? "code-wrong" : ""}`}>
+        {Array.from({ length: 6 }, (_, i) => {
+          const digit = props.value[i];
+          const active = focused && !props.busy && i === next;
+          return (
+            <span
+              key={i}
+              aria-hidden="true"
+              style={{ "--i": i } as CSSProperties}
+              className={`code-cell${digit ? " is-filled" : ""}${active ? " is-active" : ""}${props.busy ? " is-busy" : ""}`}
+            >
+              {digit ? <span className="code-digit">{digit}</span> : active && <span className="code-caret" />}
+            </span>
+          );
+        })}
+      </div>
+      <input
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        autoFocus
+        maxLength={6}
+        aria-label="Код из письма, 6 цифр"
+        className="code-input absolute inset-0 h-full w-full cursor-text bg-transparent text-base text-transparent caret-transparent outline-none selection:bg-transparent"
+      />
+    </div>
   );
 }
 
