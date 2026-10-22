@@ -26,6 +26,7 @@ const DOC_TITLES: Record<string, string> = {
   "02-wards.md": "Обучение: подопечные",
   "03-safety.md": "Обучение: безопасность",
   "04-mentoring.md": "Обучение: наставничество",
+  "volunteer_journey.md": "Путь волонтёра в приложении",
 };
 
 type Turn = ChatMessage & { sources?: Source[] };
