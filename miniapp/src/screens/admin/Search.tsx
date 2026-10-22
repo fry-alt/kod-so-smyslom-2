@@ -273,25 +273,21 @@ function Results(props: { result: SearchResponse; opportunity: Opportunity | nul
           </p>
           {!props.opportunity && (
             props.opportunities.length > 0 ? (
-              <label className="flex flex-col gap-2 font-semibold">
-                На какое занятие пригласить?
-                <select
-                  value={inviteOpportunityId}
-                  onChange={(event) => {
-                    setInviteOpportunityId(event.target.value);
-                    setSelected([]);
-                    setSent(0);
-                  }}
-                  className="min-h-12 rounded-2xl border-2 border-[color-mix(in_srgb,var(--p-ink)_55%,transparent)] bg-page px-4 py-3 font-normal"
-                >
-                  <option value="">Выберите занятие</option>
-                  {props.opportunities.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.title} — {new Date(item.starts_at).toLocaleDateString("ru", { day: "numeric", month: "long" })}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <Select
+                label="На какое занятие пригласить?"
+                placeholder="Выберите занятие"
+                value={inviteOpportunityId}
+                options={props.opportunities.map((item) => ({
+                  value: String(item.id),
+                  label: item.title,
+                  hint: new Date(item.starts_at).toLocaleDateString("ru", { day: "numeric", month: "long" }),
+                }))}
+                onChange={(value) => {
+                  setInviteOpportunityId(value);
+                  setSelected([]);
+                  setSent(0);
+                }}
+              />
             ) : (
               <p className="rounded-2xl bg-soft px-4 py-3 text-hint">
                 Чтобы пригласить человека, сначала создайте занятие в разделе «Занятия и события».
@@ -382,26 +378,27 @@ function ParsedEditor(props: {
             }}>Добавить</Button>
           </span>
         </label>
-        <label className="flex flex-col gap-1.5 font-semibold">
-          Регион
-          <select value={p.region ?? "any"} onChange={(event) => change({ region: event.target.value === "any" ? null : event.target.value as Region })} className={inputClass}>
-            <option value="any">Любой регион</option>
-            {Object.entries(REGION).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5 font-semibold">
-          Формат
-          <select value={p.format ?? "any"} onChange={(event) => change({ format: event.target.value === "any" ? null : event.target.value as Format })} className={inputClass}>
-            <option value="any">Любой</option>
-            {Object.entries(FORMAT).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5 font-semibold">
-          Регулярность
-          <select value={p.kind} onChange={(event) => change({ kind: event.target.value as Regularity })} className={inputClass}>
-            {Object.entries(REGULARITY).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
+        <Select
+          label="Регион"
+          placeholder="Любой регион"
+          value={p.region ?? "any"}
+          options={[{ value: "any", label: "Любой регион" }, ...Object.entries(REGION).map(([value, label]) => ({ value, label }))]}
+          onChange={(value) => change({ region: value === "any" ? null : (value as Region) })}
+        />
+        <Select
+          label="Формат"
+          placeholder="Любой"
+          value={p.format ?? "any"}
+          options={[{ value: "any", label: "Любой" }, ...Object.entries(FORMAT).map(([value, label]) => ({ value, label }))]}
+          onChange={(value) => change({ format: value === "any" ? null : (value as Format) })}
+        />
+        <Select
+          label="Регулярность"
+          placeholder="Регулярность"
+          value={p.kind}
+          options={Object.entries(REGULARITY).map(([value, label]) => ({ value, label }))}
+          onChange={(value) => change({ kind: value as Regularity })}
+        />
       </div>
       <div className="flex flex-col gap-2">
         <span className="font-semibold">Когда может</span>

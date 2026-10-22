@@ -6,7 +6,7 @@ import type { Availability, Region, Volunteer, VolunteerStatus } from "../../api
 import { backend } from "../../backend";
 import { AVAILABILITY, formatAvailability, REGION, STATUS, STATUS_COLOR } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Chips, Empty, ErrorBox, inputClass, Link, Loading, useLoad } from "../../ui";
+import { Badge, Chips, Empty, ErrorBox, inputClass, Link, Loading, Select, useLoad } from "../../ui";
 
 type Filter = VolunteerStatus | "all";
 
@@ -70,20 +70,20 @@ export default function Volunteers() {
             type="search"
           />
         </label>
-        <label className="flex flex-col gap-1.5 font-semibold">
-          Регион
-          <select value={region} onChange={(event) => setRegion(event.target.value as Region | "all")} className={inputClass}>
-            <option value="all">Все регионы</option>
-            {Object.entries(REGION).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5 font-semibold">
-          Когда может
-          <select value={availability} onChange={(event) => setAvailability(event.target.value as Availability | "all")} className={inputClass}>
-            <option value="all">Любое время</option>
-            {Object.entries(AVAILABILITY).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
+        <Select
+          label="Регион"
+          placeholder="Все регионы"
+          value={region}
+          options={[{ value: "all", label: "Все регионы" }, ...Object.entries(REGION).map(([value, label]) => ({ value, label }))]}
+          onChange={(value) => setRegion(value as Region | "all")}
+        />
+        <Select
+          label="Когда может"
+          placeholder="Любое время"
+          value={availability}
+          options={[{ value: "all", label: "Любое время" }, ...Object.entries(AVAILABILITY).map(([value, label]) => ({ value, label }))]}
+          onChange={(value) => setAvailability(value as Availability | "all")}
+        />
       </div>
 
       {loading && <Loading />}
