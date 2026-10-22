@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { Opportunity, Participation, ParticipationStatus, Volunteer } from "../../api";
 import { PARTICIPATION, PARTICIPATION_COLOR } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Button, formatHours } from "../../ui";
+import { Badge, Button, formatHours, FundNumber, type NumberTone } from "../../ui";
 
 /** «1 занятие», «3 занятия», «5 занятий». */
 function plural(n: number, one: string, few: string, many: string): string {
@@ -48,17 +48,17 @@ export default function MyHelp(props: { v: Volunteer; participations: Participat
         <HoursTile total={v.hours} thisMonth={thisMonth} months={months} />
         <div className="grid grid-cols-2 gap-3">
           <Tile
-            icon="🤝"
+            tone="blue"
             value={String(attended.length)}
             label={plural(attended.length, "занятие", "занятия", "занятий") + " позади"}
           />
           <Tile
-            icon="🗓"
+            tone="yellow"
             value={String(upcoming.length)}
             label={upcoming.length > 0 ? `впереди, ближайшее ${shortDate(dateOf(upcoming[0]))}` : "впереди — выберите занятие"}
           />
           <Tile
-            icon="✋"
+            tone="pink"
             value={String(participations.length)}
             label={plural(participations.length, "отклик", "отклика", "откликов") + " и приглашений"}
           />
@@ -144,13 +144,13 @@ function HoursTile(props: { total: number; thisMonth: number; months: Month[] })
   );
 }
 
-function Tile(props: { icon: string; value: string; label: string }) {
+/** Счётчик: цифра на пастельном круге, как на сайте фонда, под ней подпись. */
+function Tile(props: { tone: NumberTone; value: string; label: string }) {
   return (
-    <div className="flex flex-col gap-1 rounded-[1.5rem] bg-surface p-4 sm:p-5">
-      <span aria-hidden="true" className="text-2xl">
-        {props.icon}
-      </span>
-      <span className="text-3xl font-bold sm:text-4xl">{props.value}</span>
+    <div className="flex flex-col gap-3 rounded-[1.5rem] bg-surface p-4 sm:p-5">
+      <FundNumber tone={props.tone} className="self-start pt-1 text-4xl sm:text-5xl">
+        {props.value}
+      </FundNumber>
       <span className="leading-snug text-hint">{props.label}</span>
     </div>
   );

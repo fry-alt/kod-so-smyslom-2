@@ -8,7 +8,7 @@ import { backend } from "../../backend";
 import { FORMAT, REGION } from "../../labels";
 import { navigate } from "../../router";
 import { tgUser } from "../../telegram";
-import { FLAIR, flairHandlers } from "../../ui";
+import { FLAIR, flairHandlers, FundNumber, NUMBER_TONES } from "../../ui";
 import Journey from "./Journey";
 import VolunteerScenes from "./VolunteerScenes";
 
@@ -39,19 +39,7 @@ export default function Welcome() {
       <Upcoming />
 
 
-      <section className="flex flex-col gap-5 rounded-[2rem] bg-surface p-6 md:flex-row md:items-center md:justify-between md:p-8">
-        <p className="max-w-[46ch] text-lg">
-          Фонд «Дети Марии» больше 30 лет работает в Москве, Подмосковье, Ярославской области и Северной Осетии.
-        </p>
-        <button
-          type="button"
-          onClick={() => navigate("/ask")}
-          {...flairHandlers}
-          className={`btn-flair min-h-12 shrink-0 self-start rounded-full border-2 border-ink/15 px-6 font-semibold md:self-center ${FLAIR.secondary}`}
-        >
-          Спросить о фонде
-        </button>
-      </section>
+      <FundFacts />
 
     </div>
   );
@@ -67,6 +55,49 @@ function PrimaryButton(props: { onClick: () => void; children: string }) {
     >
       {props.children}
     </button>
+  );
+}
+
+// ===== Фонд в цифрах =====
+
+/** Факты с сайта фонда (mariaschildren.ru, «Результаты нашей работы»). Обновлять вместе с сайтом. */
+const FACTS = [
+  { value: "33", text: "года работаем с детьми из детских домов — с 1993-го" },
+  { value: "7", text: "дней в неделю идут занятия в мастерских" },
+  { value: "4", text: "пространства в Москве для ежедневных занятий" },
+  { value: "21", text: "год и больше сопровождаем выпускников интернатов" },
+  { value: "2325", text: "и более участников прошли через проекты фонда" },
+  { value: "11", text: "лет и больше развиваем инклюзивное взаимодействие" },
+];
+
+function FundFacts() {
+  return (
+    <section className="flex flex-col gap-8" aria-labelledby="fund-facts">
+      <h2 id="fund-facts" className="font-display text-2xl font-semibold">
+        Фонд «Дети Марии» в цифрах
+      </h2>
+      <ul className="grid grid-cols-2 gap-x-5 gap-y-9 lg:grid-cols-3 lg:gap-x-10">
+        {FACTS.map((f, i) => (
+          <li key={f.value} className="flex flex-col items-start gap-3">
+            <FundNumber tone={NUMBER_TONES[i]} className="text-5xl md:text-6xl">
+              {f.value}
+            </FundNumber>
+            <span className="max-w-[26ch] leading-snug md:text-lg">{f.text}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-col gap-4 rounded-[2rem] bg-surface p-6 md:flex-row md:items-center md:justify-between md:p-8">
+        <p className="max-w-[46ch] text-lg">Работаем в Москве, Подмосковье, Ярославской области и Северной Осетии.</p>
+        <button
+          type="button"
+          onClick={() => navigate("/ask")}
+          {...flairHandlers}
+          className={`btn-flair min-h-12 shrink-0 self-start rounded-full border-2 border-ink/15 px-6 font-semibold md:self-center ${FLAIR.secondary}`}
+        >
+          Спросить о фонде
+        </button>
+      </div>
+    </section>
   );
 }
 
