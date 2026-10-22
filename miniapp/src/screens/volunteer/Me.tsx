@@ -8,8 +8,9 @@ import { accountName, backend, getAccount, getLook, getVolunteerId, loadLook, lo
 import { FORMAT, REGION, STATUS, STATUS_COLOR } from "../../labels";
 import { UnreadBadge, useUnread } from "../../messages/Thread";
 import { navigate } from "../../router";
-import { Badge, Button, ButtonLink, Card, ErrorBox, FLAIR, flairHandlers, formatHours, Link, Loading, useLoad } from "../../ui";
+import { Badge, Button, ButtonLink, Card, ErrorBox, FLAIR, flairHandlers, Link, Loading, useLoad } from "../../ui";
 import { Avatar, COVERS, Cover, LookEditor, type Progress } from "./Look";
+import MyHelp from "./MyHelp";
 
 export default function Me() {
   const account = getAccount();
@@ -26,6 +27,7 @@ export default function Me() {
     () => (id ? backend.interviews(id) : Promise.resolve([])),
     [id],
   );
+  const { data: opportunities } = useLoad(() => backend.opportunities(id ?? undefined), [id]);
   // приглашения координатора — показываем сверху, чтобы не пропустить
   const invites = mine?.filter((p) => p.status === "invited") ?? [];
   const call = nextCall(interviews ?? []);
@@ -89,15 +91,6 @@ export default function Me() {
         letter={letter}
         onEdit={() => setEditing(true)}
         badge={v ? <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge> : null}
-        stats={
-          v
-            ? [
-                { value: formatHours(v.hours), label: "часов помощи" },
-                { value: v.training_score === null ? "—" : `${v.training_score}%`, label: "балл за обучение" },
-                { value: String(attended), label: attended === 1 ? "занятие" : "занятий" },
-              ]
-            : null
-        }
       />
 
       {!v && <StartCard />}
@@ -120,9 +113,11 @@ export default function Me() {
         </section>
       )}
 
+      {v && <MyHelp v={v} participations={mine ?? []} opportunities={opportunities ?? []} />}
+
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Events volunteerId={id} />
+          <Events data={opportunities ?? null} />
           <Path v={v ?? null} interviews={interviews ?? []} participations={mine ?? []} upcoming={call} />
         </div>
         <aside className="flex flex-col gap-6">
@@ -164,48 +159,31 @@ function Hero(props: {
   letter: string;
   onEdit: () => void;
   badge: ReactNode;
-  stats: { value: string; label: string }[] | null;
 }) {
   const dark = COVERS[props.look.cover]?.dark;
   return (
     <Cover cover={props.look.cover} className="rounded-[2rem] p-5 sm:p-8">
-      <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          <button type="button" onClick={props.onEdit} aria-label="Оформить кабинет" className="rounded-full transition hover:scale-105">
-            <Avatar look={props.look} letter={props.letter} />
-          </button>
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <h1 className="font-display text-[1.7rem] leading-tight font-semibold tracking-tight sm:text-[2.2rem]">
-              {props.name ? `Здравствуйте, ${props.name}!` : "Добро пожаловать!"}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2">
-              {props.badge}
-              <button
-                type="button"
-                onClick={props.onEdit}
-                className={`flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap backdrop-blur-sm transition hover:scale-105 ${
-                  dark ? "bg-white/15 hover:bg-white/25" : "bg-page/80 hover:bg-page"
-                }`}
-              >
-                <span aria-hidden="true">🎨</span> Оформить кабинет
-              </button>
-            </div>
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+        <button type="button" onClick={props.onEdit} aria-label="Оформить кабинет" className="rounded-full transition hover:scale-105">
+          <Avatar look={props.look} letter={props.letter} />
+        </button>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <h1 className="font-display text-[1.7rem] leading-tight font-semibold tracking-tight sm:text-[2.2rem]">
+            {props.name ? `Здравствуйте, ${props.name}!` : "Добро пожаловать!"}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            {props.badge}
+            <button
+              type="button"
+              onClick={props.onEdit}
+              className={`flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap backdrop-blur-sm transition hover:scale-105 ${
+                dark ? "bg-white/15 hover:bg-white/25" : "bg-page/80 hover:bg-page"
+              }`}
+            >
+              <span aria-hidden="true">🎨</span> Оформить кабинет
+            </button>
           </div>
         </div>
-        {props.stats && (
-          <dl className="grid grid-cols-3 gap-2 sm:gap-3">
-            {props.stats.map((s) => (
-              <div
-                key={s.label}
-                className={`flex flex-col rounded-2xl px-3 py-3 backdrop-blur-sm sm:min-w-28 sm:px-4 ${dark ? "bg-white/12" : "bg-page/85"}`}
-              >
-                <dt className="order-2 text-sm leading-tight text-hint hyphens-auto">{s.label}</dt>
-                {/* цифры — Onest: в Unbounded ноль похож на букву «О» */}
-                <dd className="order-1 text-2xl font-bold">{s.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
       </div>
     </Cover>
   );
@@ -275,8 +253,7 @@ function NextStepCard(props: { volunteer: Volunteer; interviews: Interview[] | u
 
 // ===== Куда можно пойти =====
 
-function Events(props: { volunteerId: number | null }) {
-  const { data } = useLoad(() => backend.opportunities(props.volunteerId ?? undefined), [props.volunteerId]);
+function Events({ data }: { data: Opportunity[] | null }) {
   if (!data) return null;
   const now = Date.now();
   // подходящие под анкету — первыми, дальше по дате
@@ -361,7 +338,6 @@ function QuickActions(props: { hasForm: boolean; unread: number }) {
     { icon: "📹", title: "Собеседование", sub: "Запись на видеозвонок с координатором", to: "/interview" },
     { icon: "📨", title: "Сообщения", sub: "Переписка с координатором фонда", to: "/messages", needsForm: true, unread: props.unread },
     { icon: "🎓", title: "Обучение", sub: "Курс и тест перед занятиями", to: "/training" },
-    { icon: "⏱", title: "История и часы", sub: "Где вы были и сколько помогли", to: "/history", needsForm: true },
     { icon: "💬", title: "Спросить о фонде", sub: "Ответим по документам фонда", to: "/ask" },
   ].filter((i) => props.hasForm || !i.needsForm);
   return (

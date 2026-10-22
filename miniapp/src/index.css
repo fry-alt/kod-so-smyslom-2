@@ -1642,3 +1642,29 @@ html:has(form [data-step]) {
     transform: none;
   }
 }
+
+/* «Моя помощь» (MyHelp.tsx): столбики графика вырастают при открытии кабинета. */
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes bar-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+.bar-grow {
+  transform-origin: bottom;
+  animation: bar-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.bar-grow-x {
+  transform-origin: left;
+  animation: bar-grow-x 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar-grow,
+  .bar-grow-x {
+    animation: none;
+  }
+}

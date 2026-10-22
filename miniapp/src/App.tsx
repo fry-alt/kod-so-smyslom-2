@@ -14,7 +14,6 @@ import { ButtonLink, FLAIR, flairHandlers, Link, Loading, PageTitle, useLoad } f
 import Auth from "./screens/Auth";
 import Ask from "./screens/volunteer/Ask";
 import Form from "./screens/volunteer/Form";
-import History from "./screens/volunteer/History";
 import Interview from "./screens/volunteer/Interview";
 import Me from "./screens/volunteer/Me";
 import Messages from "./screens/volunteer/Messages";
@@ -50,7 +49,6 @@ const VOLUNTEER_ROUTES: Route[] = [
   ["/messages", () => (needsAccount() ? <Auth /> : <Messages />)],
   ["/login", () => <Auth mode={new URLSearchParams(location.search).get("mode") === "login" ? "login" : "register"} />],
   ["/opportunities", () => <Opportunities />],
-  ["/history", () => <History />],
   ["/ask", () => <Ask />],
 ];
 
@@ -145,7 +143,7 @@ function VolunteerLayout(props: { path: string; children: ReactNode }) {
   // сообщения — как мессенджер: ровно на высоту экрана, прокручиваются только чаты внутри, подвала нет
   const chat = props.path === "/messages" && !auth;
   const bottomPadding = focus ? "pb-0" : chat ? "pb-4 md:pb-6" : props.path === "/" ? "pb-24" : "pb-10";
-  const showVolunteerBack = !auth && ["/training", "/interview", "/messages", "/opportunities", "/history", "/ask"].includes(props.path);
+  const showVolunteerBack = !auth && ["/training", "/interview", "/messages", "/opportunities", "/ask"].includes(props.path);
   return (
     <div
       className={`mx-auto flex w-full min-w-0 flex-col px-4 pt-4 ${chat ? "h-dvh gap-4" : "min-h-screen gap-6"} ${wide ? "max-w-5xl md:px-8 md:pt-6" : "max-w-xl"} ${bottomPadding}`}
@@ -227,7 +225,6 @@ function pageTitle(path: string, search: string): string {
   if (path === "/interview") return "Собеседование";
   if (path === "/messages") return "Сообщения";
   if (path === "/opportunities") return "Занятия и события";
-  if (path === "/history") return "Моя история";
   if (path === "/ask") return "Спросить о фонде";
   if (path === "/login") return "Вход и регистрация";
   if (path === "/admin") return new URLSearchParams(search).has("opportunity") ? "Подбор волонтёров" : "Сводка";
