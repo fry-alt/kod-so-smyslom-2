@@ -2,7 +2,7 @@
 date: 2026-10-22
 author: fry-alt
 task: T-149 (#149)
-pr: будет ссылка после создания PR
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/153
 areas: [интерфейс]
 ---
 
