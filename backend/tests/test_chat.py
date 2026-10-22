@@ -3,6 +3,7 @@
 from tests.test_opportunities import FORM, create_opportunity, create_volunteer
 
 from app.services.chat import NOTIFY_TEXT, clean_text
+from conftest import telegram_headers
 
 
 def send(client, volunteer_id: int, sender: str, text: str, **extra) -> dict:
@@ -74,7 +75,7 @@ def test_fresh_dialogs_on_top_and_unread_total(client):
 
 
 def test_telegram_notice_without_text_once_per_batch(client, telegram):
-    tg = client.post("/volunteers", json={**FORM, "telegram_id": 555}).json()
+    tg = client.post("/volunteers", json=FORM, headers=telegram_headers(555)).json()
     telegram.clear()
 
     send(client, tg["id"], "coordinator", "Секретный текст")

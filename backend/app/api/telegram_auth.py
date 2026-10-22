@@ -67,6 +67,20 @@ def telegram_user(
         raise HTTPException(401, f"Telegram initData: {e}") from e
 
 
+def verified_telegram_id(
+    x_telegram_init_data: Annotated[str | None, Header()] = None,
+) -> int | None:
+    """Зависимость: id пользователя Telegram, только если подпись initData верна. Никогда не падает:
+    не из Telegram, подпись не сошлась или устарела — None (анкета и вход работают и без Telegram)."""
+    token = get_settings().telegram_bot_token
+    if not x_telegram_init_data or not token:
+        return None
+    try:
+        return validate_init_data(x_telegram_init_data, token).id
+    except (InitDataError, ValueError):
+        return None
+
+
 @router.post("/auth", response_model=TelegramUser)
 def auth(body: TelegramAuthRequest) -> TelegramUser:
     """Проверить initData и вернуть пользователя (для отладки Mini App)."""

@@ -9,6 +9,7 @@ from app.llm.client import get_llm
 from app.llm.providers import FakeProvider, LLMError
 from app.rag.store import get_collection
 from app.services.training import GeneratedQuiz, load_modules
+from conftest import telegram_headers
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
@@ -202,7 +203,9 @@ def test_repo_quiz_files_are_valid(monkeypatch):
 
 
 def test_trained_volunteer_gets_telegram_message(client, llm, telegram):
-    volunteer_id = client.post("/volunteers", json={**FORM, "telegram_id": 800800}).json()["id"]
+    volunteer_id = client.post("/volunteers", json=FORM, headers=telegram_headers(800800)).json()[
+        "id"
+    ]
     submit(client, volunteer_id, "01-about", CORRECT)
     assert telegram == []  # new → training — не пишем
     assert submit(client, volunteer_id, "02-safety", CORRECT)["status"] == "trained"

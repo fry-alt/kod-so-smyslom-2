@@ -131,7 +131,10 @@ class VolunteerIn(BaseModel):
 
     name: str = Field(min_length=1, max_length=100)
     contact: str = Field(min_length=1, max_length=200, description="телефон, e-mail или @username")
-    telegram_id: int | None = None
+    telegram_id: int | None = Field(
+        default=None,
+        description="не используется: сервер берёт id из проверенного X-Telegram-Init-Data",
+    )
     answers: Answers
 
 

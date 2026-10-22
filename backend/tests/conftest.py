@@ -1,6 +1,11 @@
 """Все тесты идут на провайдере fake: без сети и ключей, с временными БД и Chroma."""
 
+import hashlib
+import hmac
+import json
+import time
 from pathlib import Path
+from urllib.parse import urlencode
 
 import httpx
 import pytest
@@ -13,6 +18,24 @@ from app.rag.store import get_collection
 
 DEMO_DIR = Path(__file__).resolve().parents[2] / "data" / "demo"
 BOT_TOKEN = "123456:TEST-TOKEN"
+
+
+def make_init_data(user_id: int = 42, token: str = BOT_TOKEN, auth_date: int | None = None) -> str:
+    """Собирает initData так же, как Telegram, — для тестов и локальной отладки."""
+    fields = {
+        "auth_date": str(auth_date or int(time.time())),
+        "query_id": "AAH-test",
+        "user": json.dumps({"id": user_id, "first_name": "Аня", "username": "anya"}),
+    }
+    check = "\n".join(f"{k}={v}" for k, v in sorted(fields.items()))
+    secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
+    fields["hash"] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+    return urlencode(fields)
+
+
+def telegram_headers(user_id: int) -> dict[str, str]:
+    """Заголовок, с которым Mini App ходит в бэкенд от имени пользователя Telegram."""
+    return {"X-Telegram-Init-Data": make_init_data(user_id)}
 
 
 def _clear_caches() -> None:

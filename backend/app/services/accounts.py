@@ -14,6 +14,7 @@ from sqlmodel import Session, select
 from app.config import get_settings
 from app.models import Account, AccountLook, FundSetting
 from app.schemas import AccountOut, AuthOut, LoginIn, Look, RegisterIn
+from app.services import volunteers
 
 ITERATIONS = 200_000
 DEFAULT_CODE = "1111"
@@ -128,6 +129,24 @@ def link_volunteer(session: Session, account: Account, volunteer_id: int) -> Non
     account.volunteer_id = volunteer_id
     session.add(account)
     session.commit()
+
+
+def link_telegram(session: Session, account: Account, telegram_id: int) -> None:
+    """Вход или регистрация внутри Telegram Mini App: связать аккаунт волонтёра с Telegram.
+    Нет анкеты в аккаунте — берём анкету, заполненную из этого Telegram; есть, но без Telegram —
+    дописываем ей telegram_id (чтобы Mini App узнавал человека и мог прислать ссылку на собеседование)."""
+    if account.role != "volunteer":
+        return
+    if account.volunteer_id is None:
+        volunteer = volunteers.by_telegram(session, telegram_id)
+        if volunteer is not None and volunteer.id is not None:
+            link_volunteer(session, account, volunteer.id)
+        return
+    volunteer = volunteers.get(session, account.volunteer_id)
+    if volunteer is not None and volunteer.telegram_id is None:
+        volunteer.telegram_id = telegram_id
+        session.add(volunteer)
+        session.commit()
 
 
 def get_look(session: Session, account: Account) -> Look:

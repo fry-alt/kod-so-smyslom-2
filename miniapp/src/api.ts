@@ -79,7 +79,7 @@ export type Profile = {
 export type VolunteerIn = {
   name: string;
   contact: string;
-  telegram_id?: number | null;
+  telegram_id?: number | null; // сервер не использует: берёт id из подписи Telegram (X-Telegram-Init-Data)
   answers: Answers;
 };
 export type Volunteer = VolunteerIn & {
@@ -325,6 +325,8 @@ export const volunteersApi = {
   // волонтёр
   submit: (data: VolunteerIn) => post<Volunteer>("/volunteers", data),
   get: (id: number) => request<Volunteer>("GET", `/volunteers/${id}`),
+  /** Анкета человека, открывшего Mini App (по подписи Telegram). Ошибка — не из Telegram или анкеты нет. */
+  byTelegram: () => request<Volunteer>("GET", "/volunteers/by-telegram"),
   roles: () => request<Role[]>("GET", "/roles"),
   training: () => request<TrainingModule[]>("GET", "/training"),
   quiz: (moduleId: string) => request<Quiz>("GET", `/training/${moduleId}/quiz`),

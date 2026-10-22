@@ -39,6 +39,7 @@ import type {
   volunteersApi,
 } from "./api";
 import { TOKEN_KEY } from "./api";
+import { tgUser } from "./telegram";
 
 /** Имитация задержки сети/LLM, чтобы были видны состояния загрузки. */
 const wait = <T>(value: T, ms = 400): Promise<T> =>
@@ -660,7 +661,7 @@ export const mockApi: typeof volunteersApi = {
     const parsed = parseQuery(`${data.answers.skills} ${data.answers.about} ${data.answers.wishes}`);
     const v: Volunteer = {
       ...data,
-      telegram_id: data.telegram_id ?? null,
+      telegram_id: tgUser?.id ?? null, // как сервер: из Telegram, а не из анкеты
       id: nextVolunteerId++,
       status: "new",
       training_score: null,
@@ -679,6 +680,10 @@ export const mockApi: typeof volunteersApi = {
     return wait(v, 1500); // LLM «думает»
   },
   get: (id) => (findVolunteer(id) ? wait(findVolunteer(id)!) : notFound("Волонтёр")),
+  byTelegram: () => {
+    const mine = volunteers.filter((v) => tgUser && v.telegram_id === tgUser.id).at(-1);
+    return mine ? wait(mine) : notFound("Анкета из этого Telegram");
+  },
   roles: () => wait(roles),
   training: () => wait(modules),
   quiz: (moduleId) => // задержка — как у LLM, который сочиняет вопросы
