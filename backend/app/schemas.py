@@ -587,11 +587,17 @@ class AccountOut(BaseModel):
 
 
 class FundCode(BaseModel):
-    """GET/PUT /auth/fund-code — код фонда, без которого нельзя зарегистрироваться координатором."""
+    """PUT /auth/fund-code — новый код фонда, без которого нельзя зарегистрироваться координатором."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
     code: str = Field(min_length=4, max_length=100, pattern=r"^\S+$", description="без пробелов")
+
+
+class FundCodeOut(BaseModel):
+    """GET/PUT /auth/fund-code — текущий код фонда. Пустая строка — код ещё не задан, регистрация координаторов закрыта."""
+
+    code: str
 
 
 class AuthOut(BaseModel):
