@@ -1417,3 +1417,138 @@ html:has(form [data-step]) {
     color 0.4s ease,
     transform 0.15s ease;
 }
+
+/* Обучение (screens/volunteer/Training.tsx): шапка появляется снизу, кольцо прогресса заполняется,
+   значки плавают; модули — «дорожка»: остановки появляются по очереди, линия между ними прорисовывается. */
+.hero-in {
+  animation: hero-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+.ring-fill {
+  stroke-dashoffset: var(--ring-to);
+  animation: ring-fill 1.2s cubic-bezier(0.3, 0.7, 0.2, 1) 0.3s both;
+}
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-from);
+  }
+  to {
+    stroke-dashoffset: var(--ring-to);
+  }
+}
+
+.floater {
+  opacity: 0.8;
+  animation: floater 6s ease-in-out infinite alternate;
+}
+@keyframes floater {
+  from {
+    transform: translateY(0) rotate(-6deg);
+  }
+  to {
+    transform: translateY(-14px) rotate(8deg);
+  }
+}
+
+.path-stop {
+  animation: tile-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i) * 0.12s + 0.15s);
+}
+/* линия от центра кружка до центра следующего: 1.25rem — промежуток между остановками (gap-5) */
+.path-line {
+  position: absolute;
+  left: 1.75rem;
+  top: 1.75rem;
+  width: 4px;
+  height: calc(100% + 1.25rem);
+  margin-left: -2px;
+  border-radius: 9999px;
+  background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--p-ink) 20%, transparent) 0 8px, transparent 8px 16px);
+  transform-origin: top;
+  animation: path-draw 0.6s ease-out both;
+  animation-delay: calc(var(--i) * 0.12s + 0.45s);
+}
+.path-line.is-done {
+  background: var(--p-accent);
+}
+@media (min-width: 48rem) {
+  .path-line {
+    left: 2.25rem;
+    top: 2.25rem;
+  }
+}
+@keyframes path-draw {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+.path-node {
+  background: var(--c);
+  color: #fff;
+  box-shadow: 0 0 0 6px var(--p-page);
+  animation: step-icon 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i) * 0.12s + 0.25s);
+}
+.path-node.is-done {
+  background: var(--p-accent);
+}
+.path-node.is-locked {
+  background: var(--p-surface);
+  color: var(--p-hint);
+}
+/* следующий шаг: вокруг кружка расходятся мягкие волны */
+.path-node.is-next::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 3px solid var(--c);
+  animation: node-wave 2s ease-out infinite;
+}
+@keyframes node-wave {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+.path-go > span {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+.path-card:hover .path-go > span {
+  transform: translateX(5px);
+}
+
+.reading-bar {
+  background: linear-gradient(90deg, var(--logo-blue), var(--logo-green), var(--logo-yellow), var(--logo-orange), var(--logo-berry));
+  transition: transform 0.1s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-in,
+  .ring-fill,
+  .floater,
+  .path-stop,
+  .path-line,
+  .path-node,
+  .path-node.is-next::after,
+  .reading-bar {
+    animation: none;
+    transition: none;
+  }
+  .path-card:hover .path-go > span {
+    transform: none;
+  }
+}
