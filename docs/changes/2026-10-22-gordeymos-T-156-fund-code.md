@@ -2,7 +2,7 @@
 date: 2026-10-22
 author: gordeymos
 task: T-156 (#156)
-pr: —
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/157
 areas: [интерфейс, бэкенд]
 ---
 
