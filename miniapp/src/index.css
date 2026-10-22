@@ -124,6 +124,63 @@ html:has(form [data-step]) {
   }
 }
 
+/* Цифры в стиле сайта фонда (FundNumber в ui.tsx): жирная чёрная цифра на пастельном круге.
+   Круг — псевдоэлемент под текстом, размер от кегля цифры, поэтому подходит и для «7», и для «2325». */
+.fund-num {
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--p-ink);
+}
+.fund-num::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 52%;
+  width: 1.05em;
+  height: 1.05em;
+  border-radius: 50%;
+  transform: translate(-36%, -50%);
+  background: var(--fund-num-tone);
+}
+.fund-num-blue {
+  --fund-num-tone: #c6cdea;
+}
+.fund-num-yellow {
+  --fund-num-tone: #fbe3a4;
+}
+.fund-num-green {
+  --fund-num-tone: #c5e4cf;
+}
+.fund-num-pink {
+  --fund-num-tone: #f4c2c2;
+}
+.fund-num-sky {
+  --fund-num-tone: #bfe3f4;
+}
+.fund-num-lilac {
+  --fund-num-tone: #f3c6ee;
+}
+
+/* Детский рисунок (VolunteerScenes.tsx, Journey.tsx): акварельный пёстрый фон и контур фломастером.
+   Фон — шум feTurbulence в data-URI: браузер растрирует его один раз как обычную картинку,
+   поэтому движения в сценах и бегущая лента не пересчитывают фильтр на каждом кадре. */
+.kid-art {
+  border-radius: 1.1rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='480'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.007 0.011' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='1.4 0 0 0 0.17 0 1.4 0 0 0.17 0 0 1.4 0 0.19 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E")
+    0 0 / 520px 416px #fff7fb;
+}
+/* фигуры без своей обводки (стол, прилавок, колёса) обводим тем же фломастером, что и человечков */
+.kid-art :is(rect, circle, ellipse, path):not([stroke]):not([fill="none"]):not(g[stroke] *) {
+  stroke: #2b2140;
+  stroke-width: 1.3px;
+  stroke-linejoin: round;
+}
+
 /* Сцены «что делают волонтёры» (VolunteerScenes.tsx): короткие спокойные движения по кругу. */
 .anim-spin,
 .anim-bob,

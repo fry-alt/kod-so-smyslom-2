@@ -126,6 +126,16 @@ export function Badge(props: { children: ReactNode; className?: string; title?: 
 }
 
 /** Отметка статуса волонтёра: номер этапа (1–5) и название. Цвета — --status-* в index.css. */
+/** Число в стиле сайта фонда: крупная чёрная цифра поверх мягкого пастельного круга, круг чуть смещён вправо.
+ *  Только для цифр, которые человек не вводит сам: факты о фонде, номера шагов, счётчики в кабинете.
+ *  У соседних чисел разные цвета круга — как на mariaschildren.ru. */
+export type NumberTone = "blue" | "yellow" | "green" | "pink" | "sky" | "lilac";
+export const NUMBER_TONES: NumberTone[] = ["blue", "yellow", "green", "pink", "sky", "lilac"];
+
+export function FundNumber(props: { children: ReactNode; tone: NumberTone; className?: string }) {
+  return <span className={`fund-num fund-num-${props.tone} ${props.className ?? ""}`}>{props.children}</span>;
+}
+
 export function StatusBadge(props: { status: VolunteerStatus; className?: string }) {
   const step = STATUS_STEP[props.status];
   return (

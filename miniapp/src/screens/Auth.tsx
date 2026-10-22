@@ -12,7 +12,7 @@ import { FUND_DOCS } from "../Footer";
 import { Icon, type IconName } from "../icons";
 import { navigate } from "../router";
 import { tg } from "../telegram";
-import { ErrorBox, errorText, FLAIR, flairHandlers, inputClass } from "../ui";
+import { ErrorBox, errorText, FLAIR, flairHandlers, FundNumber, inputClass } from "../ui";
 import VolunteerScenes, { SCENES } from "./volunteer/VolunteerScenes";
 
 type Mode = "register" | "login";
@@ -397,7 +397,7 @@ function Showcase(props: { view: View; role: AccountRole }) {
         <VolunteerScenes fill />
       </div>
 
-      <Sticker className="auth-sticker top-6 left-6" icon="heart" text="Больше 30 лет помогаем" />
+      <Sticker className="auth-sticker top-6 left-6" number="33" text="года помогаем детям" />
       <Sticker className="auth-sticker auth-sticker-2 top-20 right-6" icon="pin" text="Москва, Ярославль, Осетия" />
 
       <div className="absolute inset-x-5 bottom-5 rounded-3xl bg-page/85 p-6 shadow-[0_24px_50px_-30px_var(--p-ink)] backdrop-blur-md lg:inset-x-8 lg:bottom-8">
@@ -424,15 +424,22 @@ function Showcase(props: { view: View; role: AccountRole }) {
   );
 }
 
-function Sticker(props: { className: string; icon: IconName; text: string }) {
+/** Плавающий стикер: значок или цифра на пастельном круге (как на сайте фонда) и подпись. */
+function Sticker(props: { className: string; icon?: IconName; number?: string; text: string }) {
   return (
     <p
       aria-hidden="true"
       className={`absolute z-10 flex items-center gap-2 rounded-full bg-page py-2 pr-4 pl-2 font-semibold shadow-[0_14px_30px_-18px_var(--p-ink)] ${props.className}`}
     >
-      <span className="grid size-8 place-items-center rounded-full bg-pop text-ink">
-        <Icon name={props.icon} className="size-4" />
-      </span>
+      {props.number ? (
+        <FundNumber tone="yellow" className="pl-2 text-2xl">
+          {props.number}
+        </FundNumber>
+      ) : (
+        <span className="grid size-8 place-items-center rounded-full bg-pop text-ink">
+          {props.icon && <Icon name={props.icon} className="size-4" />}
+        </span>
+      )}
       {props.text}
     </p>
   );
