@@ -23,6 +23,8 @@ findTelegramVolunteer().then(() => {
   // Mini App из бота открывается на «/»: кто уже заполнил анкету — сразу в кабинет.
   // Логотип внутри приложения по-прежнему ведёт на лендинг.
   if (tg?.initData && location.pathname === "/" && getVolunteerId()) history.replaceState(null, "", "/me");
+  // «Моя история» теперь в личном кабинете — старые ссылки (/history) ведут туда
+  if (location.pathname === "/history") history.replaceState(null, "", "/me");
 
   createRoot(document.getElementById("root")!).render(
     <StrictMode>

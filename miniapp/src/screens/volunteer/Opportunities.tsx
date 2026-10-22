@@ -104,8 +104,8 @@ export default function Opportunities() {
 
       {id && (
         <div className="self-start">
-          <Button variant="secondary" onClick={() => navigate("/history")}>
-            Моя история и часы
+          <Button variant="secondary" onClick={() => navigate("/me")}>
+            Мои часы и история
           </Button>
         </div>
       )}
