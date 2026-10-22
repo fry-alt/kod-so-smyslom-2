@@ -3,10 +3,10 @@
 //   /me      — личный кабинет волонтёра: анкета, путь, занятия, обучение, часы (сайт и Telegram Mini App)
 //   /admin   — кабинет фонда (ноутбук, только после входа координатора): сводка, умный поиск, база, аналитика, настройки
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
 import AdminDock from "./AdminDock";
-import { accountName, backend, getAccount, getVolunteerId, logout, USE_MOCK } from "./backend";
+import { accountName, backend, getAccount, getVolunteerId, logout, refreshAccountName, USE_MOCK } from "./backend";
 import Footer from "./Footer";
 import { match, navigate, navigateBack, usePath } from "./router";
 import { tg } from "./telegram";
@@ -80,6 +80,11 @@ function render(routes: Route[], path: string): ReactNode {
 export default function App() {
   const path = usePath();
   const search = location.search;
+  // имя в шапке — свежее с сервера; если поменялось, перерисовываем
+  const [, setNameVersion] = useState(0);
+  useEffect(() => {
+    refreshAccountName().then((changed) => changed && setNameVersion((n) => n + 1));
+  }, []);
   useEffect(() => {
     document.title = `${pageTitle(path, search)} — Дети Марии`;
   }, [path, search]);
@@ -261,10 +266,11 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
 
 /** Справа в шапке кабинета фонда: кто вошёл и «Выйти». */
 function CoordinatorMenu() {
-  const name = accountName(getAccount());
+  const account = getAccount();
+  const name = accountName(account);
   return (
     <div className="ml-auto flex items-center gap-3">
-      <span className="flex items-center gap-2" title={name}>
+      <span className="flex items-center gap-2" title={account ? `${name} — ${account.email}` : name}>
         <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-full bg-soft font-display font-semibold uppercase">
           {name[0]}
         </span>

@@ -934,9 +934,18 @@ export const mockChatApi = {
 type MockAccount = Account & { password: string; token: string; look?: Look };
 const ACCOUNTS_KEY = "mock_accounts";
 
+/** Имена демо-аккаунтов, заведённых в браузере до того, как при регистрации стали спрашивать имя. */
+const DEMO_NAMES: Record<string, string> = {
+  "coord@demo.test": "Мария Соколова",
+  "coordinator@demo.test": "Мария Соколова",
+  "volunteer@demo.test": "Анна Петрова",
+  "vol@demo.test": "Анна Петрова",
+};
+
 function loadAccounts(): MockAccount[] {
   try {
-    return JSON.parse(localStorage.getItem(ACCOUNTS_KEY) ?? "[]");
+    const list: MockAccount[] = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) ?? "[]");
+    return list.map((a) => (a.name?.trim() ? a : { ...a, name: DEMO_NAMES[a.email] ?? a.name ?? "" }));
   } catch {
     return [];
   }
