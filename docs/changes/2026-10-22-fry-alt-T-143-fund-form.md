@@ -2,7 +2,7 @@
 date: 2026-10-22
 author: fry-alt
 task: T-143 (#143)
-pr: будет добавлена после создания PR
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/146
 areas: [бэкенд, AI, интерфейс]
 ---
 
