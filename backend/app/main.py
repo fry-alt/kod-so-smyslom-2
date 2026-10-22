@@ -30,6 +30,7 @@ from app.db import init_db
 from app.llm.providers import LLMError
 from app.log import setup_logging
 from app.rag.ingest import autoload_documents
+from app.services.volunteers import index_missing
 
 log = logging.getLogger("app")
 
@@ -43,6 +44,8 @@ async def lifespan(_: FastAPI):
     if s.rag_autoload:
         # в фоне: эмбеддинги — сетевые вызовы, а /health должен отвечать сразу
         threading.Thread(target=autoload_documents, daemon=True).start()
+    # волонтёры без векторов (эмбеддинг не получился, сменили провайдера) — в индекс, тоже в фоне
+    threading.Thread(target=index_missing, daemon=True).start()
     yield
 
 

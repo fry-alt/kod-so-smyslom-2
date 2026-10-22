@@ -5,12 +5,15 @@ import re
 from pathlib import Path
 
 import pytest
+from chromadb.errors import InternalError
 from sqlmodel import Session, select
 
 from app.db import get_engine
 from app.llm.client import get_llm
 from app.llm.providers import FakeEmbedder, FakeProvider, LLMError
 from app.models import Interaction
+from app.rag.store import get_collection
+from app.services import volunteer_index, volunteers
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
@@ -218,6 +221,41 @@ def test_fallback_when_rerank_returns_foreign_ids(client, llm, ids):
     photo = next(c for c in candidates if c["volunteer"]["id"] == ids["photo_weekend"])
     assert photo["reason"] == "совпадение по навыкам: фото"
     assert photo == max(candidates, key=lambda c: c["score"])
+
+
+def test_volunteer_missing_from_index_does_not_break_search(client, llm, ids):
+    # эмбеддинг при анкете не получился или сменили провайдера — в индексе волонтёра нет;
+    # Chroma на чужой id в query(ids=…) падала с «Error finding id», и поиск отвечал 500
+    get_collection("volunteers").delete(ids=[str(ids["photo_morning"])])
+    llm.provider.parsed = parsed()
+    assert ids["photo_morning"] in found(client.post("/search", json={"query": "фото"}))
+    assert set(volunteer_index.indexed(list(ids.values()))) == set(ids.values()) - {
+        ids["photo_morning"]
+    }
+
+
+def test_broken_index_falls_back(client, llm, ids, monkeypatch):
+    def broken(*args):
+        raise InternalError("Error finding id")
+
+    monkeypatch.setattr(volunteer_index, "nearest", broken)
+    llm.provider = BrokenProvider()
+    candidates = client.post("/search", json={"query": "нужно фото"}).json()["candidates"]
+    assert candidates and all(not c["ai"] for c in candidates)
+    assert "фото" in candidates[0]["volunteer"]["answers"]["skills"]
+
+
+def test_index_missing_adds_only_absent_volunteers(client, llm, ids):
+    get_collection("volunteers").delete(ids=[str(ids["ceramics"]), str(ids["smm_online"])])
+    assert volunteers.index_missing() == 2
+    assert set(volunteer_index.indexed(list(ids.values()))) == set(ids.values())
+    assert volunteers.index_missing() == 0
+
+
+def test_index_missing_survives_embeddings_down(client, llm, ids):
+    get_collection("volunteers").delete(ids=[str(ids["ceramics"])])
+    llm._embedder = BrokenEmbedder()
+    assert volunteers.index_missing() == 0  # бэкенд поднимается, добавим при следующем запуске
 
 
 def test_search_by_role_without_text(client, llm, ids):
