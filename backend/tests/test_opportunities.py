@@ -183,3 +183,37 @@ def test_time_slot():
     assert time_slot(datetime(2026, 10, 27, 10)) == "weekday_morning"
     assert time_slot(datetime(2026, 10, 27, 14)) == "weekday_day"
     assert time_slot(datetime(2026, 10, 28, 19)) == "weekday_evening"
+
+
+def test_volunteer_cancels_response_and_can_respond_again(client):
+    opp = create_opportunity(client, slots=2)
+    v = create_volunteer(client)
+    url = f"/opportunities/{opp['id']}"
+    p = client.post(f"{url}/respond", json={"volunteer_id": v["id"]}).json()
+    client.patch(f"/participations/{p['id']}", json={"status": "confirmed"})
+    assert client.get(url).json()["taken"] == 1
+
+    # отменил запись — место освободилось
+    r = client.post(f"{url}/cancel", json={"volunteer_id": v["id"]})
+    assert r.status_code == 200, r.text
+    assert (r.json()["id"], r.json()["status"]) == (p["id"], "declined")
+    assert client.get(url).json()["taken"] == 0
+
+    # передумал — откликается снова той же записью
+    again = client.post(f"{url}/respond", json={"volunteer_id": v["id"]}).json()
+    assert (again["id"], again["status"]) == (p["id"], "responded")
+
+    # прошедшее участие с часами не отменяется
+    client.patch(f"/participations/{p['id']}", json={"status": "attended"})
+    assert client.post(f"{url}/cancel", json={"volunteer_id": v["id"]}).status_code == 409
+
+
+def test_cancel_without_response_and_404(client):
+    opp = create_opportunity(client)
+    v = create_volunteer(client)
+    url = f"/opportunities/{opp['id']}/cancel"
+    assert client.post(url, json={"volunteer_id": v["id"]}).status_code == 409
+    assert client.post(url, json={"volunteer_id": 999}).status_code == 404
+    assert (
+        client.post("/opportunities/999/cancel", json={"volunteer_id": v["id"]}).status_code == 404
+    )

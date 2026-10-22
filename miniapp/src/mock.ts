@@ -729,6 +729,15 @@ export const mockApi: typeof volunteersApi = {
     saveOpportunities();
     return wait(p);
   },
+  cancelResponse: (opportunityId, volunteerId) => {
+    refresh();
+    const p = participations.find((x) => x.opportunity_id === opportunityId && x.volunteer_id === volunteerId);
+    if (!p) return notFound("Отклик");
+    if (p.status === "attended") return Promise.reject(new Error("Занятие уже прошло — часы начислены, отменить нельзя"));
+    p.status = "declined";
+    saveOpportunities();
+    return wait(withNames(p));
+  },
   myParticipations: (volunteerId) => {
     refresh();
     return wait(participations.filter((p) => p.volunteer_id === volunteerId).map(withNames));

@@ -70,6 +70,20 @@ def respond(
     return opportunities.participation_out(session, participation)
 
 
+@router.post("/opportunities/{opportunity_id}/cancel", response_model=Participation)
+def cancel(
+    opportunity_id: int, data: RespondIn, session: Session = Depends(get_session)
+) -> Participation:
+    """Волонтёр отменяет свой отклик или запись, или отказывается от приглашения."""
+    opportunity = _opportunity_or_404(session, opportunity_id)
+    volunteer = _volunteer_or_404(session, data.volunteer_id)
+    try:
+        participation = opportunities.cancel(session, opportunity, volunteer)
+    except opportunities.ParticipationError as e:
+        raise HTTPException(409, str(e)) from e
+    return opportunities.participation_out(session, participation)
+
+
 @router.post(
     "/opportunities/{opportunity_id}/invite",
     response_model=list[Participation],
