@@ -1,6 +1,9 @@
 // Общие элементы интерфейса. Крупные: среди волонтёров пенсионеры, координатор не айтишник.
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 
+import type { VolunteerStatus } from "./api";
+import { Icon } from "./icons";
+import { STATUS, STATUS_COLOR, STATUS_STEP } from "./labels";
 import { navigate } from "./router";
 
 export function Button(props: {
@@ -122,19 +125,41 @@ export function Badge(props: { children: ReactNode; className?: string; title?: 
   );
 }
 
+/** Отметка статуса волонтёра: номер этапа (1–5) и название. Цвета — --status-* в index.css. */
+export function StatusBadge(props: { status: VolunteerStatus; className?: string }) {
+  const step = STATUS_STEP[props.status];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLOR[props.status]} ${props.className ?? ""}`}
+    >
+      {step && (
+        <span aria-hidden="true" className="grid size-5 shrink-0 place-items-center rounded-full bg-current/15 text-xs font-bold">
+          {step}
+        </span>
+      )}
+      {STATUS[props.status]}
+    </span>
+  );
+}
+
 export function Field(props: {
   label: string;
   hint?: ReactNode;
   error?: string;
   required?: boolean;
-  /** div вместо label — для групп кнопок (Chips), где label ломает клики */
+  /** группа вариантов (Chips): div с ролью group и подписью вместо label, где label ломает клики */
   group?: boolean;
   children: ReactNode;
 }) {
+  const labelId = useId();
   const Tag = props.group ? "div" : "label";
   return (
-    <Tag className="flex flex-col gap-1.5" data-error={props.error ? "" : undefined}>
-      <span className="font-semibold">
+    <Tag
+      className="flex flex-col gap-1.5"
+      data-error={props.error ? "" : undefined}
+      {...(props.group ? { role: "group", "aria-labelledby": labelId } : {})}
+    >
+      <span id={labelId} className="font-semibold">
         {props.label}
         {props.required && <span className="text-accent"> *</span>}
       </span>
@@ -247,40 +272,51 @@ export function Select(props: {
   );
 }
 
-/** Выбор из вариантов крупными «чипсами»: один (multiple=false) или несколько. */
+/** Выбор из вариантов крупными «чипсами»: один (multiple=false) или несколько.
+    Внутри — настоящие radio и checkbox: стрелки переключают вариант, Tab заходит в группу один раз.
+    label — подпись группы для скринридера, если её не даёт Field group. */
 export function Chips<T extends string>(props: {
   options: Record<T, string>;
   value: T[];
   onChange: (value: T[]) => void;
   multiple?: boolean;
+  label?: string;
 }) {
+  const name = useId();
   const keys = Object.keys(props.options) as T[];
   function toggle(k: T) {
     if (!props.multiple) return props.onChange([k]);
     props.onChange(props.value.includes(k) ? props.value.filter((x) => x !== k) : [...props.value, k]);
   }
   return (
-    <div className="flex flex-wrap gap-2" role={props.multiple ? "group" : "radiogroup"}>
+    <div
+      className="flex flex-wrap gap-2"
+      {...(props.label ? { role: props.multiple ? "group" : "radiogroup", "aria-label": props.label } : {})}
+    >
       {keys.map((k) => {
         const on = props.value.includes(k);
         return (
-          <button
+          <label
             key={k}
-            type="button"
-            role={props.multiple ? "checkbox" : "radio"}
-            aria-checked={on}
-            onClick={() => toggle(k)}
             {...flairHandlers}
             // не выбран — при наведении заливается зелёным; выбран — белым
-            className={`btn-flair min-h-12 rounded-full border px-5 py-2 ${
+            className={`btn-flair inline-flex min-h-12 cursor-pointer items-center gap-[0.3em] rounded-full border px-5 py-2 select-none ${
               on
                 ? "border-accent bg-accent text-accent-text [--flair:var(--p-page)] [--flair-text:var(--p-ink)]"
                 : "border-line bg-page [--flair:var(--p-accent)] [--flair-text:var(--p-accent-text)] hover:border-accent"
             }`}
           >
-            {props.multiple && (on ? "✓ " : "")}
+            <input
+              type={props.multiple ? "checkbox" : "radio"}
+              name={name}
+              value={k}
+              checked={on}
+              onChange={() => toggle(k)}
+              className="sr-only"
+            />
+            {props.multiple && on && <span aria-hidden="true">✓</span>}
             {props.options[k]}
-          </button>
+          </label>
         );
       })}
     </div>
@@ -290,10 +326,14 @@ export function Chips<T extends string>(props: {
 export const inputClass =
   "min-h-12 w-full rounded-2xl border-2 border-[color-mix(in_srgb,var(--p-ink)_55%,transparent)] bg-page px-4 py-3 outline-none placeholder:text-hint focus:border-accent";
 
-export function ErrorBox(props: { text: string; onRetry?: () => void }) {
+/** Ошибка с текстом. id — чтобы связать с полем через aria-describedby. */
+export function ErrorBox(props: { text: string; onRetry?: () => void; id?: string }) {
   return (
-    <div role="alert" className="flex flex-col gap-3 rounded-2xl bg-red-50 p-4 text-red-900">
-      <p>⚠️ {props.text}</p>
+    <div id={props.id} role="alert" className="flex flex-col gap-3 rounded-2xl bg-red-50 p-4 text-red-900">
+      <p>
+        <Icon name="alert" className="mr-1.5 size-[1.15em] align-[-0.2em]" />
+        {props.text}
+      </p>
       {props.onRetry && (
         <div>
           <Button variant="secondary" onClick={props.onRetry}>
@@ -347,7 +387,7 @@ export function Contact({ contact }: { contact: string }) {
 export function Todo(props: { task: string; children?: ReactNode }) {
   return (
     <div className="rounded-2xl border-2 border-dashed border-line p-4 text-hint">
-      🚧 Экран делается в задаче <b>{props.task}</b>. {props.children}
+      <span aria-hidden="true">🚧</span> Экран делается в задаче <b>{props.task}</b>. {props.children}
     </div>
   );
 }

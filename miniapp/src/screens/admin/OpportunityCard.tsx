@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { Participation, ParticipationStatus } from "../../api";
 import { backend } from "../../backend";
 import { FORMAT, PARTICIPATION, PARTICIPATION_COLOR, REGION } from "../../labels";
+import { Icon } from "../../icons";
 import { navigate } from "../../router";
 import { Badge, Button, Card, Empty, ErrorBox, errorText, formatHours, formatWhen, Link, Loading, useLoad } from "../../ui";
 
@@ -138,7 +139,12 @@ function ParticipantRow(props: { p: Participation; onChange: () => void }) {
           <Badge className={PARTICIPATION_COLOR[p.status]}>{PARTICIPATION[p.status]}</Badge>
           {p.status === "attended" && <span className="text-hint">начислено {formatHours(p.hours)} ч</span>}
         </div>
-        {error && <span className="font-medium text-red-700">⚠️ {error}</span>}
+        {error && (
+          <span className="font-medium text-red-700">
+            <Icon name="alert" className="mr-1 size-[1.1em] align-[-0.18em]" />
+            {error}
+          </span>
+        )}
       </div>
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={() => navigate(`/admin/messages/${p.volunteer_id}?about=${p.opportunity_id}`)}>

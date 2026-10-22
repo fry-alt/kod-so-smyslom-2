@@ -23,6 +23,21 @@
   --logo-berry: #b51e68;
   /* главная кнопка — фирменный оранжевый фонда, чуть глубже для читаемости белого текста */
   --p-cta: #c4460c;
+  /* статусы волонтёра по этапам пути: у каждого этапа свой оттенок, персиковый остаётся только для срочного.
+     1 анкета — голубой, 2 обучение — сиреневый, 3 обучение пройдено — бирюзовый, 4 допущен — светло-зелёный,
+     5 активен — насыщенный зелёный, пауза — серый. */
+  --status-new: #dbeafe;
+  --status-new-ink: #1e3a8a;
+  --status-training: #ede9fe;
+  --status-training-ink: #4c1d95;
+  --status-trained: #cffafe;
+  --status-trained-ink: #155e75;
+  --status-approved: #dcfce7;
+  --status-approved-ink: #14532d;
+  --status-active: #1b7543;
+  --status-active-ink: #ffffff;
+  --status-paused: #e5e7eb;
+  --status-paused-ink: #374151;
 }
 
 /* Токены Tailwind: классы bg-page, bg-surface, bg-soft, text-ink, text-hint, text-link, bg-accent,
@@ -63,6 +78,13 @@ body {
 }
 
 :focus-visible {
+  outline: 3px solid var(--p-accent);
+  outline-offset: 3px;
+}
+
+/* Варианты выбора — нативные radio и checkbox внутри label, сам input скрыт (sr-only):
+   рамку фокуса с клавиатуры рисуем на карточке варианта. */
+label:has(> input.sr-only:focus-visible) {
   outline: 3px solid var(--p-accent);
   outline-offset: 3px;
 }

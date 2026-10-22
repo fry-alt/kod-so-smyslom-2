@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 
 import type { Look, LookColor, LookCover } from "../../api";
 import { saveLook } from "../../backend";
+import { Icon } from "../../icons";
 import { Button, ErrorBox, errorText, inputClass } from "../../ui";
 
 const AVATARS = ["🦊", "🐻", "🐱", "🐶", "🐼", "🦉", "🐢", "🐝", "🦋", "🐞", "🌻", "🌳", "☀️", "🌈", "🎨", "🎸"];
@@ -202,6 +203,7 @@ export function LookEditor(props: {
               {["", ...AVATARS].map((a) => (
                 <Pick
                   key={a || "letter"}
+                  name="look-avatar"
                   on={draft.avatar === a}
                   onClick={() => set({ avatar: a })}
                   label={a ? `Аватар ${a}` : "Первая буква имени"}
@@ -215,21 +217,24 @@ export function LookEditor(props: {
           <Section title="Цвет кружка">
             <div role="radiogroup" aria-label="Цвет кружка" className="flex flex-wrap gap-3">
               {(Object.keys(COLORS) as LookColor[]).map((c) => (
-                <button
+                <label
                   key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={draft.color === c}
-                  aria-label={COLORS[c].label}
                   title={COLORS[c].label}
-                  onClick={() => set({ color: c })}
                   style={{ background: COLORS[c].bg, color: COLORS[c].text }}
-                  className={`flex size-12 items-center justify-center rounded-full text-lg font-bold transition hover:scale-110 ${
+                  className={`relative flex size-12 cursor-pointer items-center justify-center rounded-full text-lg font-bold transition hover:scale-110 ${
                     draft.color === c ? "ring-4 ring-ink/70 ring-offset-2 ring-offset-page" : ""
                   }`}
                 >
-                  {draft.color === c && "✓"}
-                </button>
+                  <input
+                    type="radio"
+                    name="look-color"
+                    aria-label={COLORS[c].label}
+                    checked={draft.color === c}
+                    onChange={() => set({ color: c })}
+                    className="sr-only"
+                  />
+                  <span aria-hidden="true">{draft.color === c && "✓"}</span>
+                </label>
               ))}
             </div>
           </Section>
@@ -237,16 +242,19 @@ export function LookEditor(props: {
           <Section title="Обложка">
             <div role="radiogroup" aria-label="Обложка" className="grid grid-cols-3 gap-3">
               {(Object.keys(COVERS) as LookCover[]).map((c) => (
-                <button
+                <label
                   key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={draft.cover === c}
-                  onClick={() => set({ cover: c })}
-                  className={`flex flex-col gap-1.5 rounded-2xl p-1.5 text-left transition hover:bg-surface ${
+                  className={`relative flex cursor-pointer flex-col gap-1.5 rounded-2xl p-1.5 text-left transition select-none hover:bg-surface ${
                     draft.cover === c ? "bg-surface ring-2 ring-accent" : ""
                   }`}
                 >
+                  <input
+                    type="radio"
+                    name="look-cover"
+                    checked={draft.cover === c}
+                    onChange={() => set({ cover: c })}
+                    className="sr-only"
+                  />
                   <span
                     aria-hidden="true"
                     className="h-12 rounded-xl"
@@ -255,10 +263,10 @@ export function LookEditor(props: {
                     }}
                   />
                   <span className="px-1 font-semibold">
-                    {draft.cover === c && "✓ "}
+                    {draft.cover === c && <span aria-hidden="true">✓ </span>}
                     {COVERS[c].label}
                   </span>
-                </button>
+                </label>
               ))}
             </div>
           </Section>
@@ -285,7 +293,10 @@ export function LookEditor(props: {
                     } ${!open ? "opacity-60" : full ? "opacity-40" : ""}`}
                   >
                     <span className={`text-3xl ${open ? "" : "grayscale"}`}>{s.emoji}</span>
-                    <span className="text-xs leading-tight text-hint">{open ? s.label : `🔒 ${s.how}`}</span>
+                    <span className="text-xs leading-tight text-hint">
+                      {!open && <Icon name="lock" className="mr-0.5 size-[1.1em] align-[-0.18em]" />}
+                      {open ? s.label : s.how}
+                    </span>
                     {on && (
                       <span className="absolute top-1 right-1.5 text-sm font-bold text-accent" aria-hidden="true">
                         ✓
@@ -323,19 +334,23 @@ function Section(props: { title: string; hint?: string; children: ReactNode }) {
   );
 }
 
-function Pick(props: { on: boolean; onClick: () => void; label: string; children: ReactNode }) {
+/** Вариант аватара — настоящий radio внутри карточки: стрелки переключают выбор. */
+function Pick(props: { name: string; on: boolean; onClick: () => void; label: string; children: ReactNode }) {
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={props.on}
-      aria-label={props.label}
-      onClick={props.onClick}
-      className={`flex aspect-square min-h-12 items-center justify-center rounded-2xl text-3xl transition hover:scale-110 ${
+    <label
+      className={`relative flex aspect-square min-h-12 cursor-pointer items-center justify-center rounded-2xl text-3xl transition select-none hover:scale-110 ${
         props.on ? "bg-soft ring-2 ring-accent" : "bg-surface"
       }`}
     >
-      {props.children}
-    </button>
+      <input
+        type="radio"
+        name={props.name}
+        aria-label={props.label}
+        checked={props.on}
+        onChange={props.onClick}
+        className="sr-only"
+      />
+      <span aria-hidden="true">{props.children}</span>
+    </label>
   );
 }

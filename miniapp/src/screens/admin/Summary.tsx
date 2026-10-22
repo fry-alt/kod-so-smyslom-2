@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import type { DashboardToday } from "../../api";
 import { backend } from "../../backend";
+import { Icon } from "../../icons";
 import { Badge, ErrorBox, formatWhen, Link, Loading, useLoad } from "../../ui";
 import {
   AllClear,
@@ -233,7 +234,7 @@ function InterviewList({ items }: { items: DashboardToday["interviews"] }) {
             <span className="font-display text-2xl font-semibold tabular-nums">{timeOf(i.starts_at)}</span>
             <div className="flex min-w-0 flex-1 flex-col">
               <PersonLink {...i.volunteer} />
-              {i.overdue ? <span className="font-medium">⚠ {dayLabel(i.starts_at)}</span> : <span className="text-hint">видеозвонок на сайте</span>}
+              {i.overdue ? <span className="font-medium"><Icon name="alert" className="mr-1 size-[1.1em] align-[-0.18em]" />{dayLabel(i.starts_at)}</span> : <span className="text-hint">видеозвонок на сайте</span>}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">

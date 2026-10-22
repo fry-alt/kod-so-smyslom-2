@@ -1,12 +1,13 @@
 // Анкета волонтёра (T-07): сайт и Telegram Mini App.
 // Пошагово: один экран — одна тема, в конце «Проверьте ответы». Так не страшно начать и легко закончить.
 // Имя и контакт хранятся только в нашей базе. Ответы о себе — обезличенно — разбирает AI.
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import type { Answers, Availability, Format, Occupation, Region, Regularity, Role, Volunteer } from "../../api";
 import { backend, getAccount, saveAccount, setVolunteerId } from "../../backend";
 import { AVAILABILITY, FORMAT, OCCUPATION, REGION, REGULARITY } from "../../labels";
 import { FUND_DOCS } from "../../Footer";
+import { Icon, type IconName } from "../../icons";
 import { navigate } from "../../router";
 import { tg, tgUser } from "../../telegram";
 import { Badge, Button, Card, ErrorBox, errorText, FLAIR, flairHandlers, inputClass } from "../../ui";
@@ -17,30 +18,30 @@ const DRAFT_KEY = "form_draft";
 
 /** Шаги анкеты по порядку. fields — какие ошибки проверяем перед переходом дальше. */
 const STEPS = [
-  { title: "Давайте знакомиться", short: "Знакомство", icon: "👋", fields: ["name", "contact"] },
-  { title: "Немного о жизни", short: "О жизни", icon: "🏡", fields: [] },
-  { title: "Расскажите о себе", short: "О себе", icon: "✍️", fields: ["about"] },
-  { title: "Чем хочется помогать", short: "Желания", icon: "🧡", fields: [] },
-  { title: "Когда и как удобно", short: "Время", icon: "🗓️", fields: ["availability", "formats"] },
-  { title: "Проверьте анкету", short: "Проверка", icon: "✅", fields: ["consent"] },
+  { title: "Давайте знакомиться", short: "Знакомство", icon: "hand", fields: ["name", "contact"] },
+  { title: "Немного о жизни", short: "О жизни", icon: "house", fields: [] },
+  { title: "Расскажите о себе", short: "О себе", icon: "pencil", fields: ["about"] },
+  { title: "Чем хочется помогать", short: "Желания", icon: "heart", fields: [] },
+  { title: "Когда и как удобно", short: "Время", icon: "calendar", fields: ["availability", "formats"] },
+  { title: "Проверьте анкету", short: "Проверка", icon: "check", fields: ["consent"] },
 ] as const;
 
 const LAST = STEPS.length - 1;
 
-const OCCUPATION_ICON: Record<Occupation, string> = {
-  student: "🎓",
-  pensioner: "🌿",
-  remote: "💻",
-  employed: "🏢",
-  schoolkid: "🎒",
-  other: "✨",
+const OCCUPATION_ICON: Record<Occupation, IconName> = {
+  student: "graduation",
+  pensioner: "leaf",
+  remote: "laptop",
+  employed: "building",
+  schoolkid: "backpack",
+  other: "sparkles",
 };
 
-const AVAILABILITY_ICON: Record<Availability, string> = {
-  weekday_morning: "🌅",
-  weekday_day: "☀️",
-  weekday_evening: "🌙",
-  weekend: "🎨",
+const AVAILABILITY_ICON: Record<Availability, IconName> = {
+  weekday_morning: "sunrise",
+  weekday_day: "sun",
+  weekday_evening: "moon",
+  weekend: "palette",
 };
 
 /** Подсказка под вариантом — то, что фонду важно сказать сразу. */
@@ -50,13 +51,13 @@ const AVAILABILITY_SUB: Partial<Record<Availability, string>> = {
   weekend: "Мастерские по субботам",
 };
 
-const FORMAT_ICON: Record<Format, string> = { offline: "🤝", online: "💬" };
+const FORMAT_ICON: Record<Format, IconName> = { offline: "handshake", online: "chat" };
 const FORMAT_SUB: Record<Format, string> = {
   offline: "Приезжать на занятия и события",
   online: "Помогать из дома: тексты, дизайн, переводы",
 };
 
-const REGULARITY_ICON: Record<Regularity, string> = { regular: "🔁", episodic: "📌", any: "🤷" };
+const REGULARITY_ICON: Record<Regularity, IconName> = { regular: "repeat", episodic: "pin", any: "shuffle" };
 const REGULARITY_SUB: Record<Regularity, string> = {
   regular: "По графику, раз в неделю или чаще",
   episodic: "На отдельные события и ярмарки",
@@ -196,7 +197,9 @@ export default function Form() {
     if (step === shownStep.current) return;
     shownStep.current = step;
     window.scrollTo({ top: 0, behavior: "smooth" });
-    const field = document.querySelector<HTMLElement>("[data-step] input:not([type=checkbox]), [data-step] textarea");
+    const field = document.querySelector<HTMLElement>(
+      "[data-step] input:not([type=checkbox]):not([type=radio]), [data-step] textarea",
+    );
     if (field && window.matchMedia("(pointer: fine)").matches) field.focus({ preventScroll: true });
     else headingRef.current?.focus({ preventScroll: true });
   }, [step]);
@@ -226,7 +229,12 @@ export default function Form() {
     void el?.offsetWidth;
     el?.classList.add("shake");
     tg?.HapticFeedback?.impactOccurred("medium");
-    setTimeout(() => document.querySelector("[data-error]")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    // фокус — в первое поле с ошибкой: скринридер прочитает подпись и текст ошибки, с клавиатуры можно сразу исправить
+    setTimeout(() => {
+      const box = document.querySelector("[data-error]");
+      box?.querySelector<HTMLElement>("input, textarea")?.focus({ preventScroll: true });
+      box?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }
 
   function next(e: FormEvent) {
@@ -309,11 +317,8 @@ export default function Form() {
           className={`flex flex-col gap-6 ${direction === "forward" ? "step-in-forward" : "step-in-back"}`}
         >
             <div className="flex min-w-0 items-start gap-4">
-            <span
-              className="step-icon grid size-14 shrink-0 place-items-center rounded-2xl bg-soft text-3xl"
-              aria-hidden="true"
-            >
-              {STEPS[step].icon}
+            <span className="step-icon grid size-14 shrink-0 place-items-center rounded-2xl bg-soft text-accent">
+              <Icon name={STEPS[step].icon} className="size-8" />
             </span>
             <div className="flex min-w-0 flex-col gap-1">
               <h1
@@ -330,9 +335,11 @@ export default function Form() {
           <div ref={questionsRef} className="flex flex-col gap-6">
             {step === 0 && (
               <>
-                <Question label="Как вас зовут" required error={errors.name}>
+                <Question label="Как вас зовут" required error={errors.name} errorId="err-name">
                   <input
                     className={inputClass}
+                    aria-invalid={!!errors.name}
+                    aria-describedby={errors.name ? "err-name" : undefined}
                     value={draft.name}
                     onChange={(e) => set({ name: e.target.value })}
                     autoComplete="name"
@@ -346,9 +353,12 @@ export default function Form() {
                   required
                   hint="Телефон, e-mail или ник в Telegram. Его увидит только координатор фонда."
                   error={errors.contact}
+                  errorId="err-contact"
                 >
                   <input
                     className={inputClass}
+                    aria-invalid={!!errors.contact}
+                    aria-describedby={errors.contact ? "err-contact" : undefined}
                     value={draft.contact}
                     onChange={(e) => set({ contact: e.target.value })}
                     enterKeyHint="next"
@@ -381,8 +391,9 @@ export default function Form() {
 
             {step === 2 && (
               <>
-                <Question label="Пара слов о вас" required error={errors.about}>
+                <Question label="Пара слов о вас" required error={errors.about} errorId="err-about">
                   <TextBox
+                    errorId={errors.about ? "err-about" : undefined}
                     value={a.about}
                     onChange={(v) => setAnswers({ about: v })}
                     placeholder="Например: я на пенсии, 20 лет работала учителем рисования, люблю возиться с детьми"
@@ -432,9 +443,11 @@ export default function Form() {
                   required
                   group
                   error={errors.availability}
+                  errorId="err-availability"
                   hint={
                     <>
-                      🧡 <b>Фонду особенно нужна помощь в будни днём</b> — группы из интернатов приезжают утром.
+                      <Icon name="heart" className="mr-1 size-[1.1em] align-[-0.18em] text-cta" />
+                      <b>Фонду особенно нужна помощь в будни днём</b> — группы из интернатов приезжают утром.
                     </>
                   }
                 >
@@ -447,7 +460,7 @@ export default function Form() {
                     onChange={(v) => setAnswers({ availability: v })}
                   />
                 </Question>
-                <Question label="Как удобнее помогать" required group error={errors.formats}>
+                <Question label="Как удобнее помогать" required group error={errors.formats} errorId="err-formats">
                   <Choices<Format>
                     multiple
                     options={FORMAT}
@@ -480,6 +493,8 @@ export default function Form() {
                 >
                   <input
                     type="checkbox"
+                    aria-invalid={!!errors.consent}
+                    aria-describedby={errors.consent ? "err-consent" : undefined}
                     checked={draft.consent}
                     onChange={(e) => {
                       set({ consent: e.target.checked });
@@ -495,7 +510,11 @@ export default function Form() {
                     фондом «Дети Марии». Имя и контакт видит только координатор фонда, в AI-сервисы они не передаются.
                   </span>
                 </label>
-                {errors.consent && <p className="-mt-3 text-sm font-medium text-red-700">{errors.consent}</p>}
+                {errors.consent && (
+                  <p id="err-consent" role="alert" className="error-in -mt-3 text-sm font-medium text-red-700">
+                    {errors.consent}
+                  </p>
+                )}
                 {error && <ErrorBox text={`Не получилось отправить анкету: ${error}`} />}
                 {sending && <Sending />}
               </>
@@ -578,7 +597,7 @@ function StepList(props: { step: number; reached: number; saved: boolean; onJump
       </ol>
 
       <div className="flex flex-col gap-2">
-        <div className="h-2 overflow-hidden rounded-full bg-line">
+        <div className="h-2 overflow-hidden rounded-full bg-line" aria-hidden="true">
           <span
             className="block h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
             style={{ width: `${percent}%` }}
@@ -609,12 +628,14 @@ const STEP_INTRO = [
   "Всё ли верно? Можно поправить любой ответ.",
 ];
 
-/** Сверху: «Шаг 2 из 6», полоска шагов и отметка «Сохранено». Пройденные шаги (до reached) можно открыть нажатием. */
+/** Сверху: «Шаг 2 из 6», полоска шагов и отметка «Сохранено». Пройденные шаги (до reached) можно открыть нажатием.
+    Номер шага — текстом с aria-live; полоска — только картинка, кроме кнопок перехода к пройденным шагам
+    (они высотой 44 px — по полоске легко попасть пальцем, — а места занимают как сама полоска). */
 function Progress(props: { step: number; reached: number; saved: boolean; onJump: (step: number) => void }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="font-semibold text-hint">
+        <span className="font-semibold text-hint" aria-live="polite">
           Шаг {props.step + 1} из {STEPS.length} · {STEPS[props.step].short}
         </span>
         <span
@@ -624,26 +645,34 @@ function Progress(props: { step: number; reached: number; saved: boolean; onJump
           ✓ Сохранено
         </span>
       </div>
-      <div className="flex gap-1.5" role="progressbar" aria-valuemin={1} aria-valuemax={STEPS.length} aria-valuenow={props.step + 1}>
+      <div className="-my-[1.0625rem] flex gap-1.5">
         {STEPS.map((s, n) => {
           const now = n === props.step;
           const open = !now && n <= props.reached;
-          return (
-            <button
-              key={s.short}
-              type="button"
-              disabled={!open}
-              onClick={() => props.onJump(n)}
-              title={open ? `Открыть: ${s.short}` : s.short}
-              aria-label={open ? `Открыть шаг «${s.short}»` : s.short}
-              className="group h-2.5 flex-1 overflow-hidden rounded-full bg-line enabled:cursor-pointer"
-            >
+          const bar = (
+            <span className="block h-2.5 w-full overflow-hidden rounded-full bg-line">
               <span
-                className={`block h-full origin-left rounded-full transition-transform duration-500 ease-out group-enabled:group-hover:bg-pop ${
+                className={`block h-full origin-left rounded-full transition-transform duration-500 ease-out group-hover:bg-pop ${
                   now ? "progress-now scale-x-100 bg-cta" : open ? "scale-x-100 bg-accent" : "scale-x-0 bg-accent"
                 }`}
               />
+            </span>
+          );
+          return open ? (
+            <button
+              key={s.short}
+              type="button"
+              onClick={() => props.onJump(n)}
+              title={`Открыть: ${s.short}`}
+              aria-label={`Вернуться к шагу «${s.short}»`}
+              className="group flex h-11 flex-1 cursor-pointer items-center"
+            >
+              {bar}
             </button>
+          ) : (
+            <span key={s.short} className="flex h-11 flex-1 items-center" aria-hidden="true">
+              {bar}
+            </span>
           );
         })}
       </div>
@@ -651,26 +680,34 @@ function Progress(props: { step: number; reached: number; saved: boolean; onJump
   );
 }
 
+/** Вопрос анкеты. group — несколько полей или вариантов: div с ролью group и подписью вместо label.
+    errorId — id текста ошибки, на него ссылается поле через aria-describedby (у группы — сама группа). */
 function Question(props: {
   label: string;
   hint?: ReactNode;
   error?: string;
+  errorId?: string;
   required?: boolean;
   group?: boolean;
   labelId?: string;
   children: ReactNode;
 }) {
+  const autoId = useId();
+  const labelId = props.labelId ?? autoId;
   const Tag = props.group ? "div" : "label";
+  const groupProps = props.group
+    ? { role: "group", "aria-labelledby": labelId, "aria-describedby": props.error ? props.errorId : undefined }
+    : {};
   return (
-    <Tag className="flex flex-col gap-2" data-error={props.error ? "" : undefined}>
-      <span id={props.labelId} className="text-lg font-semibold">
+    <Tag className="flex flex-col gap-2" data-error={props.error ? "" : undefined} {...groupProps}>
+      <span id={labelId} className="text-lg font-semibold">
         {props.label}
         {props.required && <span className="text-cta"> *</span>}
       </span>
       {props.hint && <span className="-mt-1 text-sm text-hint">{props.hint}</span>}
       {props.children}
       {props.error && (
-        <span role="alert" className="error-in text-sm font-medium text-red-700">
+        <span id={props.errorId} role="alert" className="error-in text-sm font-medium text-red-700">
           {props.error}
         </span>
       )}
@@ -678,15 +715,17 @@ function Question(props: {
   );
 }
 
-/** Крупные карточки-варианты: один (radio) или несколько (checkbox). Выбранная — зелёная, с галочкой. */
+/** Крупные карточки-варианты: один (radio) или несколько (checkbox). Выбранная — зелёная, с галочкой.
+    Внутри карточки — настоящий input (скрыт): стрелки переключают вариант, пробел отмечает. Подпись группы — у Question. */
 function Choices<T extends string>(props: {
   options: Record<T, string>;
   value: T[];
   onChange: (value: T[]) => void;
-  icons?: Record<T, string>;
+  icons?: Record<T, IconName>;
   subs?: Partial<Record<T, string>>;
   multiple?: boolean;
 }) {
+  const name = useId();
   const keys = Object.keys(props.options) as T[];
   function toggle(k: T) {
     haptic();
@@ -694,24 +733,28 @@ function Choices<T extends string>(props: {
     props.onChange(props.value.includes(k) ? props.value.filter((x) => x !== k) : [...props.value, k]);
   }
   return (
-    <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2" role={props.multiple ? "group" : "radiogroup"}>
+    <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
       {keys.map((k, i) => {
         const on = props.value.includes(k);
         return (
-          <button
+          <label
             key={k}
-            type="button"
-            role={props.multiple ? "checkbox" : "radio"}
-            aria-checked={on}
-            onClick={() => toggle(k)}
             style={{ animationDelay: `${i * 45}ms` }}
-            className={`choice choice-in relative flex min-h-16 items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left ${
+            className={`choice choice-in relative flex min-h-16 cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left select-none ${
               on ? "is-on border-accent bg-soft" : "border-line bg-page hover:border-accent/60 hover:bg-surface"
             }`}
           >
+            <input
+              type={props.multiple ? "checkbox" : "radio"}
+              name={name}
+              value={k}
+              checked={on}
+              onChange={() => toggle(k)}
+              className="sr-only"
+            />
             {props.icons && (
-              <span className="choice-icon text-2xl" aria-hidden="true">
-                {props.icons[k]}
+              <span className="choice-icon text-accent">
+                <Icon name={props.icons[k]} className="size-7" />
               </span>
             )}
             <span className="flex min-w-0 flex-1 flex-col break-words leading-tight">
@@ -726,7 +769,7 @@ function Choices<T extends string>(props: {
             >
               ✓
             </span>
-          </button>
+          </label>
         );
       })}
     </div>
@@ -740,6 +783,8 @@ function TextBox(props: {
   placeholder: string;
   meter?: boolean;
   "aria-labelledby"?: string;
+  /** id текста ошибки — поле отмечается как неверное и ссылается на него */
+  errorId?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -751,13 +796,15 @@ function TextBox(props: {
 
   const len = props.value.trim().length;
   const level = len === 0 ? 0 : len < 40 ? 1 : len < 120 ? 2 : 3;
-  const say = ["", "Хорошее начало — можно чуть подробнее", "Отлично! Ещё пара деталей не помешает", "Замечательно — так проще подобрать занятие 🧡"];
+  const say = ["", "Хорошее начало — можно чуть подробнее", "Отлично! Ещё пара деталей не помешает", "Замечательно — так проще подобрать занятие"];
 
   return (
     <div className="flex flex-col gap-2">
       <textarea
         ref={ref}
         aria-labelledby={props["aria-labelledby"]}
+        aria-invalid={!!props.errorId}
+        aria-describedby={props.errorId}
         className={`${inputClass} min-h-28 resize-none transition-[border-color,box-shadow] focus:shadow-[0_0_0_4px_var(--p-soft)]`}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
@@ -775,6 +822,7 @@ function TextBox(props: {
           </div>
           <span key={level} className="error-in text-sm text-hint">
             {say[level]}
+            {level === 3 && <Icon name="heart" className="ml-1 size-[1.1em] align-[-0.18em] text-cta" />}
           </span>
         </div>
       )}
@@ -815,7 +863,7 @@ function Ideas(props: { ideas: string[]; value: string; onChange: (v: string) =>
               on ? "is-on border-accent bg-accent text-accent-text" : "border-line bg-page hover:border-accent/60"
             }`}
           >
-            {on ? "✓ " : "+ "}
+            <span aria-hidden="true">{on ? "✓ " : "+ "}</span>
             {idea}
           </button>
         );
@@ -850,7 +898,8 @@ function Review(props: { draft: Draft; onEdit: (step: number) => void }) {
         <Card className="flex flex-col gap-2">
           <div className="flex items-center justify-between gap-3">
             <span className="font-semibold">
-              <span aria-hidden="true">{STEPS[r.step].icon}</span> {STEPS[r.step].short}
+              <Icon name={STEPS[r.step].icon} className="mr-1.5 size-[1.15em] align-[-0.2em] text-accent" />
+              {STEPS[r.step].short}
             </span>
             <button type="button" onClick={() => props.onEdit(r.step)} className="rounded-full px-3 py-1 text-sm font-semibold text-link hover:bg-soft">
               Изменить

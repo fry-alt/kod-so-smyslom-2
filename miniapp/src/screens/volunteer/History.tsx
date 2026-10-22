@@ -1,6 +1,7 @@
 // Моя история: на что откликался и куда приглашали, где участвовал и сколько часов набралось.
 import type { Opportunity, Participation } from "../../api";
 import { backend, getVolunteerId } from "../../backend";
+import { Icon } from "../../icons";
 import { PARTICIPATION, PARTICIPATION_COLOR } from "../../labels";
 import { navigate } from "../../router";
 import { Badge, Button, Card, Empty, ErrorBox, formatHours, formatWhen, Loading, useLoad } from "../../ui";
@@ -66,7 +67,12 @@ function HistoryItem(props: { p: Participation; startsAt?: string }) {
         {p.status === "attended" && <span className="font-semibold">+{formatHours(p.hours)} ч</span>}
       </div>
       <p className="text-lg font-semibold">{p.opportunity_title || "Дело фонда"}</p>
-      {props.startsAt && <p className="text-hint">🗓 {formatWhen(props.startsAt)}</p>}
+      {props.startsAt && (
+        <p className="text-hint">
+          <Icon name="calendar" className="mr-1 size-[1.1em] align-[-0.18em]" />
+          {formatWhen(props.startsAt)}
+        </p>
+      )}
       {p.status === "invited" && (
         <div>
           <Button variant="secondary" onClick={() => navigate("/opportunities")}>
