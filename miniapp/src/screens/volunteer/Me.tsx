@@ -145,7 +145,8 @@ export default function Me() {
               logout();
               navigate("/");
             }}
-            className="min-h-12 self-start rounded-full px-4 font-semibold text-hint hover:text-ink"
+            {...flairHandlers}
+            className={`btn-flair min-h-12 self-start rounded-full px-4 font-semibold text-hint ${FLAIR.secondary}`}
           >
             Выйти из кабинета
           </button>

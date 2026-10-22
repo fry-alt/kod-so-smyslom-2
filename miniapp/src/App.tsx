@@ -12,7 +12,7 @@ import CallScreen from "./call/CallScreen";
 import CoordinatorPanel from "./call/CoordinatorPanel";
 import { match, navigate, navigateBack, usePath } from "./router";
 import { tg } from "./telegram";
-import { ButtonLink, Link, useLoad } from "./ui";
+import { ButtonLink, FLAIR, flairHandlers, Link, useLoad } from "./ui";
 import Auth from "./screens/Auth";
 import Analytics from "./screens/admin/Analytics";
 import AdminMessages from "./screens/admin/Messages";
@@ -259,7 +259,8 @@ function CoordinatorMenu() {
           logout();
           navigate("/");
         }}
-        className="min-h-10 rounded-full border-2 border-line px-4 font-semibold hover:border-accent"
+        {...flairHandlers}
+        className={`btn-flair min-h-10 rounded-full border-2 border-line px-4 font-semibold ${FLAIR.secondary}`}
       >
         Выйти
       </button>

@@ -1037,10 +1037,7 @@ html:has(form [data-step]) {
 .goo.is-ready .goo-btn {
   background: var(--p-cta);
 }
-/* наведение и нажатие — как у главной кнопки сайта: жёлтый из логотипа */
-.goo.is-ready:has(.goo-send:hover) .goo-btn {
-  background: var(--logo-yellow);
-}
+/* наведение — заливка .btn-flair на самой кнопке (.goo-send), нажатие — капля чуть сжимается */
 .goo:has(.goo-send:active) .goo-btn {
   transform: scale(0.95);
 }
@@ -1388,4 +1385,13 @@ html:has(form [data-step]) {
   .select-chevron {
     transition: none;
   }
+}
+
+/* «Спросить» в «Спросить о фонде»: заливка .btn-flair — ровно по видимой кнопке (.goo-btn), а не по всему «рукаву».
+   Прозрачная рамка толщиной с отступ: overflow обрезает по внутреннему краю рамки, а нажимать можно всю кнопку. */
+.goo-send.btn-flair {
+  border: var(--goo-inset) solid transparent;
+  transition:
+    color 0.4s ease,
+    transform 0.15s ease;
 }

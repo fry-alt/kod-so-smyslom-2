@@ -89,15 +89,21 @@ export function ButtonLink(props: {
   wide?: boolean;
 }) {
   const look = props.variant === "primary"
-    ? "bg-accent text-accent-text shadow-sm"
-    : "border-2 border-line bg-surface text-ink hover:border-accent";
+    ? `bg-accent text-accent-text shadow-sm ${FLAIR.primary}`
+    : `border-2 border-line bg-surface text-ink ${FLAIR.secondary}`;
   return (
-    <Link
-      to={props.to}
-      className={`inline-flex min-h-12 items-center justify-center rounded-full px-6 py-3 font-semibold no-underline ${look} ${props.wide ? "w-full" : ""}`}
+    <a
+      href={props.to}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey) return; // открыть в новой вкладке — как обычно
+        e.preventDefault();
+        navigate(props.to);
+      }}
+      {...flairHandlers}
+      className={`btn-flair inline-flex min-h-12 items-center justify-center rounded-full px-6 py-3 font-semibold no-underline ${look} ${props.wide ? "w-full" : ""}`}
     >
       {props.children}
-    </Link>
+    </a>
   );
 }
 

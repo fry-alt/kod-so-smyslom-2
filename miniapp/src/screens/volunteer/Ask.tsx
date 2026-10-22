@@ -6,7 +6,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, ty
 import type { ChatMessage, Source } from "../../api";
 import { chatApi } from "../../backend";
 import { tg } from "../../telegram";
-import { Button, ErrorBox, errorText } from "../../ui";
+import { Button, ErrorBox, errorText, FLAIR, flairHandlers } from "../../ui";
 import { navigate } from "../../router";
 
 /** Примеры вопросов — нажать и сразу спросить. */
@@ -179,7 +179,8 @@ function Examples(props: { onPick: (q: string) => void }) {
             key={q}
             type="button"
             onClick={() => props.onPick(q)}
-            className="min-h-12 rounded-full border border-line bg-page px-5 py-2 text-left transition-colors hover:border-accent hover:bg-soft"
+            {...flairHandlers}
+            className={`btn-flair min-h-12 rounded-full border border-line bg-page px-5 py-2 text-left ${FLAIR.secondary}`}
           >
             {q}
           </button>
@@ -246,7 +247,13 @@ function GooeyComposer(props: {
           label={props.label}
           placeholder={props.placeholder}
         />
-        <button type="submit" disabled={props.loading} className="goo-send">
+        <button
+          type="submit"
+          disabled={props.loading}
+          {...flairHandlers}
+          // заливка — как у главной кнопки (жёлтым), пока поле пустое — как у второстепенной (зелёным)
+          className={`goo-send btn-flair ${ready ? FLAIR.cta : "[--flair:var(--p-accent)] [--flair-text:var(--p-accent-text)]"}`}
+        >
           <span className="sr-only sm:not-sr-only">{props.loading ? "Ждём…" : props.action}</span>
           {props.loading ? <Dots /> : <Arrow />}
         </button>
