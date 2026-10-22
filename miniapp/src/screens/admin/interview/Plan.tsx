@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import type { InterviewPlan } from "../../../api";
 import { backend } from "../../../backend";
+import { Icon } from "../../../icons";
 import { Badge, Button, ErrorBox, errorText, Loading, useLoad } from "../../../ui";
 
 export default function Plan(props: { volunteerId: number }) {
@@ -52,7 +53,10 @@ export default function Plan(props: { volunteerId: number }) {
         <>
           {plan.focus.length > 0 && (
             <div className="flex flex-col gap-2 rounded-2xl border-2 border-pop bg-page p-4">
-              <span className="font-semibold">👀 На что обратить внимание</span>
+              <span className="font-semibold">
+                <Icon name="eye" className="mr-1.5 size-[1.15em] align-[-0.2em]" />
+                На что обратить внимание
+              </span>
               <ul className="flex list-disc flex-col gap-1 pl-5">
                 {plan.focus.map((f) => (
                   <li key={f}>{f}</li>

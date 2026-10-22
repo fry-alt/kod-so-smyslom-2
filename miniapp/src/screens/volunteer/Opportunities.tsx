@@ -4,6 +4,7 @@ import { type ReactNode, useState } from "react";
 import type { Opportunity, Participation, ParticipationStatus } from "../../api";
 import { backend, getVolunteerId } from "../../backend";
 import { FORMAT, REGION } from "../../labels";
+import { Icon } from "../../icons";
 import { navigate } from "../../router";
 import { Button, Empty, ErrorBox, errorText, formatHours, formatWhen, Loading, useLoad } from "../../ui";
 
@@ -73,6 +74,7 @@ export default function Opportunities() {
                 participation={mine.find((p) => p.opportunity_id === o.id)}
                 onDone={done}
                 invite
+                nested
               />
             ))}
           </div>
@@ -92,6 +94,7 @@ export default function Opportunities() {
                   o={o}
                   participation={mine.find((p) => p.opportunity_id === o.id)}
                   onDone={done}
+                  nested={invites.length > 0}
                 />
               ))}
             </div>
@@ -115,8 +118,11 @@ function OpportunityItem(props: {
   participation?: Participation;
   onDone: (notice: string) => void;
   invite?: boolean;
+  /** карточка внутри раздела с заголовком h2 («Вас приглашают», «Все возможности») — тогда её заголовок h3 */
+  nested?: boolean;
 }) {
   const { o, participation } = props;
+  const Title = props.nested ? "h3" : "h2";
   const volunteerId = getVolunteerId();
   const left = Math.max(0, o.slots - o.taken);
   const [busy, setBusy] = useState<"" | "respond" | "confirm" | "decline">("");
@@ -161,7 +167,7 @@ function OpportunityItem(props: {
           <span className="text-sm text-hint">{d.toLocaleDateString("ru", { weekday: "short" })}</span>
         </span>
         <div className="flex min-w-0 flex-col gap-1">
-          <h3 className="break-words text-xl leading-snug font-semibold">{o.title}</h3>
+          <Title className="break-words text-xl leading-snug font-semibold">{o.title}</Title>
           <p className="[overflow-wrap:anywhere] text-hint">
             {d.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })},{" "}
             {o.format === "online" ? FORMAT.online.toLowerCase() : o.place || REGION[o.region]}
@@ -174,7 +180,10 @@ function OpportunityItem(props: {
             ) : (
               <Chip className="bg-soft">Все места заняты</Chip>
             )}
-            <Chip className="bg-soft">⏱ {formatHours(o.hours)} ч</Chip>
+            <Chip className="bg-soft">
+              <Icon name="clock" className="mr-1 size-[1.1em] align-[-0.18em]" />
+              {formatHours(o.hours)} ч
+            </Chip>
             {o.recommended && <Chip className="bg-accent text-accent-text">Подходит вам</Chip>}
           </div>
         </div>

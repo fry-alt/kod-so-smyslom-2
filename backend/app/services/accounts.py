@@ -1,7 +1,7 @@
 """Аккаунты сайта: регистрация и вход по почте и паролю, роль «волонтёр» или «координатор».
 
 Пароль хранится только хэшем (PBKDF2 из стандартной библиотеки — без новых зависимостей).
-Почта и пароль в LLM и в индекс не уходят. Координатором можно стать только с кодом фонда:
+Имя, почта и пароль в LLM и в индекс не уходят. Координатором можно стать только с кодом фонда:
 координатор меняет его в кабинете («Настройки»), а пока не менял — COORDINATOR_CODE из .env, иначе 1111.
 """
 
@@ -81,7 +81,11 @@ def prepare(session: Session, data: RegisterIn) -> dict:
         data.code.strip().encode(), coordinator_code(session).encode()
     ):
         raise AuthError("Неверный код фонда. Его выдаёт руководитель фонда")
+    name = " ".join(data.name.split())
+    if not name:
+        raise AuthError("Напишите, как вас зовут")
     return {
+        "name": name,
         "email": data.email.strip().lower(),
         "password_hash": hash_password(data.password),
         "role": data.role,
@@ -93,6 +97,7 @@ def create(session: Session, payload: dict) -> AuthOut:
     if by_email(session, payload["email"]):
         raise AuthError("Эта почта уже зарегистрирована — войдите")
     account = Account(
+        name=payload.get("name", ""),  # заявки, отправленные до того, как спросили имя, — без него
         email=payload["email"],
         password_hash=payload["password_hash"],
         role=payload["role"],

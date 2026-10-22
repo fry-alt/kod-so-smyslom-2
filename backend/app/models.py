@@ -137,6 +137,7 @@ class Account(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=_now)
+    name: str = ""  # как зовут; у старых аккаунтов пусто
     email: str = Field(index=True, unique=True)  # в нижнем регистре
     password_hash: str
     role: str = "volunteer"  # schemas.AccountRole

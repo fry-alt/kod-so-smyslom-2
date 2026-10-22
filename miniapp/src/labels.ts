@@ -65,14 +65,23 @@ export const STATUS: Record<VolunteerStatus, string> = {
   paused: "На паузе",
 };
 
-/** Цвет метки статуса (классы Tailwind). */
+/** Цвет метки статуса — CSS-переменные --status-* из index.css, у каждого этапа свой оттенок. */
 export const STATUS_COLOR: Record<VolunteerStatus, string> = {
-  new: "bg-sky-100 text-sky-900",
-  training: "bg-amber-100 text-amber-900",
-  trained: "bg-lime-100 text-lime-900",
-  approved: "bg-green-100 text-green-900",
-  active: "bg-emerald-200 text-emerald-950",
-  paused: "bg-gray-200 text-gray-700",
+  new: "bg-[var(--status-new)] text-[var(--status-new-ink)]",
+  training: "bg-[var(--status-training)] text-[var(--status-training-ink)]",
+  trained: "bg-[var(--status-trained)] text-[var(--status-trained-ink)]",
+  approved: "bg-[var(--status-approved)] text-[var(--status-approved-ink)]",
+  active: "bg-[var(--status-active)] text-[var(--status-active-ink)]",
+  paused: "bg-[var(--status-paused)] text-[var(--status-paused-ink)]",
+};
+
+/** Номер этапа на пути волонтёра (1–5) — в метке статуса рядом с названием. У паузы номера нет. */
+export const STATUS_STEP: Partial<Record<VolunteerStatus, number>> = {
+  new: 1,
+  training: 2,
+  trained: 3,
+  approved: 4,
+  active: 5,
 };
 
 export const PARTICIPATION: Record<ParticipationStatus, string> = {

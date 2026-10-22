@@ -59,10 +59,12 @@ export default function Markdown({ text }: { text: string }) {
         switch (b.kind) {
           case "h1":
             return <h2 key={i} className="text-2xl font-bold">{inline(b.text)}</h2>;
+          // у страницы уже есть h1 (название модуля), а в текстах модулей разделы начинаются с «##» —
+          // поэтому «##» тоже h2, чтобы уровни заголовков шли без пропуска
           case "h2":
-            return <h3 key={i} className="pt-2 text-xl font-bold">{inline(b.text)}</h3>;
+            return <h2 key={i} className="pt-2 text-xl font-bold">{inline(b.text)}</h2>;
           case "h3":
-            return <h4 key={i} className="text-lg font-bold">{inline(b.text)}</h4>;
+            return <h3 key={i} className="text-lg font-bold">{inline(b.text)}</h3>;
           case "quote":
             return (
               <p key={i} className="border-l-4 border-accent pl-4 text-hint">
