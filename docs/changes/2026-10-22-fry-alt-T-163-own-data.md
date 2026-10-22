@@ -2,7 +2,7 @@
 date: 2026-10-22
 author: fry-alt
 task: T-163 (#163), T-164 (#164), T-165 (#165)
-pr: ссылка на PR
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/168
 areas: [бэкенд, интерфейс]
 ---
 
