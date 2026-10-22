@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session
 
-from app.api.auth import current_account
+from app.api.auth import coordinator, current_account
 from app.db import get_session
 from app.models import Account, Volunteer
 from app.schemas import (
@@ -38,14 +38,14 @@ def create(
     return volunteers.to_out(session, volunteer)
 
 
-@router.get("", response_model=list[VolunteerOut])
+@router.get("", response_model=list[VolunteerOut], dependencies=[Depends(coordinator)])
 def list_all(
     status: VolunteerStatus | None = None, session: Session = Depends(get_session)
 ) -> list[VolunteerOut]:
     return [volunteers.to_out(session, v) for v in volunteers.list_all(session, status)]
 
 
-@router.get("/export.csv", response_class=Response)
+@router.get("/export.csv", response_class=Response, dependencies=[Depends(coordinator)])
 def export_csv(session: Session = Depends(get_session)) -> Response:
     """Часы волонтёров для «Добро.рф»: имя, контакт, часы, роли, статус. Открывается в Excel."""
     return Response(
@@ -60,7 +60,7 @@ def get(volunteer_id: int, session: Session = Depends(get_session)) -> Volunteer
     return volunteers.to_out(session, _get_or_404(session, volunteer_id))
 
 
-@router.patch("/{volunteer_id}", response_model=VolunteerOut)
+@router.patch("/{volunteer_id}", response_model=VolunteerOut, dependencies=[Depends(coordinator)])
 def update(
     volunteer_id: int, data: VolunteerUpdate, session: Session = Depends(get_session)
 ) -> VolunteerOut:
@@ -75,11 +75,11 @@ def thanks(volunteer_id: int, session: Session = Depends(get_session)) -> Thanks
     return hours.thanks(session, _get_or_404(session, volunteer_id))
 
 
-@router.get("/{volunteer_id}/notes", response_model=list[Note])
+@router.get("/{volunteer_id}/notes", response_model=list[Note], dependencies=[Depends(coordinator)])
 def list_notes(volunteer_id: int, session: Session = Depends(get_session)) -> list[Note]:
     return volunteers.list_notes(session, _get_or_404(session, volunteer_id))
 
 
-@router.post("/{volunteer_id}/notes", response_model=Note)
+@router.post("/{volunteer_id}/notes", response_model=Note, dependencies=[Depends(coordinator)])
 def add_note(volunteer_id: int, data: NoteIn, session: Session = Depends(get_session)) -> Note:
     return volunteers.add_note(session, _get_or_404(session, volunteer_id), data)

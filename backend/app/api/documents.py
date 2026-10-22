@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlmodel import Session
 
+from app.api.auth import coordinator
 from app.api.telegram_auth import telegram_user
 from app.config import get_settings
 from app.db import get_session
@@ -22,7 +23,7 @@ def documents() -> DocumentsInfo:
     return list_documents()
 
 
-@router.post("/upload", response_model=UploadResponse)
+@router.post("/upload", response_model=UploadResponse, dependencies=[Depends(coordinator)])
 def upload(file: UploadFile) -> UploadResponse:
     name = Path(file.filename or "").name  # отбрасываем путь из имени — защита от ../
     if Path(name).suffix.lower() not in SUPPORTED_SUFFIXES:
@@ -42,7 +43,7 @@ def upload(file: UploadFile) -> UploadResponse:
     return UploadResponse(filename=name, chunks=chunks)
 
 
-@router.delete("/{filename}")
+@router.delete("/{filename}", dependencies=[Depends(coordinator)])
 def delete(filename: str) -> dict[str, int]:
     """Убрать файл из базы знаний (все его чанки и загруженную копию)."""
     deleted = delete_document(filename)

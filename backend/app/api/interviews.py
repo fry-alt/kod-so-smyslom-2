@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
+from app.api.auth import coordinator
 from app.db import get_session
 from app.models import Interview as InterviewRow
 from app.models import Volunteer
@@ -33,7 +34,11 @@ def _interview_or_404(session: Session, interview_id: int) -> InterviewRow:
     return interview
 
 
-@router.post("/volunteers/{volunteer_id}/interviews", response_model=Interview)
+@router.post(
+    "/volunteers/{volunteer_id}/interviews",
+    response_model=Interview,
+    dependencies=[Depends(coordinator)],
+)
 def create(
     volunteer_id: int, data: InterviewIn, session: Session = Depends(get_session)
 ) -> Interview:
@@ -69,7 +74,11 @@ def list_for_volunteer(
     return [interviews.to_out(session, i) for i in interviews.for_volunteer(session, volunteer)]
 
 
-@router.get("/volunteers/{volunteer_id}/interview-plan", response_model=InterviewPlan)
+@router.get(
+    "/volunteers/{volunteer_id}/interview-plan",
+    response_model=InterviewPlan,
+    dependencies=[Depends(coordinator)],
+)
 def plan(
     volunteer_id: int, refresh: bool = False, session: Session = Depends(get_session)
 ) -> InterviewPlan:
@@ -87,7 +96,11 @@ def update(
     return interviews.to_out(session, interviews.update_status(session, interview, data.status))
 
 
-@router.put("/interviews/{interview_id}/result", response_model=Interview)
+@router.put(
+    "/interviews/{interview_id}/result",
+    response_model=Interview,
+    dependencies=[Depends(coordinator)],
+)
 def save_result(
     interview_id: int, data: InterviewResultIn, session: Session = Depends(get_session)
 ) -> Interview:

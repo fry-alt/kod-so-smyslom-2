@@ -17,10 +17,15 @@ class BackendClient:
         self,
         base_url: str,
         timeout: float = 90.0,
+        service_key: str = "",
         transport: httpx.AsyncBaseTransport | None = None,
     ):
+        # служебный ключ (SERVICE_KEY) нужен для загрузки документов — она только для фонда
+        headers = {"X-Service-Key": service_key} if service_key else {}
         # transport нужен только тестам — чтобы ходить в FastAPI-приложение без сети
-        self._http = httpx.AsyncClient(base_url=base_url, timeout=timeout, transport=transport)
+        self._http = httpx.AsyncClient(
+            base_url=base_url, timeout=timeout, headers=headers, transport=transport
+        )
 
     async def chat(self, message: str, user_id: str, history: list[dict] | None = None) -> str:
         body = {"message": message, "user_id": user_id, "channel": "bot", "history": history or []}

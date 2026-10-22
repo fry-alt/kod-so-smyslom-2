@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
+from app.api.auth import coordinator
 from app.db import get_session
 from app.models import Opportunity, Volunteer
 from app.models import Participation as ParticipationRow
@@ -38,7 +39,7 @@ def _participation_or_404(session: Session, participation_id: int) -> Participat
     return participation
 
 
-@router.post("/opportunities", response_model=OpportunityOut)
+@router.post("/opportunities", response_model=OpportunityOut, dependencies=[Depends(coordinator)])
 def create(data: OpportunityIn, session: Session = Depends(get_session)) -> OpportunityOut:
     """Координатор создаёт задачу или мероприятие."""
     return opportunities.to_out(session, opportunities.create(session, data))
@@ -69,7 +70,11 @@ def respond(
     return opportunities.participation_out(session, participation)
 
 
-@router.post("/opportunities/{opportunity_id}/invite", response_model=list[Participation])
+@router.post(
+    "/opportunities/{opportunity_id}/invite",
+    response_model=list[Participation],
+    dependencies=[Depends(coordinator)],
+)
 def invite(
     opportunity_id: int, data: InviteIn, session: Session = Depends(get_session)
 ) -> list[Participation]:
@@ -82,7 +87,11 @@ def invite(
     ]
 
 
-@router.get("/opportunities/{opportunity_id}/participants", response_model=list[Participation])
+@router.get(
+    "/opportunities/{opportunity_id}/participants",
+    response_model=list[Participation],
+    dependencies=[Depends(coordinator)],
+)
 def participants(
     opportunity_id: int, session: Session = Depends(get_session)
 ) -> list[Participation]:
@@ -97,7 +106,11 @@ def volunteer_history(
     return opportunities.volunteer_history(session, _volunteer_or_404(session, volunteer_id))
 
 
-@router.patch("/participations/{participation_id}", response_model=Participation)
+@router.patch(
+    "/participations/{participation_id}",
+    response_model=Participation,
+    dependencies=[Depends(coordinator)],
+)
 def update(
     participation_id: int, data: ParticipationUpdate, session: Session = Depends(get_session)
 ) -> Participation:

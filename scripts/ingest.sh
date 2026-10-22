@@ -4,6 +4,8 @@
 set -euo pipefail
 
 BASE_URL="${BACKEND_URL:-http://localhost:8000}"
+# служебный ключ из .env (make передаёт его сам): загрузка документов — только для фонда
+KEY="X-Service-Key: ${SERVICE_KEY:-}"
 
 curl -fsS "$BASE_URL/health" >/dev/null || {
   echo "❌ Бэкенд $BASE_URL недоступен. Запустите make up или make dev."
@@ -17,7 +19,7 @@ for dir in "${@:-data/demo}"; do
     *.pdf | *.docx | *.xlsx | *.csv | *.txt | *.md) ;;
     *) continue ;;
     esac
-    echo "→ $(basename "$file"): $(curl -fsS -X POST "$BASE_URL/documents/upload" -F "file=@$file")"
+    echo "→ $(basename "$file"): $(curl -fsS -X POST "$BASE_URL/documents/upload" -H "$KEY" -F "file=@$file")"
     count=$((count + 1))
   done
 done
