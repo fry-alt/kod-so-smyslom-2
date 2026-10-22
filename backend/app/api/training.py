@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
+from app.api.auth import Viewer, check_owner, viewer
 from app.db import get_session
 from app.schemas import Quiz, QuizResult, QuizSubmit, TrainingModule
 from app.services import training, volunteers
@@ -29,9 +30,12 @@ def quiz(module_id: str, session: Session = Depends(get_session)) -> Quiz:
 
 
 @router.post("/submit", response_model=QuizResult)
-def submit(data: QuizSubmit, session: Session = Depends(get_session)) -> QuizResult:
-    """Проверка теста: балл, сдан ли (от 70%), новый статус волонтёра."""
+def submit(
+    data: QuizSubmit, session: Session = Depends(get_session), who: Viewer = Depends(viewer)
+) -> QuizResult:
+    """Проверка теста: балл, сдан ли (от 70%), новый статус волонтёра. Сдать можно только за себя."""
     volunteer = volunteers.get(session, data.volunteer_id)
     if volunteer is None:
         raise HTTPException(404, f"Волонтёр {data.volunteer_id} не найден")
+    check_owner(who, volunteer)
     return training.submit(session, volunteer, _module_or_404(data.module_id), data.answers)

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from app.api.auth import coordinator
+from app.api.auth import Viewer, check_owner, coordinator, viewer
 from app.db import get_session
 from app.models import Opportunity, Volunteer
 from app.models import Participation as ParticipationRow
@@ -32,6 +32,13 @@ def _volunteer_or_404(session: Session, volunteer_id: int) -> Volunteer:
     return volunteer
 
 
+def _own_volunteer(session: Session, volunteer_id: int, who: Viewer) -> Volunteer:
+    """Волонтёр по номеру — только он сам или координатор (check_owner)."""
+    volunteer = _volunteer_or_404(session, volunteer_id)
+    check_owner(who, volunteer)
+    return volunteer
+
+
 def _participation_or_404(session: Session, participation_id: int) -> ParticipationRow:
     participation = opportunities.get_participation(session, participation_id)
     if participation is None:
@@ -47,10 +54,12 @@ def create(data: OpportunityIn, session: Session = Depends(get_session)) -> Oppo
 
 @router.get("/opportunities", response_model=list[OpportunityOut])
 def list_all(
-    volunteer_id: int | None = None, session: Session = Depends(get_session)
+    volunteer_id: int | None = None,
+    session: Session = Depends(get_session),
+    who: Viewer = Depends(viewer),
 ) -> list[OpportunityOut]:
-    """Каталог. С volunteer_id — флаг «подходит вам» и статус участия этого волонтёра."""
-    volunteer = _volunteer_or_404(session, volunteer_id) if volunteer_id is not None else None
+    """Каталог. С volunteer_id — флаг «подходит вам» и статус участия этого волонтёра (только своего)."""
+    volunteer = _own_volunteer(session, volunteer_id, who) if volunteer_id is not None else None
     return [opportunities.to_out(session, o, volunteer) for o in opportunities.list_all(session)]
 
 
@@ -61,22 +70,28 @@ def get(opportunity_id: int, session: Session = Depends(get_session)) -> Opportu
 
 @router.post("/opportunities/{opportunity_id}/respond", response_model=Participation)
 def respond(
-    opportunity_id: int, data: RespondIn, session: Session = Depends(get_session)
+    opportunity_id: int,
+    data: RespondIn,
+    session: Session = Depends(get_session),
+    who: Viewer = Depends(viewer),
 ) -> Participation:
     """Волонтёр откликается."""
     opportunity = _opportunity_or_404(session, opportunity_id)
-    volunteer = _volunteer_or_404(session, data.volunteer_id)
+    volunteer = _own_volunteer(session, data.volunteer_id, who)
     participation = opportunities.respond(session, opportunity, volunteer)
     return opportunities.participation_out(session, participation)
 
 
 @router.post("/opportunities/{opportunity_id}/cancel", response_model=Participation)
 def cancel(
-    opportunity_id: int, data: RespondIn, session: Session = Depends(get_session)
+    opportunity_id: int,
+    data: RespondIn,
+    session: Session = Depends(get_session),
+    who: Viewer = Depends(viewer),
 ) -> Participation:
     """Волонтёр отменяет свой отклик или запись, или отказывается от приглашения."""
     opportunity = _opportunity_or_404(session, opportunity_id)
-    volunteer = _volunteer_or_404(session, data.volunteer_id)
+    volunteer = _own_volunteer(session, data.volunteer_id, who)
     try:
         participation = opportunities.cancel(session, opportunity, volunteer)
     except opportunities.ParticipationError as e:
@@ -114,10 +129,10 @@ def participants(
 
 @router.get("/volunteers/{volunteer_id}/participations", response_model=list[Participation])
 def volunteer_history(
-    volunteer_id: int, session: Session = Depends(get_session)
+    volunteer_id: int, session: Session = Depends(get_session), who: Viewer = Depends(viewer)
 ) -> list[Participation]:
     """История участия волонтёра — для него самого и для карточки в /admin."""
-    return opportunities.volunteer_history(session, _volunteer_or_404(session, volunteer_id))
+    return opportunities.volunteer_history(session, _own_volunteer(session, volunteer_id, who))
 
 
 @router.patch(

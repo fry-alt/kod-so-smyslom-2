@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from app.api.auth import coordinator
+from app.api.auth import Viewer, check_owner, coordinator, viewer
 from app.db import get_session
 from app.models import Interview as InterviewRow
 from app.models import Volunteer
@@ -55,10 +55,14 @@ def slots(session: Session = Depends(get_session)) -> InterviewSlots:
 
 @router.post("/volunteers/{volunteer_id}/interviews/book", response_model=Interview)
 def book(
-    volunteer_id: int, data: InterviewBookIn, session: Session = Depends(get_session)
+    volunteer_id: int,
+    data: InterviewBookIn,
+    session: Session = Depends(get_session),
+    who: Viewer = Depends(viewer),
 ) -> Interview:
     """Волонтёр сам записывается на свободное время; координатор увидит запись в «Сводке»."""
     volunteer = _volunteer_or_404(session, volunteer_id)
+    check_owner(who, volunteer)
     try:
         return interviews.to_out(session, interviews.book(session, volunteer, data.starts_at))
     except interviews.BookingError as e:
@@ -67,10 +71,11 @@ def book(
 
 @router.get("/volunteers/{volunteer_id}/interviews", response_model=list[Interview])
 def list_for_volunteer(
-    volunteer_id: int, session: Session = Depends(get_session)
+    volunteer_id: int, session: Session = Depends(get_session), who: Viewer = Depends(viewer)
 ) -> list[Interview]:
     """Собеседования волонтёра — для карточки в /admin и для раздела «Я»."""
     volunteer = _volunteer_or_404(session, volunteer_id)
+    check_owner(who, volunteer)
     return [interviews.to_out(session, i) for i in interviews.for_volunteer(session, volunteer)]
 
 
@@ -89,10 +94,16 @@ def plan(
 
 @router.patch("/interviews/{interview_id}", response_model=Interview)
 def update(
-    interview_id: int, data: InterviewUpdate, session: Session = Depends(get_session)
+    interview_id: int,
+    data: InterviewUpdate,
+    session: Session = Depends(get_session),
+    who: Viewer = Depends(viewer),
 ) -> Interview:
-    """done — прошло, canceled — отменить (ссылка перестаёт работать)."""
+    """done — прошло, canceled — отменить (ссылка перестаёт работать). Волонтёр может только отменить своё."""
     interview = _interview_or_404(session, interview_id)
+    check_owner(who, _volunteer_or_404(session, interview.volunteer_id))
+    if not who.is_coordinator and data.status != "canceled":
+        raise HTTPException(403, "Отметить собеседование может только координатор фонда")
     return interviews.to_out(session, interviews.update_status(session, interview, data.status))
 
 

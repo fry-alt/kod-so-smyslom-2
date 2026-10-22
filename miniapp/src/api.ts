@@ -164,6 +164,8 @@ export type SearchResponse = { parsed: ParsedQuery; candidates: Candidate[]; tot
 export type TrainingModule = { id: string; title: string; text: string; required: boolean };
 export type Quiz = { module_id: string; questions: { question: string; options: string[] }[] };
 export type QuizSubmit = { volunteer_id: number; module_id: string; answers: number[] };
+/** Как волонтёр сдал модуль: лучший балл из его попыток (хранится на сервере). Модулей без попыток в списке нет. */
+export type ModuleProgress = { module_id: string; score: number; passed: boolean };
 export type QuizResult = {
   score: number;
   passed: boolean;
@@ -369,6 +371,7 @@ export const volunteersApi = {
   training: () => request<TrainingModule[]>("GET", "/training"),
   quiz: (moduleId: string) => request<Quiz>("GET", `/training/${moduleId}/quiz`),
   submitQuiz: (data: QuizSubmit) => post<QuizResult>("/training/submit", data),
+  trainingProgress: (volunteerId: number) => request<ModuleProgress[]>("GET", `/volunteers/${volunteerId}/training`),
   opportunities: (volunteerId?: number) =>
     request<Opportunity[]>("GET", "/opportunities" + (volunteerId ? `?volunteer_id=${volunteerId}` : "")),
   respond: (opportunityId: number, volunteerId: number) =>

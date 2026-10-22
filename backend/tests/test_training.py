@@ -142,6 +142,20 @@ def test_statuses_and_score(client, llm, volunteer_id):
     assert meta["status"] == "trained"  # поиск видит новый статус
 
 
+def test_progress_by_module_is_kept_on_server(client, llm, volunteer_id):
+    assert client.get(f"/volunteers/{volunteer_id}/training").json() == []
+    submit(client, volunteer_id, "01-about", WRONG)
+    submit(client, volunteer_id, "01-about", CORRECT)
+    submit(client, volunteer_id, "01-about", WRONG)  # худшая попытка лучший балл не затирает
+    submit(client, volunteer_id, "02-safety", [*CORRECT[:3], *WRONG[3:]])
+
+    progress = client.get(f"/volunteers/{volunteer_id}/training").json()
+    assert sorted(progress, key=lambda p: p["module_id"]) == [
+        {"module_id": "01-about", "score": 100, "passed": True},
+        {"module_id": "02-safety", "score": 60, "passed": False},
+    ]
+
+
 def test_failed_first_attempt_starts_training(client, llm, volunteer_id):
     r = submit(client, volunteer_id, "01-about", WRONG)
     assert (r["score"], r["passed"], r["status"]) == (0, False, "training")

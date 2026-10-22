@@ -9,7 +9,7 @@ import { Icon } from "../../icons";
 import { navigate, useSearchParam } from "../../router";
 import { Badge, Button, ButtonLink, Card, ErrorBox, Link, Loading, PageTitle, StatusBadge, useLoad } from "../../ui";
 import Markdown from "./training/Markdown";
-import { loadProgress, saveAttempt, type Progress } from "./training/progress";
+import { toProgress, type Progress } from "./training/progress";
 import QuizView from "./training/QuizView";
 
 /** Цвета логотипа по кругу — у каждого модуля своя метка на дорожке. */
@@ -21,7 +21,12 @@ export default function Training() {
   // статус с сервера: показываем сверху, после теста берём из ответа
   const me = useLoad(() => (volunteerId ? backend.get(volunteerId) : Promise.resolve(null)), [volunteerId]);
   const [status, setStatus] = useState<VolunteerStatus | null>(null);
-  const [progress, setProgress] = useState<Progress>(() => loadProgress(volunteerId));
+  // отметки по модулям — с сервера; после теста перечитываем (попытка там уже сохранена)
+  const saved = useLoad(
+    () => (volunteerId ? backend.trainingProgress(volunteerId) : Promise.resolve([])),
+    [volunteerId],
+  );
+  const progress = toProgress(saved.data);
   const moduleParam = useSearchParam("module");
   const quizParam = useSearchParam("quiz");
   const activeModule = modules?.find((module) => String(module.id) === moduleParam) ?? null;
@@ -38,7 +43,7 @@ export default function Training() {
           module={activeModule}
           volunteerId={volunteerId}
           onResult={(r) => {
-            setProgress(saveAttempt(volunteerId, activeModule.id, { score: r.score, passed: r.passed }));
+            saved.reload();
             setStatus(r.status);
           }}
           onBack={() => openModule(activeModule)}

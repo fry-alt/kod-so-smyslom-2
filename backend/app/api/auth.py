@@ -2,6 +2,7 @@
 
 import hmac
 import time
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
@@ -10,7 +11,7 @@ from sqlmodel import Session
 from app.api.telegram_auth import verified_telegram_id
 from app.config import get_settings
 from app.db import get_session
-from app.models import Account
+from app.models import Account, Volunteer
 from app.schemas import (
     AccountOut,
     AuthOut,
@@ -204,6 +205,43 @@ def coordinator(
     if account.role != "coordinator":
         raise HTTPException(403, "Это может только координатор фонда")
     return account
+
+
+@dataclass
+class Viewer:
+    """Кто спрашивает данные волонтёра: аккаунт по Authorization, Telegram по подписи Mini App,
+    служебный ключ бота и скриптов."""
+
+    account: Account | None
+    telegram_id: int | None
+    service: bool
+
+    @property
+    def is_coordinator(self) -> bool:
+        return self.service or (self.account is not None and self.account.role == "coordinator")
+
+
+def viewer(
+    account: Account | None = Depends(current_account),
+    telegram_id: int | None = Depends(verified_telegram_id),
+    x_service_key: Annotated[str | None, Header()] = None,
+) -> Viewer:
+    """Зависимость для маршрутов волонтёра; сама никого не отсекает — проверяет check_owner."""
+    return Viewer(account, telegram_id, is_service(x_service_key))
+
+
+def check_owner(who: Viewer, volunteer: Volunteer) -> None:
+    """Анкету, переписку, отклики и собеседования видит только сам волонтёр и координатор фонда:
+    свой — это аккаунт с этой анкетой или Telegram, из которого её заполнили. Чужую по номеру не открыть."""
+    if who.is_coordinator:
+        return
+    if who.account is not None and who.account.volunteer_id == volunteer.id:
+        return
+    if who.telegram_id is not None and who.telegram_id == volunteer.telegram_id:
+        return
+    if who.account is None and who.telegram_id is None:
+        raise HTTPException(401, "Войдите заново")
+    raise HTTPException(403, "Это данные другого волонтёра")
 
 
 @router.get("/fund-code", response_model=FundCodeOut)
