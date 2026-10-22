@@ -21,6 +21,7 @@ const ROLE: Record<AccountRole, { title: string; sub: string; icon: string }> = 
 export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
   const [mode, setMode] = useState<Mode>(props.mode ?? "register");
   const [role, setRole] = useState<AccountRole>(props.role ?? "volunteer");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -44,6 +45,8 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    const cleanName = name.trim().replace(/\s+/g, " ");
+    if (register && !cleanName) return setError("Напишите, как вас зовут");
     const clean = email.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return setError("Похоже на опечатку в почте: нужно вида name@mail.ru");
     if (register && password.length < 6) return setError("Пароль — хотя бы 6 символов");
@@ -52,7 +55,7 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
     setError("");
     try {
       const out = register
-        ? await auth.register({ email: clean, password, role, code: code.trim() })
+        ? await auth.register({ name: cleanName, email: clean, password, role, code: code.trim() })
         : await auth.login({ email: clean, password });
       if ("pending" in out) setSent(out);
       else enter(out);
@@ -120,6 +123,19 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
                   })}
                 </div>
               </fieldset>}
+
+              {register && (
+                <Label text="Как вас зовут" hint="Так к вам будут обращаться в кабинете">
+                  <input
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Например, Анна Петрова"
+                    maxLength={100}
+                    className={inputClass}
+                  />
+                </Label>
+              )}
 
               <Label text="Почта">
                 <input

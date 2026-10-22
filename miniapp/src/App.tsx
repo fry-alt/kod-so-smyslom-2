@@ -6,7 +6,7 @@
 import { useEffect, type ReactNode } from "react";
 
 import AdminDock from "./AdminDock";
-import { backend, getAccount, getVolunteerId, logout, USE_MOCK } from "./backend";
+import { accountName, backend, getAccount, getVolunteerId, logout, USE_MOCK } from "./backend";
 import Footer from "./Footer";
 import CallScreen from "./call/CallScreen";
 import CoordinatorPanel from "./call/CoordinatorPanel";
@@ -174,10 +174,16 @@ function AccountNav(props: { path: string }) {
     );
   }
   if (account && !me) {
+    // анкеты ещё нет — имя из регистрации (у старых аккаунтов его нет, тогда только кнопка)
     return (
-      <ButtonLink to="/me">
-        <span className="sm:hidden">Кабинет</span><span className="hidden sm:inline">Личный кабинет</span>
-      </ButtonLink>
+      <div className="flex items-center gap-3">
+        {account.name && (
+          <span className="hidden max-w-[12rem] truncate font-semibold sm:inline">{account.name.split(" ")[0]}</span>
+        )}
+        <ButtonLink to="/me">
+          <span className="sm:hidden">Кабинет</span><span className="hidden sm:inline">Личный кабинет</span>
+        </ButtonLink>
+      </div>
     );
   }
   if (!id || !me) {
@@ -244,14 +250,14 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
 
 /** Справа в шапке кабинета фонда: кто вошёл и «Выйти». */
 function CoordinatorMenu() {
-  const account = getAccount();
+  const name = accountName(getAccount());
   return (
     <div className="ml-auto flex items-center gap-3">
-      <span className="flex items-center gap-2" title={account?.email}>
+      <span className="flex items-center gap-2" title={name}>
         <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-full bg-soft font-display font-semibold uppercase">
-          {account?.email[0]}
+          {name[0]}
         </span>
-        <span className="hidden max-w-[14rem] truncate text-hint lg:inline">{account?.email}</span>
+        <span className="hidden max-w-[14rem] truncate text-hint lg:inline">{name}</span>
       </span>
       <button
         type="button"

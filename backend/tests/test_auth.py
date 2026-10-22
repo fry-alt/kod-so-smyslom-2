@@ -7,7 +7,7 @@ from app.services.accounts import check_password, hash_password
 
 def register(client, **changes) -> dict:
     """Регистрация в два шага: форма → код из письма → аккаунт."""
-    body = {"email": "Anna@Example.ru", "password": "secret1", "role": "volunteer", **changes}
+    body = {"name": "Анна", "email": "Anna@Example.ru", "password": "secret1", "role": "volunteer", **changes}
     letters: list[str] = []
     mail.set_mailer(lambda to, subject, text, html: letters.append(subject))
     r = client.post("/auth/register", json=body)
@@ -34,6 +34,7 @@ def test_register_login_and_me(client):
     auth = register(client)
     assert auth["account"] == {
         "id": 1,
+        "name": "Анна",
         "email": "anna@example.ru",
         "role": "volunteer",
         "volunteer_id": None,
@@ -54,7 +55,7 @@ def test_register_login_and_me(client):
 
 def test_wrong_password_duplicate_email_and_role_is_derived_from_account(client):
     register(client)
-    again = {"email": "anna@example.ru", "password": "secret1"}
+    again = {"name": "Анна", "email": "anna@example.ru", "password": "secret1"}
     assert client.post("/auth/register", json=again).status_code == 400
 
     bad = client.post(
@@ -72,6 +73,8 @@ def test_wrong_password_duplicate_email_and_role_is_derived_from_account(client)
 
 
 def test_validates_email_and_password(client):
+    no_name = {"name": "  ", "email": "a@b.ru", "password": "secret1"}
+    assert client.post("/auth/register", json=no_name).status_code == 400
     not_email = {"email": "не почта", "password": "secret1"}
     assert client.post("/auth/register", json=not_email).status_code == 422
     short = {"email": "a@b.ru", "password": "123"}
@@ -79,7 +82,7 @@ def test_validates_email_and_password(client):
 
 
 def test_coordinator_code_defaults_to_1111(client):
-    no_code = {"email": "c@fund.ru", "password": "secret1", "role": "coordinator"}
+    no_code = {"name": "Анна", "email": "c@fund.ru", "password": "secret1", "role": "coordinator"}
     assert client.post("/auth/register", json=no_code).status_code == 400
     auth = register(client, email="c@fund.ru", role="coordinator", code="1111")
     assert auth["account"]["role"] == "coordinator"
@@ -90,7 +93,7 @@ def test_coordinator_code_defaults_to_1111(client):
 def test_coordinator_code_from_env(client, monkeypatch):
     monkeypatch.setenv("COORDINATOR_CODE", "deti")
     get_settings.cache_clear()
-    wrong = {"email": "c@fund.ru", "password": "secret1", "role": "coordinator", "code": "1111"}
+    wrong = {"name": "Анна", "email": "c@fund.ru", "password": "secret1", "role": "coordinator", "code": "1111"}
     assert client.post("/auth/register", json=wrong).status_code == 400
     register(client, email="c@fund.ru", role="coordinator", code="deti")
 
@@ -102,7 +105,7 @@ def test_coordinator_changes_fund_code(client):
     assert r.status_code == 200, r.text
     assert client.get("/auth/fund-code", headers=coord).json() == {"code": "deti2026"}
     # старый код больше не подходит, новый — подходит
-    old = {"email": "c2@fund.ru", "password": "secret1", "role": "coordinator", "code": "1111"}
+    old = {"name": "Анна", "email": "c2@fund.ru", "password": "secret1", "role": "coordinator", "code": "1111"}
     assert client.post("/auth/register", json=old).status_code == 400
     register(client, email="c2@fund.ru", role="coordinator", code="deti2026")
     # слишком короткий код не сохраняем

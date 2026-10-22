@@ -92,7 +92,8 @@ const WISH_IDEAS = [
 function emptyDraft(): Draft {
   const tgName = [tgUser?.first_name, tgUser?.last_name].filter(Boolean).join(" ");
   return {
-    name: tgName,
+    // имя: из Telegram или то, что человек написал при регистрации
+    name: tgName || (getAccount()?.name ?? ""),
     // контакт подставляем сам: ник из Telegram или почта, с которой человек зарегистрировался
     contact: tgUser?.username ? `@${tgUser.username}` : (getAccount()?.email ?? ""),
     consent: false,

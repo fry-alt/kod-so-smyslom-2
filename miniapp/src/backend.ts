@@ -45,6 +45,11 @@ export function getAccount(): Account | null {
   }
 }
 
+/** Как показывать, кто вошёл: имя, а у старых аккаунтов без имени — почту. */
+export function accountName(account: Account | null): string {
+  return account?.name?.trim() || account?.email || "";
+}
+
 /** После регистрации или входа: запомнить аккаунт; если анкета уже заполнена — открыть её кабинет. */
 export function saveSession(out: AuthOut) {
   try {

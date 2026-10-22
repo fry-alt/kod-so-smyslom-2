@@ -4,7 +4,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import type { Interview, Look, Opportunity, Participation, Volunteer } from "../../api";
-import { backend, getAccount, getLook, getVolunteerId, loadLook, logout, setVolunteerId } from "../../backend";
+import { accountName, backend, getAccount, getLook, getVolunteerId, loadLook, logout, setVolunteerId } from "../../backend";
 import { FORMAT, REGION, STATUS, STATUS_COLOR } from "../../labels";
 import { UnreadBadge, useUnread } from "../../messages/Thread";
 import { navigate } from "../../router";
@@ -59,14 +59,15 @@ export default function Me() {
   }
 
   const attended = (mine ?? []).filter((p) => p.status === "attended").length;
-  const firstName = v ? v.name.split(" ")[0] : null;
+  // имя из анкеты, а пока анкеты нет — то, что человек написал при регистрации
+  const firstName = (v?.name || account?.name || "").trim().split(" ")[0] || null;
   const progress: Progress = {
     hasForm: !!v,
     trained: !!v && ["trained", "approved", "active"].includes(v.status),
     attended,
     hours: v?.hours ?? 0,
   };
-  const letter = (look.nickname || firstName || account?.email || "?")[0].toUpperCase();
+  const letter = (look.nickname || firstName || accountName(account) || "?")[0].toUpperCase();
 
   return (
     <div className="flex flex-col gap-6 pb-6">
@@ -87,7 +88,6 @@ export default function Me() {
         look={look}
         letter={letter}
         onEdit={() => setEditing(true)}
-        email={account?.email ?? null}
         badge={v ? <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge> : null}
         stats={
           v
@@ -163,7 +163,6 @@ function Hero(props: {
   look: Look;
   letter: string;
   onEdit: () => void;
-  email: string | null;
   badge: ReactNode;
   stats: { value: string; label: string }[] | null;
 }) {
@@ -181,7 +180,6 @@ function Hero(props: {
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               {props.badge}
-              {props.email && <span className="truncate text-hint">{props.email}</span>}
               <button
                 type="button"
                 onClick={props.onEdit}

@@ -961,7 +961,7 @@ function currentAccount(list: MockAccount[]): MockAccount | undefined {
 }
 
 function authOut(a: MockAccount): AuthOut {
-  return { token: a.token, account: { id: a.id, email: a.email, role: a.role, volunteer_id: a.volunteer_id } };
+  return { token: a.token, account: { id: a.id, name: a.name ?? "", email: a.email, role: a.role, volunteer_id: a.volunteer_id } };
 }
 
 /** Как на бэкенде: анкета из аккаунта волонтёра становится его анкетой. */
@@ -1006,6 +1006,7 @@ export const mockAuthApi: typeof authApi = {
       return Promise.reject(new Error("Неверный код фонда. Его выдаёт руководитель фонда"));
     mockSignups.set(email, {
       id: list.length + 1,
+      name: data.name.trim(),
       email,
       role: data.role,
       volunteer_id: null,
