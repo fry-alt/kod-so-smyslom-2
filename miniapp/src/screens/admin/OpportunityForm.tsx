@@ -5,7 +5,7 @@ import type { Format, OpportunityIn, Region, Role } from "../../api";
 import { backend } from "../../backend";
 import { FORMAT, REGION } from "../../labels";
 import { navigate } from "../../router";
-import { Button, Card, Chips, ErrorBox, errorText, Field, inputClass, Link, Loading, useLoad } from "../../ui";
+import { Button, Card, Chips, ErrorBox, errorText, Field, inputClass, Link, Loading, PageTitle, useLoad } from "../../ui";
 
 /** Завтра в 10:00 — в формате поля «дата и время» (местное время). */
 function tomorrowMorning(): string {
@@ -104,7 +104,7 @@ export default function OpportunityForm() {
   return (
     <form onSubmit={submit} className="flex max-w-3xl flex-col gap-5" noValidate>
       <Link to="/admin/opportunities">← Занятия</Link>
-      <h1 className="text-3xl font-bold">Новое занятие</h1>
+      <PageTitle>Новое занятие</PageTitle>
 
       <Card className="flex flex-col gap-3">
         <Field label="Роль фонда" hint="Выберите роль — подставим название, описание и формат. Можно без роли." group>

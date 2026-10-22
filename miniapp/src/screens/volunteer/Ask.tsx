@@ -5,8 +5,9 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, ty
 
 import type { ChatMessage, Source } from "../../api";
 import { chatApi } from "../../backend";
+import { Icon } from "../../icons";
 import { tg } from "../../telegram";
-import { Button, ErrorBox, errorText } from "../../ui";
+import { Button, ErrorBox, errorText, FLAIR, flairHandlers } from "../../ui";
 import { navigate } from "../../router";
 
 /** Примеры вопросов — нажать и сразу спросить. */
@@ -26,6 +27,7 @@ const DOC_TITLES: Record<string, string> = {
   "02-wards.md": "Обучение: подопечные",
   "03-safety.md": "Обучение: безопасность",
   "04-mentoring.md": "Обучение: наставничество",
+  "volunteer_journey.md": "Путь волонтёра в приложении",
 };
 
 type Turn = ChatMessage & { sources?: Source[] };
@@ -42,7 +44,8 @@ export default function Ask() {
           показывает, откуда взят ответ. Если в документах ответа нет, он честно об этом скажет.
         </p>
         <p className="hidden rounded-3xl bg-surface p-4 text-hint sm:block">
-          🔒 Не пишите сюда телефон, адрес и паспортные данные — их лучше передать координатору лично.
+          <Icon name="lock" className="mr-1 size-[1.1em] align-[-0.18em]" />
+          Не пишите сюда телефон, адрес и паспортные данные — их лучше передать координатору лично.
         </p>
       </header>
       <section aria-label="Переписка с помощником" className="flex min-w-0 flex-col gap-5 rounded-[2rem] bg-surface p-4 md:p-6 lg:min-h-[26rem]">
@@ -159,7 +162,10 @@ function AnswerBubble(props: { turn: Turn; question?: string }) {
           <span className="text-hint">Откуда ответ:</span>
           {sources.map((s) => (
             <details key={`${s.source}:${s.chunk}`}>
-              <summary className="cursor-pointer text-link">📄 {DOC_TITLES[s.source] ?? s.source}</summary>
+              <summary className="cursor-pointer text-link">
+                <Icon name="file" className="mr-1 size-[1.1em] align-[-0.18em]" />
+                {DOC_TITLES[s.source] ?? s.source}
+              </summary>
               <p className="mt-1 whitespace-pre-wrap text-hint">{plain(s.text)}</p>
             </details>
           ))}
@@ -179,7 +185,8 @@ function Examples(props: { onPick: (q: string) => void }) {
             key={q}
             type="button"
             onClick={() => props.onPick(q)}
-            className="min-h-12 rounded-full border border-line bg-page px-5 py-2 text-left transition-colors hover:border-accent hover:bg-soft"
+            {...flairHandlers}
+            className={`btn-flair min-h-12 rounded-full border border-line bg-page px-5 py-2 text-left ${FLAIR.secondary}`}
           >
             {q}
           </button>
@@ -246,7 +253,13 @@ function GooeyComposer(props: {
           label={props.label}
           placeholder={props.placeholder}
         />
-        <button type="submit" disabled={props.loading} className="goo-send">
+        <button
+          type="submit"
+          disabled={props.loading}
+          {...flairHandlers}
+          // заливка — как у главной кнопки (жёлтым), пока поле пустое — как у второстепенной (зелёным)
+          className={`goo-send btn-flair ${ready ? FLAIR.cta : "[--flair:var(--p-accent)] [--flair-text:var(--p-accent-text)]"}`}
+        >
           <span className="sr-only sm:not-sr-only">{props.loading ? "Ждём…" : props.action}</span>
           {props.loading ? <Dots /> : <Arrow />}
         </button>

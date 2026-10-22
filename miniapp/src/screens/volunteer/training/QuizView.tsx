@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 
 import type { Quiz, QuizResult, TrainingModule } from "../../../api";
 import { backend } from "../../../backend";
-import { STATUS, STATUS_COLOR } from "../../../labels";
-import { Badge, Button, Card, ErrorBox, errorText } from "../../../ui";
+import { Icon } from "../../../icons";
+import { Button, Card, ErrorBox, errorText, StatusBadge } from "../../../ui";
 
 const PASS_SCORE = 70;
 
@@ -119,25 +119,31 @@ export default function QuizView(props: {
         Вопрос {step + 1} из {quiz.questions.length}
       </p>
       <Card className="flex flex-col gap-4">
-        <p className="text-xl font-semibold">{q.question}</p>
-        <div className="flex flex-col gap-3" role="radiogroup">
+        <p id={`quiz-q-${step}`} className="text-xl font-semibold">
+          {q.question}
+        </p>
+        {/* настоящие radio: стрелки переключают ответ, группа названа текстом вопроса */}
+        <div className="flex flex-col gap-3" role="radiogroup" aria-labelledby={`quiz-q-${step}`}>
           {q.options.map((option, i) => {
             const on = chosen === i;
             return (
-              <button
+              <label
                 key={i}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                disabled={sending}
-                onClick={() => setAnswers((a) => a.map((x, j) => (j === step ? i : x)))}
-                className={`min-h-14 rounded-2xl border-2 px-4 py-3 text-left text-lg transition ${
+                className={`relative min-h-14 cursor-pointer rounded-2xl border-2 px-4 py-3 text-left text-lg transition select-none has-disabled:cursor-default ${
                   on ? "border-accent bg-accent text-accent-text" : "border-line bg-page"
                 }`}
               >
-                {on ? "● " : "○ "}
+                <input
+                  type="radio"
+                  name={`quiz-${attempt}-${step}`}
+                  checked={on}
+                  disabled={sending}
+                  onChange={() => setAnswers((a) => a.map((x, j) => (j === step ? i : x)))}
+                  className="sr-only"
+                />
+                <span aria-hidden="true">{on ? "● " : "○ "}</span>
                 {option}
-              </button>
+              </label>
             );
           })}
         </div>
@@ -202,13 +208,18 @@ function ResultView(props: { quiz: Quiz; answers: (number | null)[]; result: Qui
           Правильных ответов: <b>{right}</b> из {result.correct.length}
         </p>
         <p className="text-lg font-semibold">
-          {result.passed
-            ? "✅ Тест пройден!"
-            : `Пока не получилось: нужно не меньше ${PASS_SCORE}%. Перечитайте модуль и попробуйте ещё раз.`}
+          {result.passed ? (
+            <>
+              <Icon name="check" className="mr-1.5 size-[1.15em] align-[-0.2em]" />
+              Тест пройден!
+            </>
+          ) : (
+            `Пока не получилось: нужно не меньше ${PASS_SCORE}%. Перечитайте модуль и попробуйте ещё раз.`
+          )}
         </p>
         <div className="pt-1">
           <span>Ваш статус: </span>
-          <Badge className={STATUS_COLOR[result.status]}>{STATUS[result.status]}</Badge>
+          <StatusBadge status={result.status} />
         </div>
       </div>
 
@@ -229,7 +240,8 @@ function ResultView(props: { quiz: Quiz; answers: (number | null)[]; result: Qui
               </p>
               <p>Ваш ответ: {a !== null && a >= 0 ? q.options[a] : "—"}</p>
               <p className={`font-semibold ${ok ? "text-green-800" : "text-red-800"}`}>
-                {ok ? "✓ Верно" : "✗ Неверно"}
+                <span aria-hidden="true">{ok ? "✓ " : "✗ "}</span>
+                {ok ? "Верно" : "Неверно"}
               </p>
               {!ok && (
                 <p className="font-medium text-green-900">

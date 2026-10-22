@@ -29,7 +29,7 @@ from app.config import get_settings
 from app.db import init_db
 from app.llm.providers import LLMError
 from app.log import setup_logging
-from app.rag.ingest import autoload_if_empty
+from app.rag.ingest import autoload_documents
 
 log = logging.getLogger("app")
 
@@ -42,7 +42,7 @@ async def lifespan(_: FastAPI):
     log.info("Бэкенд запущен: LLM_PROVIDER=%s", s.llm_provider)
     if s.rag_autoload:
         # в фоне: эмбеддинги — сетевые вызовы, а /health должен отвечать сразу
-        threading.Thread(target=autoload_if_empty, daemon=True).start()
+        threading.Thread(target=autoload_documents, daemon=True).start()
     yield
 
 

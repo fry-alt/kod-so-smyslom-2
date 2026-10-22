@@ -4,9 +4,10 @@ import { useMemo, useState, type MouseEvent } from "react";
 
 import type { Availability, Region, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
-import { AVAILABILITY, formatAvailability, REGION, STATUS, STATUS_COLOR } from "../../labels";
+import { Icon } from "../../icons";
+import { AVAILABILITY, formatAvailability, REGION, STATUS } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Chips, Empty, ErrorBox, inputClass, Link, Loading, useLoad } from "../../ui";
+import { Badge, Chips, Empty, ErrorBox, inputClass, Link, Loading, PageTitle, Select, StatusBadge, useLoad } from "../../ui";
 
 type Filter = VolunteerStatus | "all";
 
@@ -50,13 +51,13 @@ export default function Volunteers() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-3xl font-bold">База волонтёров</h1>
+        <PageTitle>База волонтёров</PageTitle>
         <p className="mt-1 text-hint">Все анкеты. Нажмите на человека, чтобы открыть карточку, сменить статус или добавить заметку.</p>
       </div>
 
       <div className="flex flex-col gap-2">
         <span className="font-semibold">Статус</span>
-        <Chips<Filter> options={FILTER} value={[filter]} onChange={(v) => setFilter(v[0])} />
+        <Chips<Filter> label="Статус" options={FILTER} value={[filter]} onChange={(v) => setFilter(v[0])} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -70,20 +71,20 @@ export default function Volunteers() {
             type="search"
           />
         </label>
-        <label className="flex flex-col gap-1.5 font-semibold">
-          Регион
-          <select value={region} onChange={(event) => setRegion(event.target.value as Region | "all")} className={inputClass}>
-            <option value="all">Все регионы</option>
-            {Object.entries(REGION).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5 font-semibold">
-          Когда может
-          <select value={availability} onChange={(event) => setAvailability(event.target.value as Availability | "all")} className={inputClass}>
-            <option value="all">Любое время</option>
-            {Object.entries(AVAILABILITY).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
+        <Select
+          label="Регион"
+          placeholder="Все регионы"
+          value={region}
+          options={[{ value: "all", label: "Все регионы" }, ...Object.entries(REGION).map(([value, label]) => ({ value, label }))]}
+          onChange={(value) => setRegion(value as Region | "all")}
+        />
+        <Select
+          label="Когда может"
+          placeholder="Любое время"
+          value={availability}
+          options={[{ value: "all", label: "Любое время" }, ...Object.entries(AVAILABILITY).map(([value, label]) => ({ value, label }))]}
+          onChange={(value) => setAvailability(value as Availability | "all")}
+        />
       </div>
 
       {loading && <Loading />}
@@ -149,7 +150,7 @@ function Table({ list, sortBy, descending, onSort }: {
               </Link>
             </td>
             <td className="py-3 pr-4">
-              <Badge className={`whitespace-nowrap ${STATUS_COLOR[v.status]}`}>{STATUS[v.status]}</Badge>
+              <StatusBadge status={v.status} className="whitespace-nowrap" />
             </td>
             <td className="py-3 pr-4">
               <Skills v={v} />
@@ -176,12 +177,16 @@ function CardList({ list }: { list: Volunteer[] }) {
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xl font-semibold text-link">{v.name}</span>
-              <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge>
+              <StatusBadge status={v.status} />
             </div>
             <Skills v={v} />
-            <span className="text-hint">🕒 {availability(v)}</span>
             <span className="text-hint">
-              🎓 {training(v)} · ⏱ Часов: <b className="text-ink">{v.hours.toLocaleString("ru")}</b>
+              <Icon name="clock" className="mr-1 size-[1.1em] align-[-0.18em]" />
+              {availability(v)}
+            </span>
+            <span className="text-hint">
+              <Icon name="graduation" className="mr-1 size-[1.1em] align-[-0.18em]" />
+              {training(v)} · Часов: <b className="text-ink">{v.hours.toLocaleString("ru")}</b>
             </span>
           </Link>
         </li>

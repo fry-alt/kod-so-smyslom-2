@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 
 import type { DashboardToday } from "../../api";
 import { backend } from "../../backend";
-import { Badge, ErrorBox, formatWhen, Link, Loading, useLoad } from "../../ui";
+import { Icon } from "../../icons";
+import { Badge, ErrorBox, formatWhen, Link, Loading, PageTitle, useLoad } from "../../ui";
 import {
   AllClear,
   coordinatorCallUrl,
@@ -29,7 +30,7 @@ export default function Summary() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-lg text-hint first-letter:uppercase">{today}</p>
-          <h1 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">Сводка на сегодня</h1>
+          <PageTitle>Сводка на сегодня</PageTitle>
         </div>
         <div className="flex flex-wrap gap-2">
           <LinkButton to="/admin/search" variant="secondary">
@@ -233,7 +234,7 @@ function InterviewList({ items }: { items: DashboardToday["interviews"] }) {
             <span className="font-display text-2xl font-semibold tabular-nums">{timeOf(i.starts_at)}</span>
             <div className="flex min-w-0 flex-1 flex-col">
               <PersonLink {...i.volunteer} />
-              {i.overdue ? <span className="font-medium">⚠ {dayLabel(i.starts_at)}</span> : <span className="text-hint">видеозвонок на сайте</span>}
+              {i.overdue ? <span className="font-medium"><Icon name="alert" className="mr-1 size-[1.1em] align-[-0.18em]" />{dayLabel(i.starts_at)}</span> : <span className="text-hint">видеозвонок на сайте</span>}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">

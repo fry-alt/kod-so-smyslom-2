@@ -5,9 +5,10 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import type { Availability, Candidate, Format, Opportunity, ParsedQuery, Regularity, Region, Role, SearchRequest, SearchResponse, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
-import { AVAILABILITY, formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
+import { AVAILABILITY, formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS } from "../../labels";
+import { Icon } from "../../icons";
 import { useSearchParam } from "../../router";
-import { Badge, Button, ButtonLink, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link } from "../../ui";
+import { Badge, Button, ButtonLink, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link, PageTitle, Select, StatusBadge } from "../../ui";
 
 const EXAMPLES = [
   "Фотограф на четверг утром, разово",
@@ -87,7 +88,7 @@ export default function Search() {
         <OpportunityHeader opportunity={opportunity} />
       ) : (
         <div>
-          <h1 className="text-3xl font-bold">Кого ищем?</h1>
+          <PageTitle>Кого ищем?</PageTitle>
           <p className="mt-1 text-hint">Опишите задачу обычными словами — когда, что нужно уметь, разово или постоянно.</p>
         </div>
       )}
@@ -133,21 +134,18 @@ export default function Search() {
             ))}
           </div>
           {roles.length > 0 && (
-            <label className="flex flex-col gap-1.5 font-semibold sm:max-w-sm">
-              Найти под роль
-              <select
+            <div className="sm:max-w-md">
+              <Select
+                label="Найти под роль"
+                placeholder="Выберите роль"
                 value=""
-                onChange={(event) => {
-                  if (!event.target.value) return;
+                options={roles.map((r) => ({ value: r.code, label: r.title, hint: r.description }))}
+                onChange={(code) => {
                   setQuery("");
-                  run({ query: "", role_code: event.target.value });
+                  run({ query: "", role_code: code });
                 }}
-                className={inputClass}
-              >
-                <option value="">Выберите роль</option>
-                {roles.map((r) => <option key={r.code} value={r.code}>{r.title}</option>)}
-              </select>
-            </label>
+              />
+            </div>
           )}
         </div>
       )}
@@ -159,6 +157,7 @@ export default function Search() {
         <Chips<VolunteerStatus>
           multiple
           options={STATUS_FILTER as Record<VolunteerStatus, string>}
+          label="Статус"
           value={statuses}
           onChange={changeStatuses}
         />
@@ -185,7 +184,7 @@ function OpportunityHeader(props: { opportunity: Opportunity | null }) {
   return (
     <div className="flex flex-col gap-2">
       <Link to="/admin/opportunities">← Возможности</Link>
-      <h1 className="text-3xl font-bold">Подбор: {o?.title ?? "…"}</h1>
+      <PageTitle>Подбор: {o?.title ?? "…"}</PageTitle>
       {o && (
         <p className="text-hint">
           {new Date(o.starts_at).toLocaleString("ru", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })} ·{" "}
@@ -276,25 +275,21 @@ function Results(props: { result: SearchResponse; opportunity: Opportunity | nul
           </p>
           {!props.opportunity && (
             props.opportunities.length > 0 ? (
-              <label className="flex flex-col gap-2 font-semibold">
-                На какое занятие пригласить?
-                <select
-                  value={inviteOpportunityId}
-                  onChange={(event) => {
-                    setInviteOpportunityId(event.target.value);
-                    setSelected([]);
-                    setSent(0);
-                  }}
-                  className="min-h-12 rounded-2xl border-2 border-[color-mix(in_srgb,var(--p-ink)_55%,transparent)] bg-page px-4 py-3 font-normal"
-                >
-                  <option value="">Выберите занятие</option>
-                  {props.opportunities.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.title} — {new Date(item.starts_at).toLocaleDateString("ru", { day: "numeric", month: "long" })}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <Select
+                label="На какое занятие пригласить?"
+                placeholder="Выберите занятие"
+                value={inviteOpportunityId}
+                options={props.opportunities.map((item) => ({
+                  value: String(item.id),
+                  label: item.title,
+                  hint: new Date(item.starts_at).toLocaleDateString("ru", { day: "numeric", month: "long" }),
+                }))}
+                onChange={(value) => {
+                  setInviteOpportunityId(value);
+                  setSelected([]);
+                  setSent(0);
+                }}
+              />
             ) : (
               <p className="rounded-2xl bg-soft px-4 py-3 text-hint">
                 Чтобы пригласить человека, сначала создайте занятие в разделе «Занятия и события».
@@ -366,7 +361,8 @@ function ParsedEditor(props: {
             {p.skills.map((skill) => (
               <button key={skill} type="button" onClick={() => change({ skills: p.skills.filter((item) => item !== skill) })}
                 aria-label={`Убрать навык ${skill}`} className="rounded-full bg-page px-3 py-2 text-left">
-                🛠 {skill} <span aria-hidden="true">×</span>
+                <Icon name="wrench" className="mr-1 size-[1.1em] align-[-0.18em] text-hint" />
+                {skill} <span aria-hidden="true">×</span>
               </button>
             ))}
           </div>
@@ -385,30 +381,31 @@ function ParsedEditor(props: {
             }}>Добавить</Button>
           </span>
         </label>
-        <label className="flex flex-col gap-1.5 font-semibold">
-          Регион
-          <select value={p.region ?? "any"} onChange={(event) => change({ region: event.target.value === "any" ? null : event.target.value as Region })} className={inputClass}>
-            <option value="any">Любой регион</option>
-            {Object.entries(REGION).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5 font-semibold">
-          Формат
-          <select value={p.format ?? "any"} onChange={(event) => change({ format: event.target.value === "any" ? null : event.target.value as Format })} className={inputClass}>
-            <option value="any">Любой</option>
-            {Object.entries(FORMAT).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1.5 font-semibold">
-          Регулярность
-          <select value={p.kind} onChange={(event) => change({ kind: event.target.value as Regularity })} className={inputClass}>
-            {Object.entries(REGULARITY).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
+        <Select
+          label="Регион"
+          placeholder="Любой регион"
+          value={p.region ?? "any"}
+          options={[{ value: "any", label: "Любой регион" }, ...Object.entries(REGION).map(([value, label]) => ({ value, label }))]}
+          onChange={(value) => change({ region: value === "any" ? null : (value as Region) })}
+        />
+        <Select
+          label="Формат"
+          placeholder="Любой"
+          value={p.format ?? "any"}
+          options={[{ value: "any", label: "Любой" }, ...Object.entries(FORMAT).map(([value, label]) => ({ value, label }))]}
+          onChange={(value) => change({ format: value === "any" ? null : (value as Format) })}
+        />
+        <Select
+          label="Регулярность"
+          placeholder="Регулярность"
+          value={p.kind}
+          options={Object.entries(REGULARITY).map(([value, label]) => ({ value, label }))}
+          onChange={(value) => change({ kind: value as Regularity })}
+        />
       </div>
       <div className="flex flex-col gap-2">
         <span className="font-semibold">Когда может</span>
-        <Chips<Availability> multiple options={AVAILABILITY} value={p.availability} onChange={(availability) => change({ availability })} />
+        <Chips<Availability> multiple label="Когда может" options={AVAILABILITY} value={p.availability} onChange={(availability) => change({ availability })} />
       </div>
       {p.notes && <p className="text-sm text-hint">Дополнительно: {p.notes}</p>}
       <div>
@@ -470,18 +467,22 @@ function CandidateCard(props: {
         <div className="flex flex-wrap gap-2">
           {matched_skills.map((s) => (
             <Badge key={s} className="bg-green-100 text-green-900">
-              ✓ {s}
+              <span aria-hidden="true">✓ </span>
+              {s}
             </Badge>
           ))}
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge>
+        <StatusBadge status={v.status} />
         <Badge className="bg-page">
           {v.training_score !== null ? `Обучение: ${v.training_score}%` : "Обучение не проходил"}
         </Badge>
-        <span className="text-sm text-hint">🕒 {formatAvailability(v.answers.availability) || "время не указано"}</span>
+        <span className="text-sm text-hint">
+          <Icon name="clock" className="mr-1 size-[1.1em] align-[-0.18em]" />
+          {formatAvailability(v.answers.availability) || "время не указано"}
+        </span>
       </div>
 
       <Contact contact={v.contact} />

@@ -1,6 +1,9 @@
 // Общие элементы интерфейса. Крупные: среди волонтёров пенсионеры, координатор не айтишник.
-import { useCallback, useEffect, useState, type PointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 
+import type { VolunteerStatus } from "./api";
+import { Icon } from "./icons";
+import { STATUS, STATUS_COLOR, STATUS_STEP } from "./labels";
 import { navigate } from "./router";
 
 export function Button(props: {
@@ -89,15 +92,21 @@ export function ButtonLink(props: {
   wide?: boolean;
 }) {
   const look = props.variant === "primary"
-    ? "bg-accent text-accent-text shadow-sm"
-    : "border-2 border-line bg-surface text-ink hover:border-accent";
+    ? `bg-accent text-accent-text shadow-sm ${FLAIR.primary}`
+    : `border-2 border-line bg-surface text-ink ${FLAIR.secondary}`;
   return (
-    <Link
-      to={props.to}
-      className={`inline-flex min-h-12 items-center justify-center rounded-full px-6 py-3 font-semibold no-underline ${look} ${props.wide ? "w-full" : ""}`}
+    <a
+      href={props.to}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey) return; // открыть в новой вкладке — как обычно
+        e.preventDefault();
+        navigate(props.to);
+      }}
+      {...flairHandlers}
+      className={`btn-flair inline-flex min-h-12 items-center justify-center rounded-full px-6 py-3 font-semibold no-underline ${look} ${props.wide ? "w-full" : ""}`}
     >
       {props.children}
-    </Link>
+    </a>
   );
 }
 
@@ -116,19 +125,41 @@ export function Badge(props: { children: ReactNode; className?: string; title?: 
   );
 }
 
+/** Отметка статуса волонтёра: номер этапа (1–5) и название. Цвета — --status-* в index.css. */
+export function StatusBadge(props: { status: VolunteerStatus; className?: string }) {
+  const step = STATUS_STEP[props.status];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLOR[props.status]} ${props.className ?? ""}`}
+    >
+      {step && (
+        <span aria-hidden="true" className="grid size-5 shrink-0 place-items-center rounded-full bg-current/15 text-xs font-bold">
+          {step}
+        </span>
+      )}
+      {STATUS[props.status]}
+    </span>
+  );
+}
+
 export function Field(props: {
   label: string;
   hint?: ReactNode;
   error?: string;
   required?: boolean;
-  /** div вместо label — для групп кнопок (Chips), где label ломает клики */
+  /** группа вариантов (Chips): div с ролью group и подписью вместо label, где label ломает клики */
   group?: boolean;
   children: ReactNode;
 }) {
+  const labelId = useId();
   const Tag = props.group ? "div" : "label";
   return (
-    <Tag className="flex flex-col gap-1.5" data-error={props.error ? "" : undefined}>
-      <span className="font-semibold">
+    <Tag
+      className="flex flex-col gap-1.5"
+      data-error={props.error ? "" : undefined}
+      {...(props.group ? { role: "group", "aria-labelledby": labelId } : {})}
+    >
+      <span id={labelId} className="font-semibold">
         {props.label}
         {props.required && <span className="text-accent"> *</span>}
       </span>
@@ -139,40 +170,153 @@ export function Field(props: {
   );
 }
 
-/** Выбор из вариантов крупными «чипсами»: один (multiple=false) или несколько. */
+/** Выпадающий список в стиле приложения вместо системного <select>: карточка с вариантами,
+ *  у варианта может быть пояснение. Клавиатура: стрелки, Home/End, Enter — выбрать, Esc — закрыть. */
+export function Select(props: {
+  label: string;
+  placeholder: string;
+  options: { value: string; label: string; hint?: string }[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const id = useId();
+  const box = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const chosen = props.options.find((o) => o.value === props.value);
+
+  // клик мимо списка — закрыть
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: globalThis.PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
+
+  // подсвеченный вариант всегда виден в прокручиваемом списке
+  useEffect(() => {
+    if (open) list.current?.children[active]?.scrollIntoView({ block: "nearest" });
+  }, [open, active]);
+
+  function show() {
+    setActive(Math.max(0, props.options.findIndex((o) => o.value === props.value)));
+    setOpen(true);
+  }
+  function pick(index: number) {
+    setOpen(false);
+    props.onChange(props.options[index].value);
+  }
+  function onKey(e: KeyboardEvent) {
+    const last = props.options.length - 1;
+    const keys: Record<string, () => void> = {
+      ArrowDown: () => (open ? setActive((i) => Math.min(last, i + 1)) : show()),
+      ArrowUp: () => (open ? setActive((i) => Math.max(0, i - 1)) : show()),
+      Home: () => open && setActive(0),
+      End: () => open && setActive(last),
+      Enter: () => (open ? pick(active) : show()),
+      " ": () => (open ? pick(active) : show()),
+      Escape: () => setOpen(false),
+      Tab: () => setOpen(false),
+    };
+    if (!keys[e.key]) return;
+    if (e.key !== "Tab") e.preventDefault();
+    keys[e.key]();
+  }
+
+  return (
+    <div ref={box} className="relative flex flex-col gap-1.5">
+      <span id={`${id}-label`} className="font-semibold">
+        {props.label}
+      </span>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={`${id}-list`}
+        aria-labelledby={`${id}-label ${id}-value`}
+        aria-activedescendant={open ? `${id}-${active}` : undefined}
+        onClick={() => (open ? setOpen(false) : show())}
+        onKeyDown={onKey}
+        className={`select-trigger ${inputClass} flex items-center justify-between gap-3 text-left`}
+      >
+        <span id={`${id}-value`} className={chosen ? "" : "text-hint"}>
+          {chosen?.label ?? props.placeholder}
+        </span>
+        <svg viewBox="0 0 24 24" aria-hidden="true" className={`select-chevron ${open ? "is-open" : ""}`}>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <ul ref={list} id={`${id}-list`} role="listbox" aria-labelledby={`${id}-label`} className="select-list">
+          {props.options.map((o, i) => (
+            <li
+              key={o.value}
+              id={`${id}-${i}`}
+              role="option"
+              aria-selected={o.value === props.value}
+              onPointerEnter={() => setActive(i)}
+              onPointerDown={(e) => e.preventDefault()} // фокус остаётся на кнопке
+              onClick={() => pick(i)}
+              className={`select-option ${i === active ? "is-active" : ""}`}
+            >
+              <span className="font-semibold">{o.label}</span>
+              {o.hint && <span className="select-hint">{o.hint}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Выбор из вариантов крупными «чипсами»: один (multiple=false) или несколько.
+    Внутри — настоящие radio и checkbox: стрелки переключают вариант, Tab заходит в группу один раз.
+    label — подпись группы для скринридера, если её не даёт Field group. */
 export function Chips<T extends string>(props: {
   options: Record<T, string>;
   value: T[];
   onChange: (value: T[]) => void;
   multiple?: boolean;
+  label?: string;
 }) {
+  const name = useId();
   const keys = Object.keys(props.options) as T[];
   function toggle(k: T) {
     if (!props.multiple) return props.onChange([k]);
     props.onChange(props.value.includes(k) ? props.value.filter((x) => x !== k) : [...props.value, k]);
   }
   return (
-    <div className="flex flex-wrap gap-2" role={props.multiple ? "group" : "radiogroup"}>
+    <div
+      className="flex flex-wrap gap-2"
+      {...(props.label ? { role: props.multiple ? "group" : "radiogroup", "aria-label": props.label } : {})}
+    >
       {keys.map((k) => {
         const on = props.value.includes(k);
         return (
-          <button
+          <label
             key={k}
-            type="button"
-            role={props.multiple ? "checkbox" : "radio"}
-            aria-checked={on}
-            onClick={() => toggle(k)}
             {...flairHandlers}
             // не выбран — при наведении заливается зелёным; выбран — белым
-            className={`btn-flair min-h-12 rounded-full border px-5 py-2 ${
+            className={`btn-flair inline-flex min-h-12 cursor-pointer items-center gap-[0.3em] rounded-full border px-5 py-2 select-none ${
               on
                 ? "border-accent bg-accent text-accent-text [--flair:var(--p-page)] [--flair-text:var(--p-ink)]"
                 : "border-line bg-page [--flair:var(--p-accent)] [--flair-text:var(--p-accent-text)] hover:border-accent"
             }`}
           >
-            {props.multiple && (on ? "✓ " : "")}
+            <input
+              type={props.multiple ? "checkbox" : "radio"}
+              name={name}
+              value={k}
+              checked={on}
+              onChange={() => toggle(k)}
+              className="sr-only"
+            />
+            {props.multiple && on && <span aria-hidden="true">✓</span>}
             {props.options[k]}
-          </button>
+          </label>
         );
       })}
     </div>
@@ -182,10 +326,14 @@ export function Chips<T extends string>(props: {
 export const inputClass =
   "min-h-12 w-full rounded-2xl border-2 border-[color-mix(in_srgb,var(--p-ink)_55%,transparent)] bg-page px-4 py-3 outline-none placeholder:text-hint focus:border-accent";
 
-export function ErrorBox(props: { text: string; onRetry?: () => void }) {
+/** Ошибка с текстом. id — чтобы связать с полем через aria-describedby. */
+export function ErrorBox(props: { text: string; onRetry?: () => void; id?: string }) {
   return (
-    <div role="alert" className="flex flex-col gap-3 rounded-2xl bg-red-50 p-4 text-red-900">
-      <p>⚠️ {props.text}</p>
+    <div id={props.id} role="alert" className="flex flex-col gap-3 rounded-2xl bg-red-50 p-4 text-red-900">
+      <p>
+        <Icon name="alert" className="mr-1.5 size-[1.15em] align-[-0.2em]" />
+        {props.text}
+      </p>
       {props.onRetry && (
         <div>
           <Button variant="secondary" onClick={props.onRetry}>
@@ -194,6 +342,15 @@ export function ErrorBox(props: { text: string; onRetry?: () => void }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Заголовок страницы — одна шкала на всех экранах: Unbounded, как на «Сводке» и «Аналитике». */
+export function PageTitle(props: { children: ReactNode; className?: string }) {
+  return (
+    <h1 className={`font-display text-3xl font-semibold tracking-tight text-balance break-words md:text-4xl ${props.className ?? ""}`}>
+      {props.children}
+    </h1>
   );
 }
 
@@ -239,7 +396,7 @@ export function Contact({ contact }: { contact: string }) {
 export function Todo(props: { task: string; children?: ReactNode }) {
   return (
     <div className="rounded-2xl border-2 border-dashed border-line p-4 text-hint">
-      🚧 Экран делается в задаче <b>{props.task}</b>. {props.children}
+      <span aria-hidden="true">🚧</span> Экран делается в задаче <b>{props.task}</b>. {props.children}
     </div>
   );
 }
@@ -271,8 +428,10 @@ export function errorText(e: unknown): string {
   if (/failed to fetch|networkerror|load failed/i.test(msg)) return "Нет связи с сервером. Проверьте интернет.";
   if (/internal server error|bad gateway|service unavailable|gateway time-?out/i.test(msg))
     return "Сервер сейчас не отвечает. Попробуйте ещё раз через минуту.";
-  if (/^not found$/i.test(msg)) return "Эта функция на сервере ещё не готова.";
-  return msg || "Что-то пошло не так.";
+  if (/^not found$/i.test(msg)) return "Не нашли. Возможно, запись удалили.";
+  // свои ошибки сервер пишет по-русски — их показываем как есть; английский и технический текст — нет
+  if (/[а-яё]/i.test(msg)) return msg;
+  return "Не получилось. Попробуйте ещё раз или напишите координатору.";
 }
 
 /** Дата и время возможности по-русски: «23 октября, 10:00». */

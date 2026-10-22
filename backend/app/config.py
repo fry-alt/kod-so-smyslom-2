@@ -69,7 +69,8 @@ class Settings(BaseSettings):
     rag_min_score: float = 0.2  # ниже этого сходства фрагмент считаем нерелевантным
     chunk_size: int = 800
     chunk_overlap: int = 150
-    rag_autoload: bool = True  # база знаний пуста при запуске → загрузить data/demo и data/training
+    # при запуске загрузить новые и изменённые документы фонда из data/demo и data/training
+    rag_autoload: bool = True
 
     # --- Telegram ---
     telegram_bot_token: str = ""
@@ -78,9 +79,8 @@ class Settings(BaseSettings):
     webapp_url: str = ""  # https-адрес сайта — для ссылки на видеособеседование в сообщении
 
     # --- вход на сайт ---
-    coordinator_code: str = (
-        ""  # начальный код фонда для координатора; дальше — в кабинете. Пусто — закрыто
-    )
+    # начальный код фонда для координатора; дальше — в кабинете. Пусто — регистрация координатора закрыта
+    coordinator_code: str = ""
     # служебный ключ для бота и скриптов (заголовок X-Service-Key) — пускает туда же, куда координатора
     service_key: str = ""
     api_docs: bool = True  # Swagger /docs и /openapi.json; на проде выключены

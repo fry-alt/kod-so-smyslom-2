@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type Keyb
 
 import type { Dialog, Message, Opportunity, Participation, ParticipationStatus } from "../../api";
 import { backend, getVolunteerId } from "../../backend";
+import { Icon } from "../../icons";
 import { PARTICIPATION_COLOR } from "../../labels";
 import { Bubble, MAX_LENGTH, POLL_MS, READ_EVENT, timeOf, UnreadBadge } from "../../messages/Thread";
 import { navigate, useSearchParam } from "../../router";
@@ -242,7 +243,7 @@ function ChatAvatar(props: { chat: Chat; small?: boolean }) {
           <span className="text-xs leading-tight">{d.toLocaleDateString("ru", { month: "short" }).replace(".", "")}</span>
         </>
       ) : (
-        <span className="text-xl">📅</span>
+        <Icon name="calendar" className="size-6 text-accent" />
       )}
     </span>
   );
@@ -394,7 +395,12 @@ function ChatPane(props: {
         )}
       </div>
 
-      {props.error && <p className="border-t border-line px-5 py-2 text-sm text-hint">⚠️ {props.error} Пробуем ещё раз…</p>}
+      {props.error && (
+        <p className="border-t border-line px-5 py-2 text-sm text-hint">
+          <Icon name="alert" className="mr-1 size-[1.1em] align-[-0.18em]" />
+          {props.error} Пробуем ещё раз…
+        </p>
+      )}
       {sendError && (
         <div className="px-3 pt-3 sm:px-5">
           <ErrorBox text={sendError} />
