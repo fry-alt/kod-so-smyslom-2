@@ -1,5 +1,5 @@
 // «Настройки» кабинета фонда: код фонда, без которого нельзя зарегистрироваться координатором.
-// Данные — GET/PUT /auth/fund-code (только для координатора). Пока код не меняли — 1111.
+// Данные — GET/PUT /auth/fund-code (только для координатора). Пустой код — ещё не задан, координаторы не регистрируются.
 import { useEffect, useState, type FormEvent } from "react";
 
 import { auth } from "../../backend";
@@ -57,9 +57,15 @@ function FundCodeForm(props: { current: string }) {
       hint="Без этого кода нельзя зарегистрироваться координатором. Сообщайте его только сотрудникам фонда."
     >
       <form onSubmit={save} className="flex max-w-md flex-col gap-4">
-        <p className="rounded-2xl bg-page px-4 py-3">
-          Сейчас: <span className="font-display text-2xl font-semibold tracking-wider">{current}</span>
-        </p>
+        {current ? (
+          <p className="rounded-2xl bg-page px-4 py-3">
+            Сейчас: <span className="font-display text-2xl font-semibold tracking-wider">{current}</span>
+          </p>
+        ) : (
+          <p className="rounded-2xl bg-page px-4 py-3">
+            Код ещё не задан — новые координаторы пока не могут зарегистрироваться. Придумайте код и сохраните его.
+          </p>
+        )}
         <Field label="Новый код" hint="От 4 символов, без пробелов. Уже зарегистрированные координаторы продолжат входить как раньше.">
           <input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" className={inputClass} />
         </Field>

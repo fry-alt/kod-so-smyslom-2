@@ -37,6 +37,8 @@ async function httpError(r: Response): Promise<Error> {
   } catch {
     /* ответ не JSON — оставляем statusText */
   }
+  // по HTTP/2 statusText пустой — тогда сбой сервера узнаём хотя бы по коду ответа
+  if (!detail && r.status >= 500) detail = "Сервер сейчас не отвечает. Попробуйте ещё раз через минуту.";
   return new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
 }
 
@@ -317,7 +319,8 @@ export type LoginIn = { email: string; password: string };
 export type CodeSent = { pending: true; email: string; resend_after: number };
 /** «Забыли пароль?»: код из письма и новый пароль (не меньше 6 символов). Ответ — вход, как после login. */
 export type ResetConfirmIn = { email: string; code: string; password: string };
-/** Код фонда, без которого нельзя зарегистрироваться координатором. Меняет координатор в «Настройках». */
+/** Код фонда, без которого нельзя зарегистрироваться координатором. Меняет координатор в «Настройках».
+ * GET может вернуть пустой code — код ещё не задан, регистрация координаторов закрыта. */
 export type FundCode = { code: string };
 
 /** Оформление личного кабинета. avatar — эмодзи (пусто — буква имени), nickname — как обращаться (пусто — имя из анкеты). */

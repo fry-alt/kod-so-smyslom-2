@@ -17,6 +17,7 @@ from app.schemas import (
     CodeSent,
     EmailIn,
     FundCode,
+    FundCodeOut,
     LoginIn,
     Look,
     RegisterIn,
@@ -205,15 +206,16 @@ def coordinator(
     return account
 
 
-@router.get("/fund-code", response_model=FundCode)
+@router.get("/fund-code", response_model=FundCodeOut)
 def get_fund_code(
     _: Account = Depends(coordinator), session: Session = Depends(get_session)
-) -> FundCode:
-    return FundCode(code=accounts.coordinator_code(session))
+) -> FundCodeOut:
+    # код может быть ещё не задан (пустой) — это не ошибка, координатор задаёт его в «Настройках»
+    return FundCodeOut(code=accounts.coordinator_code(session))
 
 
-@router.put("/fund-code", response_model=FundCode)
+@router.put("/fund-code", response_model=FundCodeOut)
 def set_fund_code(
     data: FundCode, _: Account = Depends(coordinator), session: Session = Depends(get_session)
-) -> FundCode:
-    return FundCode(code=accounts.set_coordinator_code(session, data.code))
+) -> FundCodeOut:
+    return FundCodeOut(code=accounts.set_coordinator_code(session, data.code))
