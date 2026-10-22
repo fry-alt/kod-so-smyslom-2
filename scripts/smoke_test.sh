@@ -6,7 +6,9 @@ set -euo pipefail
 BASE_URL="${1:-${BACKEND_URL:-http://localhost:8000}}"
 TMP_DIR="$(mktemp -d)"
 DOC="smoke_test.txt"
-trap 'rm -rf "$TMP_DIR"; curl -fsS -X DELETE "$BASE_URL/documents/$DOC" >/dev/null 2>&1 || true' EXIT
+# служебный ключ из .env (make передаёт его сам): загрузка и удаление документов — только для фонда
+KEY="X-Service-Key: ${SERVICE_KEY:-}"
+trap 'rm -rf "$TMP_DIR"; curl -fsS -X DELETE -H "$KEY" "$BASE_URL/documents/$DOC" >/dev/null 2>&1 || true' EXIT
 
 ok() { echo "✅ $1"; }
 fail() {
@@ -33,7 +35,7 @@ echo "$chat" | grep -q '"answer"' || fail "/chat: нет answer" "$chat"
 ok "/chat"
 
 printf 'Дежурный координатор по субботам — Пётр Смоков.\n\nОн принимает срочные заявки с 10:00 до 18:00.\n' >"$TMP_DIR/$DOC"
-upload="$(curl -fsS -X POST "$BASE_URL/documents/upload" -F "file=@$TMP_DIR/$DOC")" ||
+upload="$(curl -fsS -X POST "$BASE_URL/documents/upload" -H "$KEY" -F "file=@$TMP_DIR/$DOC")" ||
   fail "/documents/upload вернул ошибку"
 echo "$upload" | grep -q '"chunks":[1-9]' || fail "/documents/upload: нет чанков" "$upload"
 ok "/documents/upload → $upload"

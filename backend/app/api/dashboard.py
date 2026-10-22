@@ -3,11 +3,12 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
+from app.api.auth import coordinator
 from app.db import get_session
 from app.schemas import DashboardAnalytics, DashboardToday
 from app.services import dashboard
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["dashboard"], dependencies=[Depends(coordinator)])
 
 
 @router.get("/today", response_model=DashboardToday)

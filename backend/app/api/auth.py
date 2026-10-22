@@ -1,11 +1,13 @@
 """Вход на сайт: регистрация, вход и «кто я». Сайт присылает ключ в заголовке Authorization: Bearer <token>."""
 
+import hmac
 import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlmodel import Session
 
+from app.config import get_settings
 from app.db import get_session
 from app.models import Account
 from app.schemas import (
@@ -125,8 +127,19 @@ def save_look(
     return accounts.save_look(session, account, look)
 
 
-def coordinator(account: Account | None = Depends(current_account)) -> Account:
-    """Зависимость: пускает только координатора фонда."""
+def is_service(key: str | None) -> bool:
+    """Служебный ключ бота и скриптов (SERVICE_KEY в .env). Пустой ключ в настройках — никого не пускает."""
+    expected = get_settings().service_key
+    return bool(expected) and hmac.compare_digest((key or "").encode(), expected.encode())
+
+
+def coordinator(
+    account: Account | None = Depends(current_account),
+    x_service_key: Annotated[str | None, Header()] = None,
+) -> Account | None:
+    """Зависимость: пускает только координатора фонда — или бота и скрипты со служебным ключом (тогда None)."""
+    if is_service(x_service_key):
+        return None
     if account is None:
         raise HTTPException(401, "Войдите заново")
     if account.role != "coordinator":

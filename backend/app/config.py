@@ -78,7 +78,12 @@ class Settings(BaseSettings):
     webapp_url: str = ""  # https-адрес сайта — для ссылки на видеособеседование в сообщении
 
     # --- вход на сайт ---
-    coordinator_code: str = "1111"  # начальный код фонда для координатора; дальше — в кабинете
+    coordinator_code: str = (
+        ""  # начальный код фонда для координатора; дальше — в кабинете. Пусто — закрыто
+    )
+    # служебный ключ для бота и скриптов (заголовок X-Service-Key) — пускает туда же, куда координатора
+    service_key: str = ""
+    api_docs: bool = True  # Swagger /docs и /openapi.json; на проде выключены
 
     # --- письма с кодом подтверждения почты (Yandex Cloud Postbox) ---
     postbox_key_id: str = ""  # статический ключ сервисного аккаунта с ролью postbox.sender

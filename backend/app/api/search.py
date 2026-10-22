@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
+from app.api.auth import coordinator
 from app.db import get_session
 from app.schemas import SearchRequest, SearchResponse
 from app.services.search import SearchError, search
 
-router = APIRouter(prefix="/search", tags=["search"])
+router = APIRouter(prefix="/search", tags=["search"], dependencies=[Depends(coordinator)])
 
 
 @router.post("", response_model=SearchResponse)

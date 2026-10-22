@@ -13,6 +13,8 @@ from app.rag.store import get_collection
 
 DEMO_DIR = Path(__file__).resolve().parents[2] / "data" / "demo"
 BOT_TOKEN = "123456:TEST-TOKEN"
+FUND_CODE = "test-fund-code"
+SERVICE_KEY = "test-service-key"
 
 
 def _clear_caches() -> None:
@@ -32,6 +34,9 @@ def test_env(tmp_path, monkeypatch):
         "TELEGRAM_BOT_TOKEN": BOT_TOKEN,
         "TELEGRAM_AUTH_REQUIRED": "false",
         "RAG_AUTOLOAD": "false",  # тесты сами решают, какие документы загрузить
+        "COORDINATOR_CODE": FUND_CODE,
+        "SERVICE_KEY": SERVICE_KEY,
+        "API_DOCS": "true",
     }
     for key, value in env.items():
         monkeypatch.setenv(key, value)
@@ -42,10 +47,17 @@ def test_env(tmp_path, monkeypatch):
 
 @pytest.fixture
 def client():
+    """Клиент со служебным ключом — пускают туда же, куда координатора фонда (как бота и скрипты)."""
     from app.main import app
 
-    with TestClient(app) as c:
+    with TestClient(app, headers={"X-Service-Key": SERVICE_KEY}) as c:
         yield c
+
+
+@pytest.fixture
+def anon(client):
+    """Клиент без служебного ключа: человек с улицы или волонтёр (с Authorization: Bearer)."""
+    return TestClient(client.app)
 
 
 @pytest.fixture(autouse=True)

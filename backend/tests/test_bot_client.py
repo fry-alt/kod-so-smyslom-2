@@ -4,6 +4,7 @@ import asyncio
 
 import httpx
 import pytest
+from tests.conftest import SERVICE_KEY
 
 from app.db import init_db
 from app.main import app
@@ -15,9 +16,11 @@ def run(coro):
     return asyncio.run(coro)
 
 
-def make_client() -> BackendClient:
+def make_client(service_key: str = SERVICE_KEY) -> BackendClient:
     init_db()  # ASGITransport не запускает lifespan
-    return BackendClient("http://test", transport=httpx.ASGITransport(app=app))
+    return BackendClient(
+        "http://test", service_key=service_key, transport=httpx.ASGITransport(app=app)
+    )
 
 
 def test_bot_chat_and_upload_and_ask():

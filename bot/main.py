@@ -26,7 +26,7 @@ async def main() -> None:
         return
 
     bot = Bot(settings.telegram_bot_token)
-    api = BackendClient(settings.backend_url, settings.backend_timeout)
+    api = BackendClient(settings.backend_url, settings.backend_timeout, settings.service_key)
     dp = Dispatcher(storage=MemoryStorage())  # состояния в памяти: после рестарта режим сбросится
     # всё, что положено в dp[...], aiogram передаёт в хэндлеры по имени аргумента (api, settings)
     dp["api"] = api
