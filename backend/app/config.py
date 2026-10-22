@@ -74,6 +74,8 @@ class Settings(BaseSettings):
 
     # --- Telegram ---
     telegram_bot_token: str = ""
+    # прокси до Bot API, если сервер не достаёт до api.telegram.org (как у Yapp); пусто — напрямую
+    telegram_api_base: str = ""
     telegram_auth_required: bool = False  # true — без валидного initData Mini App не пустит
     telegram_auth_max_age: int = 86400  # секунд
     webapp_url: str = ""  # https-адрес сайта — для ссылки на видеособеседование в сообщении
