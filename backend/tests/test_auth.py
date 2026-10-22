@@ -144,6 +144,17 @@ def test_coordinator_changes_fund_code(client):
     assert client.put("/auth/fund-code", json={"code": "12"}, headers=coord).status_code == 422
 
 
+def test_fund_code_not_set_yet(client, monkeypatch):
+    # без COORDINATOR_CODE и без кода из кабинета «Настройки» открываются с пустым кодом, а не падают
+    monkeypatch.setenv("COORDINATOR_CODE", "")
+    get_settings.cache_clear()
+    r = client.get("/auth/fund-code")
+    assert r.status_code == 200, r.text
+    assert r.json() == {"code": ""}
+    assert client.put("/auth/fund-code", json={"code": "deti2026"}).json() == {"code": "deti2026"}
+    assert client.get("/auth/fund-code").json() == {"code": "deti2026"}
+
+
 def test_fund_code_only_for_coordinator(anon):
     assert anon.get("/auth/fund-code").status_code == 401
     volunteer = bearer(register(anon)["token"])
