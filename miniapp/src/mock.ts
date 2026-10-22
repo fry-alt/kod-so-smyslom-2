@@ -168,7 +168,7 @@ function vol(
   status: Volunteer["status"], training_score: number | null, hours: number,
 ): Volunteer {
   return {
-    id, name, contact, telegram_id: null, status, training_score, hours,
+    id, name, contact, telegram_id: null, personal: null, status, training_score, hours,
     created_at: `2026-10-${String(10 + (id % 10)).padStart(2, "0")}T12:00:00`,
     answers: {
       about, skills, wishes: "Хочу быть полезным подопечным фонда.", experience: "",
@@ -661,6 +661,7 @@ export const mockApi: typeof volunteersApi = {
     const v: Volunteer = {
       ...data,
       telegram_id: data.telegram_id ?? null,
+      personal: data.personal ?? null,
       id: nextVolunteerId++,
       status: "new",
       training_score: null,
@@ -670,7 +671,7 @@ export const mockApi: typeof volunteersApi = {
         skills: parsed.skills,
         interests: [],
         suitable_roles: roles.filter((r) => r.skills.some((s) => parsed.skills.includes(s))).map((r) => r.code),
-        summary: data.answers.about.slice(0, 120),
+        summary: (data.answers.skills || data.answers.about).slice(0, 120),
       },
     };
     volunteers.push(v);

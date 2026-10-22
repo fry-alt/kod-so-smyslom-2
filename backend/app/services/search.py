@@ -218,7 +218,7 @@ def passes_filter(
         return False
     if parsed.availability and not set(parsed.availability) & set(answers["availability"]):
         return False
-    if parsed.format and parsed.format not in answers["formats"]:
+    if parsed.format and answers["formats"] and parsed.format not in answers["formats"]:
         return False
     # онлайн-задачам регион неважен
     return not (regions and parsed.format != "online" and answers["region"] not in regions)

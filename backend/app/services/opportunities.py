@@ -62,7 +62,8 @@ def time_slot(starts_at: datetime) -> Availability:
 def is_recommended(opportunity: Opportunity, volunteer: Volunteer) -> bool:
     """«Подходит вам»: формат, регион и время совпадают с анкетой, а роль — с профилем или навыками."""
     answers = Answers.model_validate(volunteer.answers)
-    if opportunity.format not in answers.formats:
+    # formats пустой — «пока не знаю»: подходит любой формат
+    if answers.formats and opportunity.format not in answers.formats:
         return False
     if opportunity.format == "offline" and opportunity.region != answers.region:
         return False  # онлайн-задачам регион неважен

@@ -40,6 +40,17 @@ class Volunteer(SQLModel, table=True):
     hours: float = 0
 
 
+class VolunteerPersonal(SQLModel, table=True):
+    """Личные данные из анкеты: дата рождения, телефон, почта, как удобнее связаться.
+
+    Отдельная таблица — чтобы не менять таблицу volunteer в уже работающей базе.
+    В LLM и индекс не уходит.
+    """
+
+    volunteer_id: int = Field(foreign_key="volunteer.id", primary_key=True)
+    data: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))  # schemas.PersonalData
+
+
 class Note(SQLModel, table=True):
     """Заметка координатора о волонтёре. В LLM не отправляется."""
 

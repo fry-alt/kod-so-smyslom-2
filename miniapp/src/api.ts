@@ -55,20 +55,47 @@ export type RoleKind = "regular" | "episodic";
 export type Region = "moscow" | "moscow_region" | "yaroslavl" | "north_ossetia" | "other";
 export type Format = "offline" | "online";
 export type Regularity = "regular" | "episodic" | "any";
+// Вопросы с выбором — как в анкете фонда (Яндекс Форма «Анкета волонтёра фонда „Дети Марии“»).
+export type AnswerRegularity = "regular" | "occasional" | "episodic" | "any";
+export type Direction =
+  | "creative"
+  | "education"
+  | "assistant"
+  | "psychology"
+  | "media"
+  | "events"
+  | "market"
+  | "other"
+  | "unsure";
+export type SpecialNeeds = "yes" | "ready" | "discuss";
+export type ContactWay = "whatsapp" | "telegram" | "max" | "email" | "phone";
 export type ParticipationStatus = "responded" | "invited" | "confirmed" | "attended" | "declined";
 export type InterviewStatus = "scheduled" | "done" | "canceled";
 export type CallRole = "coordinator" | "volunteer";
 
+/** formats пустой — «пока не знаю»: подходит и очно, и онлайн. */
 export type Answers = {
   about: string;
   skills: string;
   wishes: string;
   experience: string;
+  volunteer_experience?: boolean | null;
+  special_needs?: SpecialNeeds | null;
+  directions?: Direction[];
+  source?: string;
   availability: Availability[];
   occupation: Occupation;
   region: Region;
   formats: Format[];
-  regularity: Regularity;
+  regularity: AnswerRegularity;
+};
+/** Личные данные из анкеты — только в нашей БД, в LLM не уходят. */
+export type PersonalData = {
+  birth_date: string | null; // ГГГГ-ММ-ДД
+  phone: string;
+  email: string;
+  telegram: string;
+  contact_ways: ContactWay[];
 };
 export type Profile = {
   skills: string[];
@@ -81,6 +108,7 @@ export type VolunteerIn = {
   contact: string;
   telegram_id?: number | null;
   answers: Answers;
+  personal?: PersonalData | null; // анкета на сайте; бот присылает только contact
 };
 export type Volunteer = VolunteerIn & {
   id: number;
