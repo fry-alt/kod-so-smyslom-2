@@ -202,7 +202,8 @@ function OpportunityHeader(props: { opportunity: Opportunity | null }) {
 function Results(props: { result: SearchResponse; opportunity: Opportunity | null; opportunities: Opportunity[] }) {
   const { parsed, candidates, total_checked } = props.result;
   const [draftParsed, setDraftParsed] = useState(parsed);
-  const [activeParsed, setActiveParsed] = useState(parsed);
+  // null — координатор условия не менял: показываем всех, кого подобрал бэкенд (он уже отфильтровал)
+  const [activeParsed, setActiveParsed] = useState<ParsedQuery | null>(null);
   const [newSkill, setNewSkill] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
   const [invited, setInvited] = useState<number[]>([]);
@@ -215,11 +216,13 @@ function Results(props: { result: SearchResponse; opportunity: Opportunity | nul
 
   useEffect(() => {
     setDraftParsed(parsed);
-    setActiveParsed(parsed);
+    setActiveParsed(null);
     setNewSkill("");
   }, [parsed]);
 
-  const matchingCandidates = candidates.filter((candidate) => matchesParsed(candidate, activeParsed));
+  const matchingCandidates = activeParsed
+    ? candidates.filter((candidate) => matchesParsed(candidate, activeParsed))
+    : candidates;
 
   // новые результаты — прокрутить к ним, чтобы не искать их ниже подсказок
   useEffect(() => {
@@ -261,7 +264,7 @@ function Results(props: { result: SearchResponse; opportunity: Opportunity | nul
         onChange={setDraftParsed}
         onApply={() => setActiveParsed(draftParsed)}
       />
-      {activeParsed !== parsed && (
+      {activeParsed && (
         <p className="text-sm text-hint">
           Уточнение применено к уже подобранным кандидатам. Повторный разбор запроса пока не поддерживается API.
         </p>
@@ -419,18 +422,37 @@ function ParsedEditor(props: {
   );
 }
 
+/** Сколько первых букв навыка сравниваем с анкетой — как STEM в backend/app/services/search.py:
+ *  «керамика» ~ «керамической», «фотография» ~ «фотографирую». */
+const STEM = 6;
+
+function normalize(text: string): string {
+  return text.toLocaleLowerCase("ru").replaceAll("ё", "е");
+}
+
+/** Подходит ли кандидат под условия, которые координатор поправил. Навыки — хватит любого из списка. */
 function matchesParsed(candidate: Candidate, parsed: ParsedQuery): boolean {
   const v = candidate.volunteer;
-  const searchableSkills = [
-    ...(v.profile?.skills ?? []),
-    ...(v.profile?.interests ?? []),
-    v.answers.skills,
-  ].join(" ").toLocaleLowerCase("ru");
-  if (parsed.skills.some((skill) => !searchableSkills.includes(skill.toLocaleLowerCase("ru")))) return false;
+  const searchable = normalize(
+    [
+      ...(v.profile?.skills ?? []),
+      ...(v.profile?.interests ?? []),
+      v.answers.skills,
+      v.answers.about,
+      v.answers.experience,
+      v.answers.wishes,
+    ].join(" "),
+  );
+  if (parsed.skills.length && !parsed.skills.some((skill) => searchable.includes(normalize(skill.trim()).slice(0, STEM)))) {
+    return false;
+  }
   if (parsed.availability.length && !parsed.availability.some((time) => v.answers.availability.includes(time))) return false;
   if (parsed.region && v.answers.region !== parsed.region) return false;
-  if (parsed.format && !v.answers.formats.includes(parsed.format)) return false;
-  if (parsed.kind !== "any" && v.answers.regularity !== parsed.kind) return false;
+  // формат или регулярность не указаны в анкете («как получится») — не отсеиваем
+  if (parsed.format && v.answers.formats.length && !v.answers.formats.includes(parsed.format)) return false;
+  // «время от времени» подходит и под разовую помощь
+  const regularity = v.answers.regularity === "occasional" ? "episodic" : v.answers.regularity;
+  if (parsed.kind !== "any" && regularity !== "any" && regularity !== parsed.kind) return false;
   return true;
 }
 
