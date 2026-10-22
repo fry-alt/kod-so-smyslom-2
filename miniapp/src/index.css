@@ -522,6 +522,72 @@ html:has(form [data-step]) {
   }
 }
 
+/* подложка переключателя «Вход / Регистрация» переезжает с лёгкой пружинкой */
+.auth-tabs-pill {
+  transition: translate 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* поля формы и пункты карточки справа появляются по очереди, снизу вверх.
+   translate, а не transform — чтобы не мешать кнопкам с собственным движением при наведении */
+.auth-stagger > * {
+  animation: auth-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.auth-stagger > :nth-child(2) {
+  animation-delay: 60ms;
+}
+.auth-stagger > :nth-child(3) {
+  animation-delay: 120ms;
+}
+.auth-stagger > :nth-child(4) {
+  animation-delay: 180ms;
+}
+.auth-stagger > :nth-child(5) {
+  animation-delay: 240ms;
+}
+.auth-stagger > :nth-child(n + 6) {
+  animation-delay: 300ms;
+}
+/* ошибка появляется сразу, без очереди */
+.auth-stagger > [role="alert"] {
+  animation: error-in 0.3s ease both;
+}
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+/* телефон: сцены в карточке сменяются, как кадры гифки */
+.auth-scene-in {
+  animation: auth-scene-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes auth-scene-in {
+  from {
+    opacity: 0;
+    scale: 0.85;
+    rotate: -4deg;
+  }
+}
+.auth-copy-in {
+  animation: auth-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both;
+}
+
+/* «стикеры» поверх ленты сцен покачиваются на месте */
+.auth-sticker {
+  animation: auth-bob 5s ease-in-out infinite;
+}
+.auth-sticker-2 {
+  animation-duration: 6s;
+  animation-delay: -2.5s;
+}
+@keyframes auth-bob {
+  50% {
+    translate: 0 -10px;
+    rotate: -2deg;
+  }
+}
+
 /* Анкета волонтёра (screens/volunteer/Form.tsx): шаги въезжают сбоку, варианты «пружинят» при выборе. */
 .step-in-forward {
   animation: step-in-forward 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -741,8 +807,15 @@ html:has(form [data-step]) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-blob {
+  .auth-blob,
+  .auth-stagger > *,
+  .auth-scene-in,
+  .auth-copy-in,
+  .auth-sticker {
     animation: none;
+  }
+  .auth-tabs-pill {
+    transition: none;
   }
   .lift,
   .lift:hover {

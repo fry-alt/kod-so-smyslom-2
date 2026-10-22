@@ -2,6 +2,8 @@
 // Регистрация в два шага: форма → код из письма (CodeStep) → кабинет. Если почта на сервере не настроена,
 // бэкенд регистрирует сразу, без кода. «Забыли пароль?»: почта (ForgotStep) → код и новый пароль (CodeStep).
 // После входа: волонтёр — в личный кабинет (/me), координатор — в кабинет фонда (/admin).
+// Слева форма, справа на компьютере — 3D-лента сцен с лендинга (Showcase), на телефоне сцены сменяются
+// прямо в карточке (SceneStrip). Движения — классы auth-* в index.css, при «уменьшении движения» выключены.
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type Ref } from "react";
 
 import type { AccountRole, AuthOut, CodeSent } from "../api";
@@ -11,8 +13,11 @@ import { Icon, type IconName } from "../icons";
 import { navigate } from "../router";
 import { tg } from "../telegram";
 import { ErrorBox, errorText, FLAIR, flairHandlers, inputClass } from "../ui";
+import VolunteerScenes, { SCENES } from "./volunteer/VolunteerScenes";
 
 type Mode = "register" | "login";
+/** что сейчас на карточке: вход, регистрация, «Забыли пароль?» или код из письма */
+type View = Mode | "forgot" | "code";
 
 const ROLE: Record<AccountRole, { title: string; sub: string; icon: IconName }> = {
   volunteer: { title: "Я волонтёр", sub: "хочу помогать фонду", icon: "handHeart" },
@@ -32,10 +37,14 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
   const [badField, setBadField] = useState<"email" | "password" | null>(null);
   const [sent, setSent] = useState<CodeSent | null>(null);
   const [forgot, setForgot] = useState(false); // «Забыли пароль?»: почта → код и новый пароль
+  // куда «листается» карточка при смене шага: вперёд — справа, назад — слева
+  const [back, setBack] = useState(false);
+  const [shaking, setShaking] = useState(false); // ошибка в форме — карточка коротко качается
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
   const register = mode === "register";
+  const view: View = sent ? "code" : forgot ? "forgot" : mode;
 
   function enter(out: AuthOut) {
     saveSession(out);
@@ -51,7 +60,10 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
   async function submit(e: FormEvent) {
     e.preventDefault();
     const cleanName = name.trim().replace(/\s+/g, " ");
-    if (register && !cleanName) return setError("Напишите, как вас зовут");
+    if (register && !cleanName) {
+      setShaking(true);
+      return setError("Напишите, как вас зовут");
+    }
     const clean = email.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return fail("email", "Похоже на опечатку в почте: нужно вида name@mail.ru");
     if (register && password.length < 6) return fail("password", "Пароль — хотя бы 6 символов");
@@ -63,10 +75,13 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
       const out = register
         ? await auth.register({ name: cleanName, email: clean, password, role, code: code.trim() })
         : await auth.login({ email: clean, password });
-      if ("pending" in out) setSent(out);
-      else enter(out);
+      if ("pending" in out) {
+        setBack(false);
+        setSent(out);
+      } else enter(out);
     } catch (err) {
       setError(errorText(err));
+      setShaking(true);
     } finally {
       setSending(false);
     }
@@ -75,183 +90,351 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
   function fail(field: "email" | "password", text: string) {
     setError(text);
     setBadField(field);
+    setShaking(true);
     (field === "email" ? emailRef : passwordRef).current?.focus();
   }
 
   function switchMode(next: Mode) {
+    if (next === mode) return;
+    setBack(next === "login"); // «Вход» на переключателе слева, «Регистрация» — справа
     setMode(next);
     setError("");
     setBadField(null);
   }
 
   return (
-    <div className="mx-auto grid w-full min-w-0 max-w-[26rem]">
-      <section className="flex min-w-0 flex-col gap-6 rounded-[2rem] bg-surface p-5 shadow-[0_24px_60px_-40px_var(--p-ink)] sm:p-7">
-        {sent ? (
-          <CodeStep
-            sent={sent}
-            purpose={forgot ? "reset" : "signup"}
-            onBack={() => setSent(null)}
-            onDone={enter}
-          />
-        ) : forgot ? (
-          <ForgotStep email={email} onEmail={setEmail} onSent={setSent} onBack={() => setForgot(false)} />
-        ) : (
-          <>
-            <div className="flex flex-col gap-2">
-              <h1 className="font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-balance">
-                {register ? "Регистрация" : "Вход в аккаунт"}
-              </h1>
-              <p className="text-hint">
-                {register
-                  ? role === "coordinator"
-                    ? "После регистрации откроется кабинет фонда."
-                    : location.pathname === "/form"
-                      ? "После регистрации вы сразу продолжите заполнение анкеты."
-                      : "После регистрации откроется личный кабинет."
-                  : "Введите почту и пароль, с которыми регистрировались. Роль определится автоматически."}
-              </p>
-            </div>
+    <div className="grid min-w-0 gap-6 md:grid-cols-[minmax(0,27rem)_minmax(0,1fr)] md:gap-8">
+      {/* появление — на обёртке, покачивание — на карточке: иначе после покачивания карточка появлялась бы заново */}
+      <div className="tile-in min-w-0">
+        <section
+          onAnimationEnd={(e) => e.target === e.currentTarget && setShaking(false)}
+          className={`relative flex h-full min-w-0 flex-col gap-6 overflow-hidden rounded-[2rem] bg-surface p-5 shadow-[0_24px_60px_-40px_var(--p-ink)] sm:p-7 ${shaking ? "shake" : ""}`}
+        >
+          <SceneStrip />
 
-            <form onSubmit={submit} noValidate className="flex flex-col gap-5">
-              {register && <fieldset className="flex flex-col gap-2">
-                <legend className="mb-2 font-semibold">Зарегистрироваться как</legend>
-            <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-                  {(Object.keys(ROLE) as AccountRole[]).map((r) => {
-                    const on = role === r;
-                    return (
-                      <label
-                        key={r}
-                        className={`relative flex cursor-pointer flex-col items-start gap-1 rounded-2xl border-2 p-3 text-left transition select-none ${
-                          on ? "border-accent bg-page shadow-sm" : "border-transparent bg-page/60 hover:border-line"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="auth-role"
-                          value={r}
-                          checked={on}
-                          onChange={() => {
-                            setRole(r);
-                            setError("");
-                            setBadField(null);
-                          }}
-                          className="sr-only"
-                        />
-                        <Icon name={ROLE[r].icon} className="size-7 text-accent" />
-                        <span className="leading-tight font-semibold">{ROLE[r].title}</span>
-                        <span className="text-sm leading-tight text-hint">{ROLE[r].sub}</span>
-                      </label>
-                    );
-                  })}
+          {(view === "login" || view === "register") && <ModeTabs mode={mode} onChange={switchMode} />}
+
+          {/* key — при смене шага карточка «перелистывается», поля появляются по очереди */}
+          <div key={view} className={`flex min-w-0 flex-1 flex-col gap-6 ${back ? "step-in-back" : "step-in-forward"}`}>
+            {sent ? (
+              <CodeStep
+                sent={sent}
+                purpose={forgot ? "reset" : "signup"}
+                onBack={() => {
+                  setBack(true);
+                  setSent(null);
+                }}
+                onDone={enter}
+              />
+            ) : forgot ? (
+              <ForgotStep
+                email={email}
+                onEmail={setEmail}
+                onSent={(out) => {
+                  setBack(false);
+                  setSent(out);
+                }}
+                onBack={() => {
+                  setBack(true);
+                  setForgot(false);
+                }}
+              />
+            ) : (
+              <>
+                <div className="flex flex-col gap-2">
+                  <h1 className="font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-balance">
+                    {register ? "Регистрация" : "Вход в аккаунт"}
+                  </h1>
+                  <p className="text-hint">
+                    {register
+                      ? role === "coordinator"
+                        ? "После регистрации откроется кабинет фонда."
+                        : location.pathname === "/form"
+                          ? "После регистрации вы сразу продолжите заполнение анкеты."
+                          : "После регистрации откроется личный кабинет."
+                      : "Введите почту и пароль, с которыми регистрировались. Роль определится автоматически."}
+                  </p>
                 </div>
-              </fieldset>}
 
-              {register && (
-                <Label text="Как вас зовут" hint="Так к вам будут обращаться в кабинете">
-                  <input
-                    autoComplete="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Например, Анна Петрова"
-                    maxLength={100}
-                    className={inputClass}
-                  />
-                </Label>
-              )}
+                <form onSubmit={submit} noValidate className="auth-stagger flex flex-col gap-5">
+                  {register && (
+                    <fieldset className="flex flex-col gap-2">
+                      <legend className="mb-2 font-semibold">Зарегистрироваться как</legend>
+                      <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+                        {(Object.keys(ROLE) as AccountRole[]).map((r) => {
+                          const on = role === r;
+                          return (
+                            <label
+                              key={r}
+                              className={`choice relative flex cursor-pointer flex-col items-start gap-1 rounded-2xl border-2 p-3 text-left select-none ${
+                                on ? "is-on border-accent bg-page" : "border-transparent bg-page/60 hover:border-line"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="auth-role"
+                                value={r}
+                                checked={on}
+                                onChange={() => {
+                                  setRole(r);
+                                  setError("");
+                                  setBadField(null);
+                                }}
+                                className="sr-only"
+                              />
+                              {on && (
+                                <span className="choice-mark absolute top-2.5 right-2.5 grid size-6 place-items-center rounded-full bg-accent text-accent-text">
+                                  <Icon name="check" className="size-4" />
+                                </span>
+                              )}
+                              <Icon name={ROLE[r].icon} className="choice-icon size-7 text-accent" />
+                              <span className="leading-tight font-semibold">{ROLE[r].title}</span>
+                              <span className="text-sm leading-tight text-hint">{ROLE[r].sub}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  )}
 
-              <Label text="Почта">
-                <input
-                  ref={emailRef}
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  aria-invalid={badField === "email"}
-                  aria-describedby={badField === "email" ? "auth-error" : undefined}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@mail.ru"
-                  className={inputClass}
-                />
-              </Label>
+                  {register && (
+                    <Label text="Как вас зовут" hint="Так к вам будут обращаться в кабинете">
+                      <input
+                        autoComplete="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Например, Анна Петрова"
+                        maxLength={100}
+                        className={inputClass}
+                      />
+                    </Label>
+                  )}
 
-              <Label text="Пароль" hint={register ? "Не меньше 6 символов" : undefined}>
-                <PasswordInput
-                  inputRef={passwordRef}
-                  invalid={badField === "password"}
-                  value={password}
-                  onChange={setPassword}
-                  autoComplete={register ? "new-password" : "current-password"}
-                />
-              </Label>
+                  <Label text="Почта">
+                    <input
+                      ref={emailRef}
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      aria-invalid={badField === "email"}
+                      aria-describedby={badField === "email" ? "auth-error" : undefined}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@mail.ru"
+                      className={inputClass}
+                    />
+                  </Label>
 
-              {register && role === "coordinator" && (
-                <Label text="Код фонда" hint="Его выдаёт руководитель фонда — чтобы в кабинет фонда не попали посторонние">
-                  <input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" className={inputClass} />
-                </Label>
-              )}
+                  <Label text="Пароль" hint={register ? "Не меньше 6 символов" : undefined}>
+                    <PasswordInput
+                      inputRef={passwordRef}
+                      invalid={badField === "password"}
+                      value={password}
+                      onChange={setPassword}
+                      autoComplete={register ? "new-password" : "current-password"}
+                    />
+                  </Label>
 
-              {error && <ErrorBox id="auth-error" text={error} />}
+                  {register && role === "coordinator" && (
+                    <Label text="Код фонда" hint="Его выдаёт руководитель фонда — чтобы в кабинет фонда не попали посторонние">
+                      <input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" className={inputClass} />
+                    </Label>
+                  )}
 
-              <button
-                type="submit"
-                disabled={sending}
-                {...flairHandlers}
-                className={`btn-flair min-h-14 w-full rounded-full bg-cta px-8 text-lg font-bold text-white shadow-[0_8px_24px_-8px_var(--p-cta)] disabled:opacity-60 ${FLAIR.cta}`}
-              >
-                {sending ? "Секунду…" : register ? "Зарегистрироваться" : "Войти"}
-              </button>
+                  {error && <ErrorBox id="auth-error" text={error} />}
 
-              {!register && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setForgot(true);
-                    setError("");
-                  }}
-                  className="self-start font-semibold text-link underline"
-                >
-                  Забыли пароль?
-                </button>
-              )}
+                  <button
+                    type="submit"
+                    disabled={sending}
+                    {...flairHandlers}
+                    className={`btn-flair min-h-14 w-full rounded-full bg-cta px-8 text-lg font-bold text-white shadow-[0_8px_24px_-8px_var(--p-cta)] disabled:opacity-60 ${FLAIR.cta}`}
+                  >
+                    {sending ? "Секунду…" : register ? "Зарегистрироваться" : "Войти"}
+                  </button>
 
-              {register && (
-                <p className="text-sm text-hint">
-                  Нажимая «Зарегистрироваться», вы соглашаетесь с{" "}
-                  <a href={FUND_DOCS.privacy} target="_blank" rel="noreferrer" className="text-link underline">
-                    политикой обработки персональных данных
-                  </a>
-                  .
-                </p>
-              )}
-            </form>
+                  {!register && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBack(false);
+                        setForgot(true);
+                        setError("");
+                      }}
+                      className="self-start font-semibold text-link underline"
+                    >
+                      Забыли пароль?
+                    </button>
+                  )}
 
-            <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-5">
-              <span className="text-hint">{register ? "Уже есть аккаунт?" : "Ещё нет аккаунта?"}</span>
-              <button
-                type="button"
-                onClick={() => switchMode(register ? "login" : "register")}
-                {...flairHandlers}
-                className={`btn-flair min-h-12 rounded-full border-2 border-line bg-page px-6 font-semibold ${FLAIR.secondary}`}
-              >
-                {register ? "Войти" : "Зарегистрироваться"}
-              </button>
-            </div>
+                  {register && (
+                    <p className="text-sm text-hint">
+                      Нажимая «Зарегистрироваться», вы соглашаетесь с{" "}
+                      <a href={FUND_DOCS.privacy} target="_blank" rel="noreferrer" className="text-link underline">
+                        политикой обработки персональных данных
+                      </a>
+                      .
+                    </p>
+                  )}
+                </form>
 
-            {tg?.initData && role === "volunteer" && (
-              <p className="rounded-2xl bg-page px-4 py-3 text-hint">
-                В Telegram можно и без регистрации —{" "}
-                <button type="button" onClick={() => navigate("/form")} className="font-semibold text-link underline">
-                  сразу заполнить анкету
-                </button>
-                .
-              </p>
+                {tg?.initData && role === "volunteer" && (
+                  <p className="rounded-2xl bg-page px-4 py-3 text-hint">
+                    В Telegram можно и без регистрации —{" "}
+                    <button type="button" onClick={() => navigate("/form")} className="font-semibold text-link underline">
+                      сразу заполнить анкету
+                    </button>
+                    .
+                  </p>
+                )}
+              </>
             )}
-          </>
-        )}
-      </section>
+          </div>
+        </section>
+      </div>
 
+      <Showcase view={view} role={role} />
     </div>
+  );
+}
+
+/** Переключатель «Вход / Регистрация»: зелёная подложка переезжает под выбранную кнопку. */
+function ModeTabs(props: { mode: Mode; onChange: (mode: Mode) => void }) {
+  return (
+    <div role="group" aria-label="Вход или регистрация" className="relative grid grid-cols-2 rounded-full bg-page p-1">
+      <span
+        aria-hidden="true"
+        className={`auth-tabs-pill absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-accent shadow-[0_8px_18px_-10px_var(--p-accent)] ${
+          props.mode === "register" ? "translate-x-full" : ""
+        }`}
+      />
+      {(["login", "register"] as Mode[]).map((m) => {
+        const on = props.mode === m;
+        return (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={on}
+            onClick={() => props.onChange(m)}
+            className={`relative min-h-12 rounded-full px-3 font-semibold transition-colors duration-300 ${
+              on ? "text-accent-text" : "text-ink hover:text-accent"
+            }`}
+          >
+            {m === "login" ? "Вход" : "Регистрация"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Номер сцены, который сам сменяется раз в ms миллисекунд. При «уменьшении движения» — стоит на первой. */
+function useCycle(count: number, ms: number) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = setInterval(() => setI((n) => (n + 1) % count), ms);
+    return () => clearInterval(timer);
+  }, [count, ms]);
+  return i;
+}
+
+/** Телефон: вверху карточки сменяются сцены «чем помогают волонтёры» — как живые картинки на лендинге. */
+function SceneStrip() {
+  const i = useCycle(SCENES.length, 3200);
+  const s = SCENES[i];
+  return (
+    <div aria-hidden="true" className="flex items-center gap-3 rounded-3xl bg-page p-2 pr-4 md:hidden">
+      <div key={i} className="auth-scene-in w-28 shrink-0">
+        {s.art}
+      </div>
+      <div key={`text-${i}`} className="auth-copy-in min-w-0">
+        <p className="text-sm text-hint">Чем помогают волонтёры</p>
+        <p className="leading-snug font-semibold">{s.title}</p>
+      </div>
+    </div>
+  );
+}
+
+const SHOWCASE: Record<"login" | "volunteer" | "coordinator" | "forgot" | "code", { title: string; text: string; points: string[] }> = {
+  login: {
+    title: "С возвращением!",
+    text: "Войдите — и продолжите с того места, где остановились.",
+    points: ["Ваши занятия", "Сообщения от фонда", "Обучение и тест"],
+  },
+  volunteer: {
+    title: "Творческие мастерские ждут вас",
+    text: "Керамика, живопись, валяние и кулинария вместе с ребятами.",
+    points: ["Анкета за 5–7 минут", "Обучение онлайн", "Часы для «Добро.рф»"],
+  },
+  coordinator: {
+    title: "Кабинет фонда «Дети Марии»",
+    text: "Волонтёры, занятия и собеседования — в одном месте.",
+    points: ["Умный поиск волонтёров", "Собеседования и итоги", "Сводка и аналитика"],
+  },
+  forgot: {
+    title: "Секунду — и вы снова с нами",
+    text: "Пришлём код на почту, зададите новый пароль — и всё.",
+    points: [],
+  },
+  code: {
+    title: "Почти готово!",
+    text: "Осталось ввести код из письма.",
+    points: [],
+  },
+};
+
+/** Компьютер: справа — 3D-лента сцен с лендинга, поверх неё карточка «что ждёт после входа»
+ *  и два «стикера», которые плавают. Текст карточки меняется вместе с шагом и ролью. */
+function Showcase(props: { view: View; role: AccountRole }) {
+  const key = props.view === "register" ? props.role : props.view;
+  const copy = SHOWCASE[key];
+  return (
+    <aside className="sticky top-6 hidden h-[min(44rem,calc(100dvh-3rem))] min-h-[32rem] self-start overflow-hidden rounded-[2rem] bg-surface md:block">
+      <span aria-hidden="true" className="auth-blob auth-blob-1" />
+      <span aria-hidden="true" className="auth-blob auth-blob-2" />
+      <span aria-hidden="true" className="auth-blob auth-blob-3" />
+      <div className="absolute inset-0">
+        <VolunteerScenes fill />
+      </div>
+
+      <Sticker className="auth-sticker top-6 left-6" icon="heart" text="Больше 30 лет помогаем" />
+      <Sticker className="auth-sticker auth-sticker-2 top-20 right-6" icon="pin" text="Москва, Ярославль, Осетия" />
+
+      <div className="absolute inset-x-5 bottom-5 rounded-3xl bg-page/85 p-6 shadow-[0_24px_50px_-30px_var(--p-ink)] backdrop-blur-md lg:inset-x-8 lg:bottom-8">
+        <div key={key} className="auth-stagger flex flex-col gap-3">
+          <p className="flex items-center gap-2 text-sm font-semibold text-accent">
+            <Icon name="sparkles" className="size-4" />
+            Фонд «Дети Марии»
+          </p>
+          <p className="font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-balance">{copy.title}</p>
+          <p className="text-lg text-hint">{copy.text}</p>
+          {copy.points.length > 0 && (
+            <ul className="auth-stagger flex flex-wrap gap-2">
+              {copy.points.map((p) => (
+                <li key={p} className="flex items-center gap-1.5 rounded-full bg-surface px-4 py-1.5 font-medium">
+                  <Icon name="check" className="size-4 text-accent" />
+                  {p}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function Sticker(props: { className: string; icon: IconName; text: string }) {
+  return (
+    <p
+      aria-hidden="true"
+      className={`absolute z-10 flex items-center gap-2 rounded-full bg-page py-2 pr-4 pl-2 font-semibold shadow-[0_14px_30px_-18px_var(--p-ink)] ${props.className}`}
+    >
+      <span className="grid size-8 place-items-center rounded-full bg-pop text-ink">
+        <Icon name={props.icon} className="size-4" />
+      </span>
+      {props.text}
+    </p>
   );
 }
 

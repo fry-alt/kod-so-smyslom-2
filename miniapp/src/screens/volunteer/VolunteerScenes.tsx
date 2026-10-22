@@ -323,7 +323,7 @@ function Teaching() {
 }
 
 /** 12 направлений: в кадре одновременно видно разные, без повторов. */
-const SCENES = [
+export const SCENES = [
   { title: "Помощь на мастер-классах", sub: "Керамика, живопись, валяние, кулинария", art: <Masterclass /> },
   { title: "Наставничество", sub: "Стать значимым взрослым для ребят", art: <Mentor /> },
   { title: "Помощь специалистов", sub: "Психолог, логопед, юрист", art: <Specialist /> },
@@ -352,8 +352,9 @@ function SceneCard({ s }: { s: (typeof SCENES)[number] }) {
 
 /** 3D-бегущая лента (как 3d-marquee у Aceternity, без библиотеки): 3 колонки по 4 своих сцены
  *  на наклонённой плоскости, соседние колонки едут в разные стороны. Каждая колонка повторена трижды и едет
- *  со средней копии: сверху и снизу всегда есть карточки, пустых краёв в кадре нет. */
-export default function VolunteerScenes() {
+ *  со средней копии: сверху и снизу всегда есть карточки, пустых краёв в кадре нет.
+ *  fill — лента на всю высоту родителя (страница входа), иначе своя высота, как на лендинге. */
+export default function VolunteerScenes(props: { fill?: boolean }) {
   const columns = [0, 1, 2].map((c) => SCENES.filter((_, i) => i % 3 === c));
   return (
     <>
@@ -364,7 +365,7 @@ export default function VolunteerScenes() {
           </li>
         ))}
       </ul>
-      <div className="marquee3d tile-in relative h-[26rem] overflow-x-clip md:h-[34rem]" aria-hidden="true">
+      <div className={`marquee3d tile-in relative overflow-x-clip ${props.fill ? "h-full" : "h-[26rem] md:h-[34rem]"}`} aria-hidden="true">
         <div className="marquee3d-fade absolute inset-0 overflow-hidden bg-surface">
           <div className="marquee3d-plane grid grid-cols-3 gap-4">
             {columns.map((col, c) => (
