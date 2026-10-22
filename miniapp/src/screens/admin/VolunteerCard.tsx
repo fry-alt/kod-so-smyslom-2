@@ -6,9 +6,9 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import type { Note, Role, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
-import { formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
+import { formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Button, Card, Contact, Empty, ErrorBox, errorText, inputClass, Link, Loading, useLoad } from "../../ui";
+import { Badge, Button, Card, Contact, Empty, ErrorBox, errorText, inputClass, Link, Loading, PageTitle, StatusBadge, useLoad } from "../../ui";
 import InterviewBlock from "./interview/InterviewBlock";
 
 /** Кнопки смены статуса: что делает координатор → какой статус ставим. */
@@ -42,9 +42,9 @@ export default function VolunteerCard(props: { id: number }) {
       {v && !loading && (
         <>
           <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold break-words">{v.name}</h1>
+            <PageTitle>{v.name}</PageTitle>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge>
+              <StatusBadge status={v.status} />
               <span className="text-hint">Анкета от {formatDate(v.created_at, false)}</span>
             </div>
           </div>
@@ -97,7 +97,7 @@ function StatusCard(props: { v: Volunteer; onSaved: (v: Volunteer) => void }) {
     <Card className="flex flex-col gap-3">
       <h2 className="text-xl font-semibold">Статус</h2>
       <p>
-        Статус: <Badge className={STATUS_COLOR[props.v.status]}>{STATUS[props.v.status]}</Badge>
+        Статус: <StatusBadge status={props.v.status} />
       </p>
       <div className="flex flex-wrap gap-2" role="group" aria-label={`Статус: ${STATUS[props.v.status]}`}>
         {STATUS_ACTIONS.map((a) => {
@@ -111,12 +111,13 @@ function StatusCard(props: { v: Volunteer; onSaved: (v: Volunteer) => void }) {
               ariaPressed={current}
               onClick={() => !current && change(a.status)}
             >
-              {current ? `✓ ${a.label}` : a.label}
+              {current && <span aria-hidden="true">✓ </span>}
+              {a.label}
             </Button>
           );
         })}
       </div>
-      {done && <p role="status" className="text-green-800">✓ Статус сохранён</p>}
+      {done && <p role="status" className="text-green-800"><span aria-hidden="true">✓ </span>Статус сохранён</p>}
       {error && <ErrorBox text={`Статус не сохранился: ${error}`} />}
     </Card>
   );
@@ -174,7 +175,7 @@ function HoursCard(props: { v: Volunteer; onSaved: (v: Volunteer) => void }) {
             </Button>
           </div>
         </div>
-        {done && <p role="status" className="text-green-800">✓ Часы сохранены</p>}
+        {done && <p role="status" className="text-green-800"><span aria-hidden="true">✓ </span>Часы сохранены</p>}
         {error && <p className="font-medium text-red-700">{error}</p>}
       </form>
     </Card>

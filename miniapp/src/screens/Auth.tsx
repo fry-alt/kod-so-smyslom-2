@@ -2,32 +2,38 @@
 // Регистрация в два шага: форма → код из письма (CodeStep) → кабинет. Если почта на сервере не настроена,
 // бэкенд регистрирует сразу, без кода. «Забыли пароль?»: почта (ForgotStep) → код и новый пароль (CodeStep).
 // После входа: волонтёр — в личный кабинет (/me), координатор — в кабинет фонда (/admin).
-import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode, type Ref } from "react";
 
 import type { AccountRole, AuthOut, CodeSent } from "../api";
 import { auth, saveSession } from "../backend";
 import { FUND_DOCS } from "../Footer";
+import { Icon, type IconName } from "../icons";
 import { navigate } from "../router";
 import { tg } from "../telegram";
 import { ErrorBox, errorText, FLAIR, flairHandlers, inputClass } from "../ui";
 
 type Mode = "register" | "login";
 
-const ROLE: Record<AccountRole, { title: string; sub: string; icon: string }> = {
-  volunteer: { title: "Я волонтёр", sub: "хочу помогать фонду", icon: "🙋" },
-  coordinator: { title: "Я координатор", sub: "работаю в фонде", icon: "🏠" },
+const ROLE: Record<AccountRole, { title: string; sub: string; icon: IconName }> = {
+  volunteer: { title: "Я волонтёр", sub: "хочу помогать фонду", icon: "handHeart" },
+  coordinator: { title: "Я координатор", sub: "работаю в фонде", icon: "house" },
 };
 
 export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
   const [mode, setMode] = useState<Mode>(props.mode ?? "register");
   const [role, setRole] = useState<AccountRole>(props.role ?? "volunteer");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  // в каком поле ошибка — оно получает фокус, aria-invalid и ссылку на текст ошибки
+  const [badField, setBadField] = useState<"email" | "password" | null>(null);
   const [sent, setSent] = useState<CodeSent | null>(null);
   const [forgot, setForgot] = useState(false); // «Забыли пароль?»: почта → код и новый пароль
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const register = mode === "register";
 
@@ -44,15 +50,18 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    const cleanName = name.trim().replace(/\s+/g, " ");
+    if (register && !cleanName) return setError("Напишите, как вас зовут");
     const clean = email.trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return setError("Похоже на опечатку в почте: нужно вида name@mail.ru");
-    if (register && password.length < 6) return setError("Пароль — хотя бы 6 символов");
-    if (!password) return setError("Введите пароль");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return fail("email", "Похоже на опечатку в почте: нужно вида name@mail.ru");
+    if (register && password.length < 6) return fail("password", "Пароль — хотя бы 6 символов");
+    if (!password) return fail("password", "Введите пароль");
     setSending(true);
     setError("");
+    setBadField(null);
     try {
       const out = register
-        ? await auth.register({ email: clean, password, role, code: code.trim() })
+        ? await auth.register({ name: cleanName, email: clean, password, role, code: code.trim() })
         : await auth.login({ email: clean, password });
       if ("pending" in out) setSent(out);
       else enter(out);
@@ -63,9 +72,16 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
     }
   }
 
+  function fail(field: "email" | "password", text: string) {
+    setError(text);
+    setBadField(field);
+    (field === "email" ? emailRef : passwordRef).current?.focus();
+  }
+
   function switchMode(next: Mode) {
     setMode(next);
     setError("");
+    setBadField(null);
   }
 
   return (
@@ -100,39 +116,58 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
             <form onSubmit={submit} noValidate className="flex flex-col gap-5">
               {register && <fieldset className="flex flex-col gap-2">
                 <legend className="mb-2 font-semibold">Зарегистрироваться как</legend>
-            <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2" role="radiogroup">
+            <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
                   {(Object.keys(ROLE) as AccountRole[]).map((r) => {
                     const on = role === r;
                     return (
-                      <button
+                      <label
                         key={r}
-                        type="button"
-                        role="radio"
-                        aria-checked={on}
-                        onClick={() => {
-                          setRole(r);
-                          setError("");
-                        }}
-                        className={`flex flex-col items-start gap-1 rounded-2xl border-2 p-3 text-left transition ${
+                        className={`relative flex cursor-pointer flex-col items-start gap-1 rounded-2xl border-2 p-3 text-left transition select-none ${
                           on ? "border-accent bg-page shadow-sm" : "border-transparent bg-page/60 hover:border-line"
                         }`}
                       >
-                        <span className="text-2xl" aria-hidden="true">
-                          {ROLE[r].icon}
-                        </span>
+                        <input
+                          type="radio"
+                          name="auth-role"
+                          value={r}
+                          checked={on}
+                          onChange={() => {
+                            setRole(r);
+                            setError("");
+                            setBadField(null);
+                          }}
+                          className="sr-only"
+                        />
+                        <Icon name={ROLE[r].icon} className="size-7 text-accent" />
                         <span className="leading-tight font-semibold">{ROLE[r].title}</span>
                         <span className="text-sm leading-tight text-hint">{ROLE[r].sub}</span>
-                      </button>
+                      </label>
                     );
                   })}
                 </div>
               </fieldset>}
 
+              {register && (
+                <Label text="Как вас зовут" hint="Так к вам будут обращаться в кабинете">
+                  <input
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Например, Анна Петрова"
+                    maxLength={100}
+                    className={inputClass}
+                  />
+                </Label>
+              )}
+
               <Label text="Почта">
                 <input
+                  ref={emailRef}
                   type="email"
                   inputMode="email"
                   autoComplete="email"
+                  aria-invalid={badField === "email"}
+                  aria-describedby={badField === "email" ? "auth-error" : undefined}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@mail.ru"
@@ -142,6 +177,8 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
 
               <Label text="Пароль" hint={register ? "Не меньше 6 символов" : undefined}>
                 <PasswordInput
+                  inputRef={passwordRef}
+                  invalid={badField === "password"}
                   value={password}
                   onChange={setPassword}
                   autoComplete={register ? "new-password" : "current-password"}
@@ -154,7 +191,7 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
                 </Label>
               )}
 
-              {error && <ErrorBox text={error} />}
+              {error && <ErrorBox id="auth-error" text={error} />}
 
               <button
                 type="submit"
@@ -232,6 +269,8 @@ function CodeStep(props: {
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [wrong, setWrong] = useState(0); // сколько раз ввели неверный код — ячейки вздрагивают
+  const codeRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [resendAt, setResendAt] = useState(() => Date.now() + props.sent.resend_after * 1000);
   const [now, setNow] = useState(() => Date.now());
   const wait = Math.max(0, Math.ceil((resendAt - now) / 1000));
@@ -294,23 +333,36 @@ function CodeStep(props: {
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          if (code.length !== 6) return setError("В коде 6 цифр");
-          if (reset && password.length < 6) return setError("Новый пароль — хотя бы 6 символов");
+          if (code.length !== 6) {
+            setError("В коде 6 цифр");
+            return codeRef.current?.focus();
+          }
+          if (reset && password.length < 6) {
+            setError("Новый пароль — хотя бы 6 символов");
+            return passwordRef.current?.focus();
+          }
           void check(code);
         }}
         className="flex flex-col gap-5"
       >
         <Label text="Код из письма">
-          <CodeCells value={code} onChange={type} busy={sending} wrong={wrong} />
+          <CodeCells
+            inputRef={codeRef}
+            invalid={!!error}
+            value={code}
+            onChange={type}
+            busy={sending}
+            wrong={wrong}
+          />
         </Label>
 
         {reset && (
           <Label text="Новый пароль" hint="Не меньше 6 символов">
-            <PasswordInput value={password} onChange={setPassword} autoComplete="new-password" />
+            <PasswordInput inputRef={passwordRef} value={password} onChange={setPassword} autoComplete="new-password" />
           </Label>
         )}
 
-        {error && <ErrorBox text={error} />}
+        {error && <ErrorBox id="code-error" text={error} />}
         {note && !error && <p className="rounded-2xl bg-page px-4 py-3">{note}</p>}
 
         <button
@@ -350,11 +402,15 @@ function ForgotStep(props: {
 }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const emailRef = useRef<HTMLInputElement>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     const clean = props.email.trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return setError("Похоже на опечатку в почте: нужно вида name@mail.ru");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) {
+      setError("Похоже на опечатку в почте: нужно вида name@mail.ru");
+      return emailRef.current?.focus();
+    }
     setSending(true);
     setError("");
     try {
@@ -378,6 +434,9 @@ function ForgotStep(props: {
       <form onSubmit={submit} noValidate className="flex flex-col gap-5">
         <Label text="Почта">
           <input
+            ref={emailRef}
+            aria-invalid={!!error}
+            aria-describedby={error ? "forgot-error" : undefined}
             type="email"
             inputMode="email"
             autoComplete="email"
@@ -389,7 +448,7 @@ function ForgotStep(props: {
           />
         </Label>
 
-        {error && <ErrorBox text={error} />}
+        {error && <ErrorBox id="forgot-error" text={error} />}
 
         <button
           type="submit"
@@ -425,11 +484,20 @@ function ForgotStep(props: {
 }
 
 /** Поле пароля с кнопкой «Показать». */
-function PasswordInput(props: { value: string; onChange: (value: string) => void; autoComplete: string }) {
+function PasswordInput(props: {
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+  inputRef?: Ref<HTMLInputElement>;
+  invalid?: boolean; // ошибка в пароле — поле ссылается на текст ошибки (id="auth-error")
+}) {
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
       <input
+        ref={props.inputRef}
+        aria-invalid={props.invalid}
+        aria-describedby={props.invalid ? "auth-error" : undefined}
         type={show ? "text" : "password"}
         autoComplete={props.autoComplete}
         value={props.value}
@@ -449,7 +517,14 @@ function PasswordInput(props: { value: string; onChange: (value: string) => void
 
 /** Поле кода — шесть ячеек. Под ними лежит настоящее прозрачное поле: работают вставка из буфера
  * и подстановка кода из письма на телефоне, а ячейки только показывают цифры. */
-function CodeCells(props: { value: string; onChange: (value: string) => void; busy: boolean; wrong: number }) {
+function CodeCells(props: {
+  value: string;
+  onChange: (value: string) => void;
+  busy: boolean;
+  wrong: number;
+  inputRef?: Ref<HTMLInputElement>;
+  invalid?: boolean; // ошибка — поле ссылается на её текст (id="code-error")
+}) {
   const [focused, setFocused] = useState(true);
   const next = Math.min(props.value.length, 5);
   return (
@@ -472,6 +547,9 @@ function CodeCells(props: { value: string; onChange: (value: string) => void; bu
         })}
       </div>
       <input
+        ref={props.inputRef}
+        aria-invalid={props.invalid}
+        aria-describedby={props.invalid ? "code-error" : undefined}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
         onFocus={() => setFocused(true)}

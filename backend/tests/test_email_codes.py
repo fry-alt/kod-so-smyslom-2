@@ -10,7 +10,7 @@ from app.db import get_engine
 from app.schemas import RegisterIn
 from app.services import accounts, email_codes, mail
 
-FORM = {"email": "anna@example.ru", "password": "secret1", "role": "volunteer"}
+FORM = {"name": "Анна", "email": "anna@example.ru", "password": "secret1", "role": "volunteer"}
 
 
 def code_of(letter: dict) -> str:

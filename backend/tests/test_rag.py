@@ -4,7 +4,7 @@ from app.llm.client import get_llm
 from app.llm.providers import FakeProvider, LLMError
 from app.rag.answer import LLM_FAILED, NOT_FOUND, answer_question
 from app.rag.ingest import ingest_path, read_text, split_text
-from app.rag.retrieve import retrieve
+from app.rag.retrieve import retrieve, stems
 from conftest import DEMO_DIR
 
 TRAINING_DIR = DEMO_DIR.parent / "training"
@@ -145,3 +145,24 @@ def test_upload_rejects_unknown_format(client):
         "/documents/upload", files={"file": ("x.exe", b"MZ", "application/octet-stream")}
     )
     assert r.status_code == 400
+
+
+def test_stems_ignore_case_endings_and_question_words():
+    assert stems("Где взять СПРАВКУ о несудимости? Сколько ждать?") == {
+        "справ",
+        "несуд",
+        "взять",
+        "ждать",
+    }
+    assert stems("справка") == stems("справку")
+
+
+def test_keywords_rescue_fragment_when_embeddings_are_weak(monkeypatch):
+    """Эмбеддинги Yandex дают низкое сходство — фрагмент со словами вопроса всё равно находится."""
+    ingest_path(DEMO_DIR)
+    weak = [0.0] * 511 + [1.0]  # почти ни на что не похоже: сходство по смыслу около нуля
+    monkeypatch.setattr(get_llm(), "embed", lambda texts, kind="doc": [weak for _ in texts])
+    found = retrieve("Где взять справку о несудимости и сколько её ждать?")
+    # без слов фрагмент с ответом отсекался порогом сходства и до модели не доходил
+    assert any(c.source == "volunteer_rules.md" and "Госуслугах" in c.text for c in found)
+    assert retrieve("Квантовая хромодинамика глюонов") == []

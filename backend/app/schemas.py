@@ -518,6 +518,7 @@ AccountRole = Literal["volunteer", "coordinator"]
 class RegisterIn(BaseModel):
     """POST /auth/register."""
 
+    name: str = Field(min_length=1, max_length=100, description="как зовут — показываем в кабинете")
     email: str = Field(min_length=3, max_length=200, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     password: str = Field(min_length=6, max_length=200)
     role: AccountRole = "volunteer"
@@ -535,6 +536,7 @@ class AccountOut(BaseModel):
     """GET /auth/me — кто вошёл."""
 
     id: int
+    name: str = ""  # пусто — аккаунт заведён до того, как спросили имя: показываем почту
     email: str
     role: AccountRole
     volunteer_id: int | None = None  # None — анкета ещё не заполнена

@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import type { Interview as InterviewT } from "../../api";
 import { backend, getVolunteerId } from "../../backend";
+import { Icon, type IconName } from "../../icons";
 import { navigate } from "../../router";
 import { tg } from "../../telegram";
 import { ButtonLink, Card, ErrorBox, errorText, FLAIR, flairHandlers, Loading, useLoad } from "../../ui";
@@ -78,8 +79,8 @@ function NeedForm() {
 function NeedTraining() {
   return (
     <Card className="flex flex-col items-start gap-3 sm:p-6">
-      <span className="flex size-12 items-center justify-center rounded-full bg-logo-cyan text-2xl" aria-hidden="true">
-        🎓
+      <span className="flex size-12 items-center justify-center rounded-full bg-logo-cyan text-white">
+        <Icon name="graduation" className="size-7" />
       </span>
       <h2 className="font-display text-xl font-semibold">Сначала — обучение</h2>
       <p className="text-hint">
@@ -143,7 +144,10 @@ function Booked(props: { i: InterviewT; onChange: (notice: string) => void }) {
     <section className="relative flex flex-col gap-5 overflow-hidden rounded-[2rem] bg-logo-blue p-6 text-white sm:p-8">
       <span aria-hidden="true" className="auth-blob auth-blob-2" />
       <div className="relative flex flex-col gap-1">
-        <span className="font-semibold text-white/80">📹 Вы записаны · {inDays(i.starts_at)}</span>
+        <span className="font-semibold text-white/80">
+          <Icon name="video" className="mr-1 size-[1.1em] align-[-0.18em]" />
+          Вы записаны · {inDays(i.starts_at)}
+        </span>
         <span className="font-display text-[1.9rem] leading-tight font-semibold sm:text-[2.4rem]">{callWhen(i.starts_at)}</span>
         <span className="text-white/85">
           {i.notified
@@ -333,14 +337,16 @@ function Prepare() {
       <Card className="flex flex-col gap-3">
         <h2 className="font-display text-lg font-semibold">Как подготовиться</h2>
         <ul className="flex flex-col gap-2.5">
-          {[
-            ["🎧", "Телефон или компьютер с камерой и микрофоном"],
-            ["🤫", "Тихое место на полчаса"],
-            ["🔗", "Ничего устанавливать не нужно — звонок откроется прямо здесь"],
-            ["🙂", "Перед входом вы увидите себя и проверите звук"],
-          ].map(([icon, text]) => (
+          {(
+            [
+              ["headphones", "Телефон или компьютер с камерой и микрофоном"],
+              ["mute", "Тихое место на полчаса"],
+              ["link", "Ничего устанавливать не нужно — звонок откроется прямо здесь"],
+              ["smile", "Перед входом вы увидите себя и проверите звук"],
+            ] as [IconName, string][]
+          ).map(([icon, text]) => (
             <li key={text} className="flex gap-3">
-              <span aria-hidden="true">{icon}</span>
+              <Icon name={icon} className="mt-0.5 size-5 text-accent" />
               <span>{text}</span>
             </li>
           ))}

@@ -4,7 +4,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import type { Interview, Look, Opportunity, Participation, Volunteer } from "../../api";
-import { backend, getAccount, getLook, getVolunteerId, loadLook, logout, setVolunteerId } from "../../backend";
+import { accountName, backend, getAccount, getLook, getVolunteerId, loadLook, logout, setVolunteerId } from "../../backend";
 import { FORMAT, REGION, STATUS, STATUS_COLOR } from "../../labels";
 import { UnreadBadge, useUnread } from "../../messages/Thread";
 import { navigate } from "../../router";
@@ -59,14 +59,15 @@ export default function Me() {
   }
 
   const attended = (mine ?? []).filter((p) => p.status === "attended").length;
-  const firstName = v ? v.name.split(" ")[0] : null;
+  // имя из анкеты, а пока анкеты нет — то, что человек написал при регистрации
+  const firstName = (v?.name || account?.name || "").trim().split(" ")[0] || null;
   const progress: Progress = {
     hasForm: !!v,
     trained: !!v && ["trained", "approved", "active"].includes(v.status),
     attended,
     hours: v?.hours ?? 0,
   };
-  const letter = (look.nickname || firstName || account?.email || "?")[0].toUpperCase();
+  const letter = (look.nickname || firstName || accountName(account) || "?")[0].toUpperCase();
 
   return (
     <div className="flex flex-col gap-6 pb-6">
@@ -87,12 +88,11 @@ export default function Me() {
         look={look}
         letter={letter}
         onEdit={() => setEditing(true)}
-        email={account?.email ?? null}
         badge={v ? <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge> : null}
         stats={
           v
             ? [
-                { value: formatHours(v.hours), label: "волонтёрских часов" },
+                { value: formatHours(v.hours), label: "часов помощи" },
                 { value: v.training_score === null ? "—" : `${v.training_score}%`, label: "балл за обучение" },
                 { value: String(attended), label: attended === 1 ? "занятие" : "занятий" },
               ]
@@ -145,7 +145,8 @@ export default function Me() {
               logout();
               navigate("/");
             }}
-            className="min-h-12 self-start rounded-full px-4 font-semibold text-hint hover:text-ink"
+            {...flairHandlers}
+            className={`btn-flair min-h-12 self-start rounded-full px-4 font-semibold text-hint ${FLAIR.secondary}`}
           >
             Выйти из кабинета
           </button>
@@ -162,7 +163,6 @@ function Hero(props: {
   look: Look;
   letter: string;
   onEdit: () => void;
-  email: string | null;
   badge: ReactNode;
   stats: { value: string; label: string }[] | null;
 }) {
@@ -180,7 +180,6 @@ function Hero(props: {
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               {props.badge}
-              {props.email && <span className="truncate text-hint">{props.email}</span>}
               <button
                 type="button"
                 onClick={props.onEdit}
@@ -200,8 +199,9 @@ function Hero(props: {
                 key={s.label}
                 className={`flex flex-col rounded-2xl px-3 py-3 backdrop-blur-sm sm:min-w-28 sm:px-4 ${dark ? "bg-white/12" : "bg-page/85"}`}
               >
-                <dt className="order-2 text-sm leading-tight text-hint">{s.label}</dt>
-                <dd className="order-1 font-display text-2xl font-semibold">{s.value}</dd>
+                <dt className="order-2 text-sm leading-tight text-hint hyphens-auto">{s.label}</dt>
+                {/* цифры — Onest: в Unbounded ноль похож на букву «О» */}
+                <dd className="order-1 text-2xl font-bold">{s.value}</dd>
               </div>
             ))}
           </dl>

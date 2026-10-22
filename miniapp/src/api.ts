@@ -276,9 +276,10 @@ export type CallInfo = { starts_at: string; status: InterviewStatus; ice_servers
 
 // ===== Вход на сайт по почте и паролю =====
 export type AccountRole = "volunteer" | "coordinator";
-export type Account = { id: number; email: string; role: AccountRole; volunteer_id: number | null };
+/** name — как зовут; у аккаунтов, заведённых до того, как спросили имя, пусто (тогда показываем почту). */
+export type Account = { id: number; name: string; email: string; role: AccountRole; volunteer_id: number | null };
 export type AuthOut = { token: string; account: Account };
-export type RegisterIn = { email: string; password: string; role: AccountRole; code?: string };
+export type RegisterIn = { name: string; email: string; password: string; role: AccountRole; code?: string };
 export type LoginIn = { email: string; password: string };
 /** На почту ушёл код — аккаунта ещё нет, код вводят в authApi.verify. Если почта на сервере не настроена,
  * register сразу отвечает AuthOut. resend_after — через сколько секунд можно отправить код ещё раз. */

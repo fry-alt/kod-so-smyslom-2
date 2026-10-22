@@ -934,9 +934,18 @@ export const mockChatApi = {
 type MockAccount = Account & { password: string; token: string; look?: Look };
 const ACCOUNTS_KEY = "mock_accounts";
 
+/** Имена демо-аккаунтов, заведённых в браузере до того, как при регистрации стали спрашивать имя. */
+const DEMO_NAMES: Record<string, string> = {
+  "coord@demo.test": "Мария Соколова",
+  "coordinator@demo.test": "Мария Соколова",
+  "volunteer@demo.test": "Анна Петрова",
+  "vol@demo.test": "Анна Петрова",
+};
+
 function loadAccounts(): MockAccount[] {
   try {
-    return JSON.parse(localStorage.getItem(ACCOUNTS_KEY) ?? "[]");
+    const list: MockAccount[] = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) ?? "[]");
+    return list.map((a) => (a.name?.trim() ? a : { ...a, name: DEMO_NAMES[a.email] ?? a.name ?? "" }));
   } catch {
     return [];
   }
@@ -961,7 +970,7 @@ function currentAccount(list: MockAccount[]): MockAccount | undefined {
 }
 
 function authOut(a: MockAccount): AuthOut {
-  return { token: a.token, account: { id: a.id, email: a.email, role: a.role, volunteer_id: a.volunteer_id } };
+  return { token: a.token, account: { id: a.id, name: a.name ?? "", email: a.email, role: a.role, volunteer_id: a.volunteer_id } };
 }
 
 /** Как на бэкенде: анкета из аккаунта волонтёра становится его анкетой. */
@@ -1006,6 +1015,7 @@ export const mockAuthApi: typeof authApi = {
       return Promise.reject(new Error("Неверный код фонда. Его выдаёт руководитель фонда"));
     mockSignups.set(email, {
       id: list.length + 1,
+      name: data.name.trim(),
       email,
       role: data.role,
       volunteer_id: null,

@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { auth } from "../../backend";
-import { Button, ErrorBox, errorText, Field, inputClass, Loading, useLoad } from "../../ui";
+import { Button, ErrorBox, errorText, Field, inputClass, Loading, PageTitle, useLoad } from "../../ui";
 import { Panel } from "./parts";
 
 export default function Settings() {
@@ -11,7 +11,7 @@ export default function Settings() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">Настройки</h1>
+        <PageTitle>Настройки</PageTitle>
         <p className="mt-1 text-lg text-hint">Кто может попасть в кабинет фонда.</p>
       </div>
       {loading && !data && <Loading />}

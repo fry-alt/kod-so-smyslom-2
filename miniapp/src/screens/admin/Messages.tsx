@@ -7,7 +7,7 @@ import type { DialogSummary } from "../../api";
 import { backend } from "../../backend";
 import Thread, { UnreadBadge } from "../../messages/Thread";
 import { useSearchParam } from "../../router";
-import { Card, Empty, ErrorBox, Link, Loading, useLoad } from "../../ui";
+import { Card, Empty, ErrorBox, Link, Loading, PageTitle, useLoad } from "../../ui";
 
 export default function Messages(props: { volunteerId?: number }) {
   const { data, error, loading, reload } = useLoad(() => backend.dialogs(), []);
@@ -19,7 +19,7 @@ export default function Messages(props: { volunteerId?: number }) {
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <h1 className="text-3xl font-bold">Сообщения</h1>
+      <PageTitle>Сообщения</PageTitle>
       <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
         <Card className={`flex flex-col gap-1 p-2 ${props.volunteerId ? "max-lg:hidden" : ""}`}>
           {loading && !data && <Loading />}

@@ -45,6 +45,31 @@ export function getAccount(): Account | null {
   }
 }
 
+/**
+ * Как подписать, кто вошёл: имя из регистрации; у старых аккаунтов без имени — имя из анкеты,
+ * а если анкеты нет — роль. Почту как подпись не показываем (только во всплывающей подсказке).
+ */
+export function accountName(account: Account | null, formName?: string | null): string {
+  const name = account?.name?.trim() || formName?.trim();
+  if (name) return name;
+  if (!account) return "";
+  return account.role === "coordinator" ? "Координатор" : "Волонтёр";
+}
+
+/** Освежить имя из auth.me(): копия аккаунта на устройстве могла остаться от входа до того, как спросили имя. */
+export async function refreshAccountName(): Promise<boolean> {
+  const cur = getAccount();
+  if (!cur) return false;
+  try {
+    const fresh = await auth.me();
+    if ((fresh.name ?? "") === (cur.name ?? "")) return false;
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ ...cur, name: fresh.name }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** После регистрации или входа: запомнить аккаунт; если анкета уже заполнена — открыть её кабинет. */
 export function saveSession(out: AuthOut) {
   try {
