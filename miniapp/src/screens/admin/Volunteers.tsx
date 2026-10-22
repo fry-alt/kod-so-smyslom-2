@@ -6,7 +6,7 @@ import type { Availability, Region, Volunteer, VolunteerStatus } from "../../api
 import { backend } from "../../backend";
 import { AVAILABILITY, formatAvailability, REGION, STATUS, STATUS_COLOR } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Chips, Empty, ErrorBox, inputClass, Link, Loading, useLoad } from "../../ui";
+import { Badge, Chips, Empty, ErrorBox, inputClass, Link, Loading, PageTitle, useLoad } from "../../ui";
 
 type Filter = VolunteerStatus | "all";
 
@@ -50,7 +50,7 @@ export default function Volunteers() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-3xl font-bold">База волонтёров</h1>
+        <PageTitle>База волонтёров</PageTitle>
         <p className="mt-1 text-hint">Все анкеты. Нажмите на человека, чтобы открыть карточку, сменить статус или добавить заметку.</p>
       </div>
 

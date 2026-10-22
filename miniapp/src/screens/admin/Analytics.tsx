@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { DashboardAnalytics, FunnelRow, Occupation, SupplyRow, WeekRow } from "../../api";
 import { backend } from "../../backend";
 import { AVAILABILITY, FORMAT, FUNNEL_STEP, OCCUPATION, REGION } from "../../labels";
-import { Chips, ErrorBox, Loading, useLoad } from "../../ui";
+import { Chips, ErrorBox, Loading, PageTitle, useLoad } from "../../ui";
 import { AllClear, num, Panel, PersonLink, plural } from "./parts";
 
 export default function Analytics() {
@@ -13,7 +13,7 @@ export default function Analytics() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">Аналитика</h1>
+        <PageTitle>Аналитика</PageTitle>
         <p className="mt-1 text-lg text-hint">Где теряем волонтёров, где не хватает людей и как идёт работа.</p>
       </div>
       {loading && !data && <Loading text="Считаем…" />}
@@ -110,7 +110,7 @@ function FunnelBars(props: { counts: { row: FunnelRow; count: number }[]; compac
                   style={{ width: `${Math.max(share * 100, count > 0 ? 2 : 0)}%` }}
                 />
               </span>
-              <span className={`text-right font-semibold tabular-nums ${props.compact ? "" : "min-w-[6.5rem] text-lg"}`}>
+              <span className={`text-right font-semibold ${props.compact ? "" : "min-w-[6.5rem] text-lg"}`}>
                 {i === worst && <span aria-hidden="true">▼ </span>}
                 {count}
                 {!props.compact && i > 0 && lost > 0 && (
@@ -204,7 +204,7 @@ function Bar(props: { value: number; max: number; color: string; label: string }
           style={{ width: `${(props.value / props.max) * 100}%`, minWidth: props.value > 0 ? "4px" : 0 }}
         />
       </span>
-      <span className="w-24 shrink-0 text-sm tabular-nums">{props.label}</span>
+      <span className="w-24 shrink-0 text-sm">{props.label}</span>
     </span>
   );
 }
@@ -319,7 +319,7 @@ function Top({ a }: { a: DashboardAnalytics }) {
                 </span>
               </div>
               <span className="shrink-0 text-right leading-tight">
-                <b className="text-lg tabular-nums">{num(t.hours)} ч</b>
+                <b className="text-lg">{num(t.hours)} ч</b>
                 <br />
                 <span className="text-sm text-hint">
                   {t.participations} {plural(t.participations, "участие", "участия", "участий")}

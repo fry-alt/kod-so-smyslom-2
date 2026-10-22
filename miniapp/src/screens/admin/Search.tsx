@@ -7,7 +7,7 @@ import type { Availability, Candidate, Format, Opportunity, ParsedQuery, Regular
 import { backend } from "../../backend";
 import { AVAILABILITY, formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
 import { useSearchParam } from "../../router";
-import { Badge, Button, ButtonLink, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link } from "../../ui";
+import { Badge, Button, ButtonLink, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link, PageTitle } from "../../ui";
 
 const EXAMPLES = [
   "Фотограф на четверг утром, разово",
@@ -87,7 +87,7 @@ export default function Search() {
         <OpportunityHeader opportunity={opportunity} />
       ) : (
         <div>
-          <h1 className="text-3xl font-bold">Кого ищем?</h1>
+          <PageTitle>Кого ищем?</PageTitle>
           <p className="mt-1 text-hint">Опишите задачу обычными словами — когда, что нужно уметь, разово или постоянно.</p>
         </div>
       )}
@@ -185,7 +185,7 @@ function OpportunityHeader(props: { opportunity: Opportunity | null }) {
   return (
     <div className="flex flex-col gap-2">
       <Link to="/admin/opportunities">← Возможности</Link>
-      <h1 className="text-3xl font-bold">Подбор: {o?.title ?? "…"}</h1>
+      <PageTitle>Подбор: {o?.title ?? "…"}</PageTitle>
       {o && (
         <p className="text-hint">
           {new Date(o.starts_at).toLocaleString("ru", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })} ·{" "}

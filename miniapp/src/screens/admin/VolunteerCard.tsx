@@ -8,7 +8,7 @@ import type { Note, Role, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
 import { formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Button, Card, Contact, Empty, ErrorBox, errorText, inputClass, Link, Loading, useLoad } from "../../ui";
+import { Badge, Button, Card, Contact, Empty, ErrorBox, errorText, inputClass, Link, Loading, PageTitle, useLoad } from "../../ui";
 import InterviewBlock from "./interview/InterviewBlock";
 
 /** Кнопки смены статуса: что делает координатор → какой статус ставим. */
@@ -42,7 +42,7 @@ export default function VolunteerCard(props: { id: number }) {
       {v && !loading && (
         <>
           <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold break-words">{v.name}</h1>
+            <PageTitle>{v.name}</PageTitle>
             <div className="flex flex-wrap items-center gap-2">
               <Badge className={STATUS_COLOR[v.status]}>{STATUS[v.status]}</Badge>
               <span className="text-hint">Анкета от {formatDate(v.created_at, false)}</span>

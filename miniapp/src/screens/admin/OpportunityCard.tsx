@@ -6,7 +6,7 @@ import type { Participation, ParticipationStatus } from "../../api";
 import { backend } from "../../backend";
 import { FORMAT, PARTICIPATION, PARTICIPATION_COLOR, REGION } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Button, Card, Empty, ErrorBox, errorText, formatHours, formatWhen, Link, Loading, useLoad } from "../../ui";
+import { Badge, Button, Card, Empty, ErrorBox, errorText, formatHours, formatWhen, Link, Loading, PageTitle, useLoad } from "../../ui";
 
 /** Какие кнопки показать для участника в каждом статусе. */
 const ACTIONS: Record<ParticipationStatus, { status: ParticipationStatus; label: string }[]> = {
@@ -61,7 +61,7 @@ export default function OpportunityCard(props: { id: number }) {
       <Link to="/admin/opportunities">← Занятия</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold">{o.title}</h1>
+          <PageTitle>{o.title}</PageTitle>
           <p className="text-hint">
             {formatWhen(o.starts_at)} · {FORMAT[o.format]}
             {o.format === "offline" && ` · ${REGION[o.region]}`}

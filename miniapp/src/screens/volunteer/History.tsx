@@ -3,7 +3,7 @@ import type { Opportunity, Participation } from "../../api";
 import { backend, getVolunteerId } from "../../backend";
 import { PARTICIPATION, PARTICIPATION_COLOR } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Button, Card, Empty, ErrorBox, formatHours, formatWhen, Loading, useLoad } from "../../ui";
+import { Badge, Button, Card, Empty, ErrorBox, formatHours, formatWhen, Loading, PageTitle, useLoad } from "../../ui";
 
 export default function History() {
   const id = getVolunteerId();
@@ -15,7 +15,7 @@ export default function History() {
   if (!id) {
     return (
       <div className="flex flex-col gap-5">
-        <h1 className="text-3xl font-bold">Моя история</h1>
+        <PageTitle>Моя история</PageTitle>
         <p>Вы ещё не заполнили анкету.</p>
         <Button wide onClick={() => navigate("/form")}>
           Заполнить анкету
@@ -33,7 +33,7 @@ export default function History() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-3xl font-bold">Моя история</h1>
+      <PageTitle>Моя история</PageTitle>
       {loading && <Loading />}
       {error && <ErrorBox text={error} onRetry={reload} />}
       {data && (

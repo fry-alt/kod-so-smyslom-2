@@ -6,7 +6,7 @@ import type { TrainingModule, VolunteerStatus } from "../../api";
 import { backend, getVolunteerId, setVolunteerId } from "../../backend";
 import { STATUS, STATUS_COLOR } from "../../labels";
 import { navigate, useSearchParam } from "../../router";
-import { Badge, Button, ButtonLink, Card, ErrorBox, Link, Loading, useLoad } from "../../ui";
+import { Badge, Button, ButtonLink, Card, ErrorBox, Link, Loading, PageTitle, useLoad } from "../../ui";
 import Markdown from "./training/Markdown";
 import { loadProgress, saveAttempt, type Progress } from "./training/progress";
 import QuizView from "./training/QuizView";
@@ -47,7 +47,7 @@ export default function Training() {
     return (
       <div className="flex flex-col gap-5">
         <Link to="/training">← К модулям</Link>
-        <h1 className="text-3xl font-bold">{m.title}</h1>
+        <PageTitle>{m.title}</PageTitle>
         <Card>
           <Markdown text={m.text} />
         </Card>
@@ -73,7 +73,7 @@ export default function Training() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-3xl font-bold">Обучение</h1>
+      <PageTitle>Обучение</PageTitle>
       <p className="text-lg">
         Прочитайте модули и ответьте на несколько вопросов после каждого. Чтобы получить допуск, пройдите все
         обязательные модули — нужно не меньше 70% правильных ответов.
