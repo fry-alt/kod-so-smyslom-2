@@ -226,8 +226,9 @@ class Role(BaseModel):
     skills: list[str]
     availability: list[Availability]
     kind: RoleKind
-    format: Format = "offline"
+    format: Format | None = Field(default="offline", description="None — очно или онлайн")
     regions: list[Region] = Field(default_factory=list, description="пусто — любой регион")
+    urgent: bool = False  # фонд пометил «нужно, срочно»
 
 
 class SearchRequest(BaseModel):

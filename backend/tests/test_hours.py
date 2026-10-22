@@ -18,7 +18,7 @@ FORM = {
 }
 PHOTO = {
     "title": "Фотосъёмка изделий для каталога",
-    "role_code": "photographer",
+    "role_code": "product_photographer",
     "starts_at": "2026-10-31T12:00:00",
     "hours": 4.5,
 }
@@ -52,7 +52,7 @@ def data_dir(monkeypatch):
 
 @pytest.fixture
 def volunteer_id(client) -> int:
-    """Волонтёр, который отработал съёмку: 4,5 часа, роль «Фотограф»."""
+    """Волонтёр, который отработал съёмку: 4,5 часа, роль «Предметный фотограф для интернет-магазина»."""
     vid = client.post("/volunteers", json=FORM).json()["id"]
     opportunity = client.post("/opportunities", json=PHOTO).json()
     participation = client.post(
@@ -73,7 +73,13 @@ def test_export_csv_opens_in_excel(client, volunteer_id):
     rows = list(csv.reader(io.StringIO(r.content.decode("utf-8-sig")), delimiter=";"))
     assert rows[0] == ["Имя", "Контакт", "Часы", "Роли", "Статус"]
     # больше часов — выше; телефон и «=…» — текстом, не формулой; дробная запятая
-    assert rows[1] == ["Олег Часовой", "'+7 900 000-00-03", "4,5", "Фотограф", "Новая анкета"]
+    assert rows[1] == [
+        "Олег Часовой",
+        "'+7 900 000-00-03",
+        "4,5",
+        "Предметный фотограф для интернет-магазина",
+        "Новая анкета",
+    ]
     assert rows[2] == ["'=Ноль Часов", "'@demo_zero", "0", "", "Новая анкета"]
 
 
@@ -92,7 +98,7 @@ def test_thanks_from_llm_without_personal_data(client, volunteer_id):
     assert "ребята увидели свои работы" in body["text"]
     assert body["text"].endswith("Фонд «Дети Марии»")
     prompt = llm.provider.prompts[-1]
-    assert "Часов: 4,5" in prompt and "Роли: Фотограф" in prompt
+    assert "Часов: 4,5" in prompt and "Роли: Предметный фотограф для интернет-магазина" in prompt
     assert "Мероприятия: Фотосъёмка изделий для каталога" in prompt
     assert FORM["name"] not in prompt and FORM["contact"] not in prompt
 
@@ -105,7 +111,7 @@ def test_thanks_template_without_llm(client, volunteer_id, provider):
     assert body["ai"] is False
     assert "[fake]" not in body["text"]
     assert "Спасибо вам за 4,5 ч." in body["text"]
-    assert "Вы помогали как фотограф." in body["text"]
+    assert "Вы помогали как предметный фотограф для интернет-магазина." in body["text"]
 
 
 def test_thanks_for_newcomer_and_404(client):

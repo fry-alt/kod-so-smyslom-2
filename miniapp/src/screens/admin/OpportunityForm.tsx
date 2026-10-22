@@ -53,7 +53,7 @@ export default function OpportunityForm() {
       role_code: r.code,
       title: r.title,
       description: r.description,
-      format: r.format,
+      format: r.format ?? x.format,
       region: r.regions.includes(x.region) ? x.region : (r.regions[0] ?? x.region),
       place: r.format === "online" ? "Онлайн" : x.place === "Онлайн" ? "" : x.place,
     }));

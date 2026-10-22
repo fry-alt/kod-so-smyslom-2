@@ -130,8 +130,11 @@ export type Role = {
   skills: string[];
   availability: Availability[];
   kind: RoleKind;
-  format: Format;
+  /** null — очно или онлайн */
+  format: Format | null;
   regions: Region[];
+  /** фонд пометил «нужно, срочно» */
+  urgent: boolean;
 };
 export type SearchRequest = {
   query: string;
@@ -389,8 +392,12 @@ export const volunteersApi = {
   notes: (id: number) => request<Note[]>("GET", `/volunteers/${id}/notes`),
   addNote: (id: number, data: NoteIn) => post<Note>(`/volunteers/${id}/notes`, data),
   thanks: (id: number) => request<Thanks>("GET", `/volunteers/${id}/thanks`),
-  /** Ссылка для кнопки «Скачать часы (CSV)» — файл для Excel и «Добро.рф». */
-  exportCsvUrl: `${BASE}/volunteers/export.csv`,
+  /** Часы волонтёров файлом CSV — для Excel и «Добро.рф». Через fetch, а не ссылкой: уходит ключ входа координатора. */
+  exportCsv: async () => {
+    const r = await fetch(BASE + "/volunteers/export.csv", { headers: headers() });
+    if (!r.ok) throw await httpError(r);
+    return r.blob();
+  },
   scheduleInterview: (volunteerId: number, startsAt: string) =>
     post<Interview>(`/volunteers/${volunteerId}/interviews`, { starts_at: startsAt }),
   updateInterview: (id: number, status: InterviewStatus) =>

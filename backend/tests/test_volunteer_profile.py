@@ -86,19 +86,19 @@ def test_profile_prompt_has_answers_and_roles(client, llm):
     prompt = "\n".join(llm.provider.seen)
     assert "всю жизнь фотографировала" in prompt
     assert "Ярославская область" in prompt  # коды переведены в понятные слова
-    assert "photographer: Фотограф" in prompt
+    assert "product_photographer: Предметный фотограф для интернет-магазина" in prompt
 
 
 def test_unknown_roles_are_dropped(client, llm):
     profile = {
         "skills": ["фото"],
         "interests": ["мастерские"],
-        "suitable_roles": ["photographer", "astronaut"],
+        "suitable_roles": ["product_photographer", "astronaut"],
         "summary": "Фотограф с опытом, свободна утром в будни и в выходные",
     }
     llm.provider.answer = json.dumps(profile, ensure_ascii=False)
     v = client.post("/volunteers", json=FORM).json()
-    assert v["profile"]["suitable_roles"] == ["photographer"]
+    assert v["profile"]["suitable_roles"] == ["product_photographer"]
 
 
 def test_form_is_saved_when_llm_fails(client, llm):
@@ -114,7 +114,7 @@ def test_index_document_and_metadata(client, llm):
     profile = {
         "skills": ["фото", "предметная съёмка"],
         "interests": ["мастерские"],
-        "suitable_roles": ["photographer"],
+        "suitable_roles": ["product_photographer"],
         "summary": "Фотограф с опытом",
     }
     llm.provider.answer = json.dumps(profile, ensure_ascii=False)

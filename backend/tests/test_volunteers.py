@@ -150,7 +150,7 @@ def test_roles_empty_without_file(client, tmp_path, monkeypatch):
 
 def test_roles_read_from_file(client, tmp_path, monkeypatch):
     role = {
-        "code": "photographer",
+        "code": "product_photographer",
         "title": "Фотограф",
         "description": "Снять изделия мастерской для каталога",
         "skills": ["фото"],
@@ -163,5 +163,5 @@ def test_roles_read_from_file(client, tmp_path, monkeypatch):
 
     get_settings.cache_clear()
     roles = client.get("/roles").json()
-    assert [r["code"] for r in roles] == ["photographer"]
+    assert [r["code"] for r in roles] == ["product_photographer"]
     assert roles[0]["format"] == "offline"

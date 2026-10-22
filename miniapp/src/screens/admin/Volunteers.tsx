@@ -7,7 +7,7 @@ import { backend } from "../../backend";
 import { Icon } from "../../icons";
 import { AVAILABILITY, formatAvailability, REGION, STATUS } from "../../labels";
 import { navigate } from "../../router";
-import { Badge, Chips, Empty, ErrorBox, inputClass, Link, Loading, PageTitle, Select, StatusBadge, useLoad } from "../../ui";
+import { Badge, Button, Chips, Empty, ErrorBox, errorText, inputClass, Link, Loading, PageTitle, Select, StatusBadge, useLoad } from "../../ui";
 
 type Filter = VolunteerStatus | "all";
 
@@ -24,6 +24,8 @@ export default function Volunteers() {
   const [availability, setAvailability] = useState<Availability | "all">("all");
   const [sortBy, setSortBy] = useState<SortBy>("created_at");
   const [descending, setDescending] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
   const status = filter === "all" ? undefined : filter;
   const { data, error, loading, reload } = useLoad(() => backend.list(status), [status]);
   const list = useMemo(() => {
@@ -48,12 +50,38 @@ export default function Volunteers() {
     }
   }
 
+  async function downloadHours() {
+    setExporting(true);
+    setExportError("");
+    try {
+      const url = URL.createObjectURL(await backend.exportCsv());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Часы волонтёров ${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      setExportError(errorText(e));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <PageTitle>База волонтёров</PageTitle>
-        <p className="mt-1 text-hint">Все анкеты. Нажмите на человека, чтобы открыть карточку, сменить статус или добавить заметку.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <PageTitle>База волонтёров</PageTitle>
+          <p className="mt-1 text-hint">Все анкеты. Нажмите на человека, чтобы открыть карточку, сменить статус или добавить заметку.</p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Button variant="secondary" onClick={downloadHours} loading={exporting} loadingLabel="Готовим файл…">
+            Скачать часы для Excel
+          </Button>
+          <span className="text-sm text-hint">Имя, контакт, часы и роли — для «Добро.рф»</span>
+        </div>
       </div>
+      {exportError && <ErrorBox text={exportError} onRetry={downloadHours} />}
 
       <div className="flex flex-col gap-2">
         <span className="font-semibold">Статус</span>

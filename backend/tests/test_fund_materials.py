@@ -25,12 +25,14 @@ def test_roles_file_is_valid(monkeypatch):
     for role in roles:
         assert role.skills and role.availability, role.code
     assert any(r.format == "online" for r in roles)
+    assert any(r.format is None for r in roles)  # очно или онлайн
+    assert any(r.urgent for r in roles)  # фонд пометил «нужно, срочно»
 
 
 def test_roles_endpoint_reads_repo_file(client, monkeypatch):
     use_repo_data(monkeypatch)
     codes = [r["code"] for r in client.get("/roles").json()]
-    assert "photographer" in codes
+    assert "product_photographer" in codes
 
 
 def test_training_modules_are_valid(monkeypatch):
