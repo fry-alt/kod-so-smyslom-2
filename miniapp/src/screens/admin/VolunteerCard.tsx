@@ -6,7 +6,17 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import type { Note, Role, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
-import { formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS } from "../../labels";
+import {
+  ANSWER_REGULARITY,
+  CONTACT_WAY,
+  DIRECTION,
+  formatAvailability,
+  FORMAT,
+  OCCUPATION,
+  REGION,
+  SPECIAL_NEEDS,
+  STATUS,
+} from "../../labels";
 import { navigate } from "../../router";
 import { Badge, Button, Card, Contact, Empty, ErrorBox, errorText, inputClass, Link, Loading, PageTitle, StatusBadge, useLoad } from "../../ui";
 import InterviewBlock from "./interview/InterviewBlock";
@@ -244,22 +254,53 @@ function Tags(props: { title: string; items: string[]; className: string }) {
 
 function AnswersCard({ v }: { v: Volunteer }) {
   const a = v.answers;
+  const p = v.personal;
+  // старые анкеты и анкеты из бота — без новых вопросов фонда, их строки просто пустые
+  const volunteerExperience = a.volunteer_experience == null ? "" : a.volunteer_experience ? "Да" : "Нет";
+  const directions = (a.directions ?? []).map((x) => DIRECTION[x]).join(", ");
   return (
     <Card className="flex flex-col gap-4">
       <h2 className="text-xl font-semibold">Ответы анкеты</h2>
       <dl className="flex flex-col gap-4">
-        <Answer title="О себе">{a.about}</Answer>
-        <Answer title="Что умеет">{a.skills}</Answer>
+        {p && (
+          <>
+            <Answer title="Дата рождения">{p.birth_date ? `${formatBirthDate(p.birth_date)} (${age(p.birth_date)})` : ""}</Answer>
+            <Answer title="Телефон">{p.phone}</Answer>
+            <Answer title="Почта">{p.email}</Answer>
+            <Answer title="Telegram">{p.telegram}</Answer>
+            <Answer title="Как удобнее связаться">{p.contact_ways.map((x) => CONTACT_WAY[x]).join(", ")}</Answer>
+          </>
+        )}
+        <Answer title="Опыт волонтёрства">{[volunteerExperience, a.experience].filter(Boolean).join(". ")}</Answer>
+        <Answer title="Опыт с людьми с особенностями развития">{a.special_needs ? SPECIAL_NEEDS[a.special_needs] : ""}</Answer>
+        <Answer title="Навыки, опыт, увлечения">{a.skills}</Answer>
+        <Answer title="Направления">{directions}</Answer>
         <Answer title="Чем хочет помогать">{a.wishes}</Answer>
-        <Answer title="Опыт волонтёрства">{a.experience}</Answer>
+        <Answer title="Формат">{a.formats.length ? a.formats.map((x) => FORMAT[x]).join(", ") : "Пока не знает"}</Answer>
+        <Answer title="Как часто">{ANSWER_REGULARITY[a.regularity]}</Answer>
+        <Answer title="Ещё о себе">{a.about}</Answer>
+        <Answer title="Откуда узнал(а) о фонде">{a.source ?? ""}</Answer>
         <Answer title="Когда может">{formatAvailability(a.availability)}</Answer>
-        <Answer title="Формат">{a.formats.map((x) => FORMAT[x]).join(", ")}</Answer>
-        <Answer title="Как часто">{REGULARITY[a.regularity]}</Answer>
         <Answer title="Регион">{REGION[a.region]}</Answer>
         <Answer title="Род занятий">{OCCUPATION[a.occupation]}</Answer>
       </dl>
     </Card>
   );
+}
+
+function formatBirthDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("ru-RU");
+}
+
+/** «34 года» — сколько лет сейчас. */
+function age(iso: string): string {
+  const born = new Date(iso);
+  const now = new Date();
+  let years = now.getFullYear() - born.getFullYear();
+  if (now < new Date(now.getFullYear(), born.getMonth(), born.getDate())) years -= 1;
+  const last = years % 10;
+  const word = years % 100 >= 11 && years % 100 <= 14 ? "лет" : last === 1 ? "год" : last >= 2 && last <= 4 ? "года" : "лет";
+  return `${years} ${word}`;
 }
 
 function Answer(props: { title: string; children: ReactNode }) {

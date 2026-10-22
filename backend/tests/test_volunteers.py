@@ -40,6 +40,41 @@ def test_create_and_get_volunteer(client):
     assert r.json() == v
 
 
+def test_fund_form_fields(client):
+    """Анкета как у фонда: личные данные — только в БД, остальные ответы — в текст для LLM."""
+    from app.schemas import Answers
+    from app.services.volunteers import answers_text
+
+    personal = {
+        "birth_date": "1990-05-17",
+        "phone": "+7 900 000-00-02",
+        "email": "demo@example.com",
+        "telegram": "@demo",
+        "contact_ways": ["whatsapp", "email"],
+    }
+    answers = {
+        **FORM["answers"],
+        "volunteer_experience": True,
+        "special_needs": "ready",
+        "directions": ["creative", "media"],
+        "source": "из Telegram-канала",
+        "formats": [],
+        "regularity": "occasional",
+    }
+    v = create(client, answers=answers, personal=personal)
+    assert v["personal"] == personal
+    assert v["answers"]["directions"] == ["creative", "media"]
+    assert client.get(f"/volunteers/{v['id']}").json()["personal"] == personal
+    assert create(client)["personal"] is None  # бот присылает только contact
+
+    text = answers_text(Answers.model_validate(answers))
+    assert "проведение творческих занятий" in text
+    assert "нет, но готов(а) попробовать" in text
+    assert "Формат: пока не знает" in text
+    for secret in ("1990", "demo@example.com", "+7 900 000-00-02", "Telegram-канала"):
+        assert secret not in text
+
+
 def test_create_validates_form(client):
     assert client.post("/volunteers", json={**FORM, "name": ""}).status_code == 422
     bad = {**FORM, "answers": {**FORM["answers"], "region": "mars"}}

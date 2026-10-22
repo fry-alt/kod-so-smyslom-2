@@ -100,21 +100,59 @@ Format = Literal["offline", "online"]
 Regularity = Literal["regular", "episodic", "any"]
 ParticipationStatus = Literal["responded", "invited", "confirmed", "attended", "declined"]
 
+# Вопросы с выбором — как в анкете фонда (Яндекс Форма «Анкета волонтёра фонда „Дети Марии“»).
+# Регулярность в анкете: регулярно / время от времени / отдельные мероприятия / пока не знаю.
+AnswerRegularity = Literal["regular", "occasional", "episodic", "any"]
+Direction = Literal[
+    "creative",  # проведение творческих занятий
+    "education",  # обучение и образовательные занятия
+    "assistant",  # помощь ведущему мастер-класса и ребятам на занятиях
+    "psychology",  # психологическая и дефектологическая помощь
+    "media",  # фото, медиа и создание контента
+    "events",  # помощь в организации событий и мероприятий
+    "market",  # помощь интернет-магазину, на маркетах и ярмарках
+    "other",  # другое — своими словами в wishes
+    "unsure",  # пока не знаю, хочу обсудить на встрече
+]
+SpecialNeeds = Literal["yes", "ready", "discuss"]  # да / нет, но готов(а) / обсудить на встрече
+ContactWay = Literal["whatsapp", "telegram", "max", "email", "phone"]
+
 
 class Answers(BaseModel):
-    """Ответы анкеты — обезличенная часть, её можно отправлять в LLM."""
+    """Ответы анкеты — обезличенная часть, её можно отправлять в LLM.
 
-    about: str = Field(min_length=1, max_length=2000, description="о себе, чем занимается")
-    skills: str = Field(default="", max_length=2000, description="что умеет: профессия, хобби")
-    wishes: str = Field(default="", max_length=2000, description="чем хочет помогать фонду")
+    formats пустой — «пока не знаю»: подходит и очно, и онлайн.
+    """
+
+    about: str = Field(default="", max_length=2000, description="что ещё хочет рассказать о себе")
+    skills: str = Field(default="", max_length=2000, description="навыки, опыт, увлечения")
+    wishes: str = Field(default="", max_length=2000, description="«Другое» в направлениях")
     experience: str = Field(
         default="", max_length=2000, description="опыт волонтёрства, работы с детьми и людьми с ОВЗ"
     )
+    volunteer_experience: bool | None = Field(default=None, description="был ли опыт волонтёрства")
+    special_needs: SpecialNeeds | None = Field(
+        default=None, description="опыт с людьми с особенностями развития"
+    )
+    directions: list[Direction] = Field(default_factory=list, description="чем хочет помогать")
+    source: str = Field(default="", max_length=500, description="откуда узнал о фонде")
     availability: list[Availability] = Field(default_factory=list, description="когда свободен")
     occupation: Occupation = "other"
     region: Region = "moscow"
     formats: list[Format] = Field(default_factory=lambda: ["offline"], description="очно / онлайн")
-    regularity: Regularity = Field(default="any", description="постоянно или разово")
+    regularity: AnswerRegularity = Field(default="any", description="как часто готов помогать")
+
+
+class PersonalData(BaseModel):
+    """Личные данные из анкеты. Только в нашей БД: в LLM и индекс не уходят."""
+
+    birth_date: date | None = None
+    phone: str = Field(default="", max_length=50)
+    email: str = Field(default="", max_length=200)
+    telegram: str = Field(default="", max_length=100)
+    contact_ways: list[ContactWay] = Field(
+        default_factory=list, description="как удобнее связаться"
+    )
 
 
 class Profile(BaseModel):
@@ -136,6 +174,7 @@ class VolunteerIn(BaseModel):
         description="не используется: сервер берёт id из проверенного X-Telegram-Init-Data",
     )
     answers: Answers
+    personal: PersonalData | None = None  # анкета на сайте; бот присылает только contact
 
 
 class VolunteerOut(BaseModel):
@@ -144,6 +183,7 @@ class VolunteerOut(BaseModel):
     contact: str
     telegram_id: int | None = None
     answers: Answers
+    personal: PersonalData | None = None
     profile: Profile | None = None  # None — LLM ещё не обработал анкету
     status: VolunteerStatus = "new"
     training_score: int | None = Field(
