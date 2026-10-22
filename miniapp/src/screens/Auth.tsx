@@ -1,6 +1,6 @@
 // Регистрация и вход по почте и паролю — одна страница для волонтёра и координатора фонда.
 // Регистрация в два шага: форма → код из письма (CodeStep) → кабинет. Если почта на сервере не настроена,
-// бэкенд регистрирует сразу, без кода.
+// бэкенд регистрирует сразу, без кода. «Забыли пароль?»: почта (ForgotStep) → код и новый пароль (CodeStep).
 // После входа: волонтёр — в личный кабинет (/me), координатор — в кабинет фонда (/admin).
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 
@@ -24,10 +24,10 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState<CodeSent | null>(null);
+  const [forgot, setForgot] = useState(false); // «Забыли пароль?»: почта → код и новый пароль
 
   const register = mode === "register";
 
@@ -72,7 +72,14 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
     <div className="mx-auto grid w-full min-w-0 max-w-[26rem]">
       <section className="flex min-w-0 flex-col gap-6 rounded-[2rem] bg-surface p-5 shadow-[0_24px_60px_-40px_var(--p-ink)] sm:p-7">
         {sent ? (
-          <CodeStep sent={sent} onBack={() => setSent(null)} onDone={enter} />
+          <CodeStep
+            sent={sent}
+            purpose={forgot ? "reset" : "signup"}
+            onBack={() => setSent(null)}
+            onDone={enter}
+          />
+        ) : forgot ? (
+          <ForgotStep email={email} onEmail={setEmail} onSent={setSent} onBack={() => setForgot(false)} />
         ) : (
           <>
             <div className="flex flex-col gap-2">
@@ -134,22 +141,11 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
               </Label>
 
               <Label text="Пароль" hint={register ? "Не меньше 6 символов" : undefined}>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    autoComplete={register ? "new-password" : "current-password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={`${inputClass} pr-28`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="absolute inset-y-0 right-2 my-auto h-10 rounded-full px-3 text-sm font-semibold text-link hover:bg-surface"
-                  >
-                    {showPassword ? "Скрыть" : "Показать"}
-                  </button>
-                </div>
+                <PasswordInput
+                  value={password}
+                  onChange={setPassword}
+                  autoComplete={register ? "new-password" : "current-password"}
+                />
               </Label>
 
               {register && role === "coordinator" && (
@@ -170,18 +166,16 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
               </button>
 
               {!register && (
-                <p className="text-sm text-hint">
-                  Не получается войти?{" "}
-                  <a
-                    href="https://t.me/DetiMarii_bot"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold text-link underline"
-                  >
-                    Напишите координатору фонда в Telegram
-                  </a>
-                  , он поможет восстановить доступ.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgot(true);
+                    setError("");
+                  }}
+                  className="self-start font-semibold text-link underline"
+                >
+                  Забыли пароль?
+                </button>
               )}
 
               {register && (
@@ -224,9 +218,16 @@ export default function Auth(props: { mode?: Mode; role?: AccountRole }) {
   );
 }
 
-/** Шаг 2 регистрации: код из письма. Набрали шесть цифр — проверяем сразу, кнопку можно не нажимать. */
-function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: AuthOut) => void }) {
+/** Шаг с кодом из письма. Регистрация: набрали шесть цифр — проверяем сразу. Сброс пароля: код и новый пароль. */
+function CodeStep(props: {
+  sent: CodeSent;
+  purpose: "signup" | "reset";
+  onBack: () => void;
+  onDone: (out: AuthOut) => void;
+}) {
+  const reset = props.purpose === "reset";
   const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
@@ -245,7 +246,8 @@ function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: Aut
     setSending(true);
     setError("");
     try {
-      props.onDone(await auth.verify(props.sent.email, value));
+      const email = props.sent.email;
+      props.onDone(reset ? await auth.resetConfirm({ email, code: value, password }) : await auth.verify(email, value));
     } catch (err) {
       setError(errorText(err));
       setCode("");
@@ -259,7 +261,7 @@ function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: Aut
     setError("");
     setNote("");
     try {
-      const out = await auth.resend(props.sent.email);
+      const out = reset ? await auth.reset(props.sent.email) : await auth.resend(props.sent.email);
       setResendAt(Date.now() + out.resend_after * 1000);
       setNow(Date.now());
       setNote("Отправили новый код — подойдёт и код из прошлого письма.");
@@ -271,18 +273,20 @@ function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: Aut
   function type(value: string) {
     const digits = value.replace(/\D/g, "").slice(0, 6);
     setCode(digits);
-    if (digits.length === 6 && !sending) void check(digits);
+    // при сбросе ещё нужен новый пароль — ждём кнопку
+    if (digits.length === 6 && !sending && !reset) void check(digits);
   }
 
   return (
     <>
       <div className="flex flex-col gap-2">
         <h1 className="font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-balance">
-          Подтвердите почту
+          {reset ? "Новый пароль" : "Подтвердите почту"}
         </h1>
         <p className="text-hint">
-          Отправили письмо с кодом на <b className="text-ink">{props.sent.email}</b>. Введите 6 цифр из письма. Письма
-          нет — загляните в «Спам».
+          {reset ? "Если почта" : "Отправили письмо с кодом на"} <b className="text-ink">{props.sent.email}</b>
+          {reset ? " зарегистрирована, на неё пришёл код." : "."} Введите 6 цифр из письма. Письма нет — загляните
+          в «Спам».
         </p>
       </div>
 
@@ -290,14 +294,21 @@ function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: Aut
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          if (code.length === 6) void check(code);
-          else setError("В коде 6 цифр");
+          if (code.length !== 6) return setError("В коде 6 цифр");
+          if (reset && password.length < 6) return setError("Новый пароль — хотя бы 6 символов");
+          void check(code);
         }}
         className="flex flex-col gap-5"
       >
         <Label text="Код из письма">
           <CodeCells value={code} onChange={type} busy={sending} wrong={wrong} />
         </Label>
+
+        {reset && (
+          <Label text="Новый пароль" hint="Не меньше 6 символов">
+            <PasswordInput value={password} onChange={setPassword} autoComplete="new-password" />
+          </Label>
+        )}
 
         {error && <ErrorBox text={error} />}
         {note && !error && <p className="rounded-2xl bg-page px-4 py-3">{note}</p>}
@@ -308,7 +319,7 @@ function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: Aut
           {...flairHandlers}
           className={`btn-flair min-h-14 w-full rounded-full bg-cta px-8 text-lg font-bold text-white shadow-[0_8px_24px_-8px_var(--p-cta)] disabled:opacity-60 ${FLAIR.cta}`}
         >
-          {sending ? "Проверяем…" : "Подтвердить"}
+          {sending ? "Проверяем…" : reset ? "Сохранить и войти" : "Подтвердить"}
         </button>
       </form>
 
@@ -327,6 +338,112 @@ function CodeStep(props: { sent: CodeSent; onBack: () => void; onDone: (out: Aut
         </button>
       </div>
     </>
+  );
+}
+
+/** «Забыли пароль?» — шаг 1: почта, на неё придёт код. */
+function ForgotStep(props: {
+  email: string;
+  onEmail: (email: string) => void;
+  onSent: (sent: CodeSent) => void;
+  onBack: () => void;
+}) {
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const clean = props.email.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return setError("Похоже на опечатку в почте: нужно вида name@mail.ru");
+    setSending(true);
+    setError("");
+    try {
+      props.onSent(await auth.reset(clean));
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <h1 className="font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-balance">
+          Забыли пароль?
+        </h1>
+        <p className="text-hint">Введите почту, с которой регистрировались, — пришлём код, чтобы задать новый пароль.</p>
+      </div>
+
+      <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+        <Label text="Почта">
+          <input
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoFocus
+            value={props.email}
+            onChange={(e) => props.onEmail(e.target.value)}
+            placeholder="name@mail.ru"
+            className={inputClass}
+          />
+        </Label>
+
+        {error && <ErrorBox text={error} />}
+
+        <button
+          type="submit"
+          disabled={sending}
+          {...flairHandlers}
+          className={`btn-flair min-h-14 w-full rounded-full bg-cta px-8 text-lg font-bold text-white shadow-[0_8px_24px_-8px_var(--p-cta)] disabled:opacity-60 ${FLAIR.cta}`}
+        >
+          {sending ? "Секунду…" : "Прислать код"}
+        </button>
+
+        <p className="text-sm text-hint">
+          Письмо не приходит?{" "}
+          <a href="https://t.me/DetiMarii_bot" target="_blank" rel="noreferrer" className="font-semibold text-link underline">
+            Напишите координатору фонда в Telegram
+          </a>
+          , он поможет восстановить доступ.
+        </p>
+      </form>
+
+      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-5">
+        <span className="text-hint">Вспомнили пароль?</span>
+        <button
+          type="button"
+          onClick={props.onBack}
+          {...flairHandlers}
+          className={`btn-flair min-h-12 rounded-full border-2 border-line bg-page px-6 font-semibold ${FLAIR.secondary}`}
+        >
+          Войти
+        </button>
+      </div>
+    </>
+  );
+}
+
+/** Поле пароля с кнопкой «Показать». */
+function PasswordInput(props: { value: string; onChange: (value: string) => void; autoComplete: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        autoComplete={props.autoComplete}
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+        className={`${inputClass} pr-28`}
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        className="absolute inset-y-0 right-2 my-auto h-10 rounded-full px-3 text-sm font-semibold text-link hover:bg-surface"
+      >
+        {show ? "Скрыть" : "Показать"}
+      </button>
+    </div>
   );
 }
 

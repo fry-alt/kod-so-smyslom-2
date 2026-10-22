@@ -3,7 +3,7 @@
 import time
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from sqlmodel import Session
 
 from app.db import get_session
@@ -17,6 +17,8 @@ from app.schemas import (
     LoginIn,
     Look,
     RegisterIn,
+    ResetConfirmIn,
+    ResetIn,
     VerifyIn,
 )
 from app.services import accounts, email_codes, mail
@@ -60,9 +62,8 @@ def register(
     try:
         if not mail.enabled():
             return accounts.register(session, data)
-        payload = accounts.prepare(
-            session, data
-        )  # сначала понятные ошибки формы, потом лимит писем
+        # сначала понятные ошибки формы, потом лимит писем
+        payload = accounts.prepare(session, data)
         _limit_letters(request)
         return email_codes.start_signup(session, payload)
     except accounts.AuthError as e:
@@ -85,6 +86,39 @@ def register_verify(data: VerifyIn, session: Session = Depends(get_session)) -> 
     """Шаг 2: верный код из письма — аккаунт создан, можно входить."""
     try:
         return email_codes.finish_signup(session, data.email, data.code)
+    except accounts.AuthError as e:
+        raise _code_error(e) from e
+
+
+@router.post("/reset", response_model=CodeSent)
+def reset(
+    data: ResetIn,
+    request: Request,
+    background: BackgroundTasks,
+    session: Session = Depends(get_session),
+) -> CodeSent:
+    """«Забыли пароль?»: код на почту. Ответ одинаковый, есть такой аккаунт или нет,
+    а письмо уходит после ответа — чтобы нельзя было узнать, кто зарегистрирован."""
+    if not mail.enabled():
+        raise HTTPException(
+            503, "Сбросить пароль пока нельзя — напишите координатору фонда, он поможет"
+        )
+    _limit_letters(request)
+    email = data.email.strip().lower()
+    try:
+        code = email_codes.request_reset(session, email)
+    except accounts.AuthError as e:
+        raise _code_error(e) from e
+    if code:
+        background.add_task(email_codes.send_reset_letter, email, code)
+    return CodeSent(email=email, resend_after=email_codes.RESEND_AFTER)
+
+
+@router.post("/reset/confirm", response_model=AuthOut)
+def reset_confirm(data: ResetConfirmIn, session: Session = Depends(get_session)) -> AuthOut:
+    """Верный код — новый пароль, человек сразу вошёл; на других устройствах — выход."""
+    try:
+        return email_codes.finish_reset(session, data.email, data.code, data.password)
     except accounts.AuthError as e:
         raise _code_error(e) from e
 
