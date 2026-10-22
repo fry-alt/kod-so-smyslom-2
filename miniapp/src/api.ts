@@ -284,6 +284,8 @@ export type LoginIn = { email: string; password: string };
 /** На почту ушёл код — аккаунта ещё нет, код вводят в authApi.verify. Если почта на сервере не настроена,
  * register сразу отвечает AuthOut. resend_after — через сколько секунд можно отправить код ещё раз. */
 export type CodeSent = { pending: true; email: string; resend_after: number };
+/** «Забыли пароль?»: код из письма и новый пароль (не меньше 6 символов). Ответ — вход, как после login. */
+export type ResetConfirmIn = { email: string; code: string; password: string };
 /** Код фонда, без которого нельзя зарегистрироваться координатором. Меняет координатор в «Настройках». */
 export type FundCode = { code: string };
 
@@ -296,6 +298,8 @@ export const authApi = {
   register: (data: RegisterIn) => post<AuthOut | CodeSent>("/auth/register", data),
   resend: (email: string) => post<CodeSent>("/auth/register/resend", { email }),
   verify: (email: string, code: string) => post<AuthOut>("/auth/register/verify", { email, code }),
+  reset: (email: string) => post<CodeSent>("/auth/reset", { email }),
+  resetConfirm: (data: ResetConfirmIn) => post<AuthOut>("/auth/reset/confirm", data),
   login: (data: LoginIn) => post<AuthOut>("/auth/login", data),
   me: () => request<Account>("GET", "/auth/me"),
   look: () => request<Look>("GET", "/auth/look"),

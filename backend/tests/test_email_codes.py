@@ -135,7 +135,7 @@ def test_locally_code_goes_to_log(client, caplog):
 
 def test_password_is_not_stored_in_request(session):
     start(session)
-    row = session.get(email_codes.EmailCode, FORM["email"])
+    row = session.get(email_codes.EmailCode, (FORM["email"], "signup"))
     assert "secret1" not in str(row.payload)
     assert accounts.check_password("secret1", row.payload["password_hash"])
 
@@ -183,3 +183,72 @@ def test_postbox_request(monkeypatch):
     assert '"ToAddresses": ["anna@example.ru"]' in content.decode()
     with pytest.raises(mail.MailError, match="HTTP 400"):
         mail.send("anna@example.ru", "Тема", "текст", "<p>текст</p>")
+
+
+# ---------- «Забыли пароль?» ----------
+
+
+def test_reset_password_with_code(client, mailbox):
+    from tests.test_auth import bearer, register
+
+    old_token = register(client, email="anna@example.ru")["token"]
+    # register() подменяет отправку писем на свою — возвращаем ящик теста
+    mail.set_mailer(
+        lambda to, subject, text, html: mailbox.append({"to": to, "subject": subject, "text": text})
+    )
+    r = client.post("/auth/reset", json={"email": "Anna@Example.ru"})
+    assert r.json() == {"pending": True, "email": "anna@example.ru", "resend_after": 60}
+    code = code_of(mailbox[-1])
+    assert "сброса пароля" in mailbox[-1]["text"]
+
+    # короткий пароль отсекается до проверки кода — попытка не тратится
+    short = {"email": "anna@example.ru", "code": code, "password": "123"}
+    assert client.post("/auth/reset/confirm", json=short).status_code == 422
+    wrong = {"email": "anna@example.ru", "code": "000000", "password": "newpass1"}
+    assert "Осталось попыток: 4" in client.post("/auth/reset/confirm", json=wrong).json()["detail"]
+
+    ok = client.post(
+        "/auth/reset/confirm",
+        json={"email": "anna@example.ru", "code": code, "password": "newpass1"},
+    )
+    assert ok.status_code == 200, ok.text
+    # новый пароль подходит, старый — нет; на старом устройстве нужно войти заново
+    login = {"email": "anna@example.ru", "password": "newpass1"}
+    assert client.post("/auth/login", json=login).status_code == 200
+    old = {"email": "anna@example.ru", "password": "secret1"}
+    assert client.post("/auth/login", json=old).status_code == 401
+    assert client.get("/auth/me", headers=bearer(old_token)).status_code == 401
+    assert client.get("/auth/me", headers=bearer(ok.json()["token"])).status_code == 200
+    # код одноразовый
+    assert client.post("/auth/reset/confirm", json={**login, "code": code}).status_code == 400
+
+
+def test_reset_answer_does_not_reveal_account(client, mailbox):
+    r = client.post("/auth/reset", json={"email": "nobody@mail.ru"})
+    assert r.json() == {"pending": True, "email": "nobody@mail.ru", "resend_after": 60}
+    assert mailbox == []  # письма нет, но ответ такой же
+    confirm = {"email": "nobody@mail.ru", "code": "123456", "password": "newpass1"}
+    assert client.post("/auth/reset/confirm", json=confirm).status_code == 400
+
+
+def test_signup_and_reset_codes_do_not_mix(session, mailbox):
+    start(session)
+    signup_code = code_of(mailbox[-1])
+    accounts.create(
+        session, accounts.prepare(session, RegisterIn(**{**FORM, "email": "b@mail.ru"}))
+    )
+    reset_code = email_codes.request_reset(session, "b@mail.ru", now=1000)
+    # код регистрации не сбрасывает пароль, код сброса не подтверждает регистрацию
+    if signup_code != reset_code:
+        with pytest.raises(email_codes.CodeError):
+            email_codes.finish_reset(session, "b@mail.ru", signup_code, "newpass1", now=1001)
+    with pytest.raises(email_codes.CodeError):
+        email_codes.finish_signup(session, FORM["email"], "000000", now=1001)
+
+
+def test_reset_unavailable_without_mail_on_prod(client, monkeypatch):
+    mail.set_mailer(None)
+    monkeypatch.setenv("MAIL_LOG_CODES", "false")
+    get_settings.cache_clear()
+    r = client.post("/auth/reset", json={"email": "anna@example.ru"})
+    assert r.status_code == 503 and "координатору" in r.json()["detail"]

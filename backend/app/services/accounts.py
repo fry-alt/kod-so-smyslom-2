@@ -109,6 +109,16 @@ def create(session: Session, payload: dict) -> AuthOut:
     return _auth(account)
 
 
+def set_password(session: Session, account: Account, password: str) -> AuthOut:
+    """Новый пароль после кода из письма. Ключ входа тоже новый — на других устройствах выйдет."""
+    account.password_hash = hash_password(password)
+    account.token = secrets.token_urlsafe(32)
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return _auth(account)
+
+
 def register(session: Session, data: RegisterIn) -> AuthOut:
     """Регистрация без кода на почту — когда почта не настроена (mail.enabled())."""
     return create(session, prepare(session, data))

@@ -580,6 +580,21 @@ class VerifyIn(BaseModel):
     code: str = Field(min_length=1, max_length=20)
 
 
+class ResetIn(BaseModel):
+    """POST /auth/reset — «Забыли пароль?»: код на почту. Ответ CodeSent одинаковый,
+    есть такой аккаунт или нет."""
+
+    email: str = Field(min_length=3, max_length=200, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class ResetConfirmIn(BaseModel):
+    """POST /auth/reset/confirm — код из письма и новый пароль. Ответ — AuthOut, человек сразу вошёл."""
+
+    email: str = Field(min_length=3, max_length=200)
+    code: str = Field(min_length=1, max_length=20)
+    password: str = Field(min_length=6, max_length=200)
+
+
 # ===== Оформление личного кабинета =====
 
 LookColor = Literal["blue", "cyan", "green", "orange", "berry", "yellow"]
