@@ -56,6 +56,7 @@ const roles: Role[] = [
     kind: "regular",
     format: "offline",
     regions: ["moscow"],
+    urgent: false,
   },
   {
     code: "workshop_assistant",
@@ -66,6 +67,7 @@ const roles: Role[] = [
     kind: "regular",
     format: "offline",
     regions: ["moscow", "moscow_region", "yaroslavl", "north_ossetia"],
+    urgent: false,
   },
   {
     code: "photo_media",
@@ -76,6 +78,7 @@ const roles: Role[] = [
     kind: "episodic",
     format: "offline",
     regions: ["moscow"],
+    urgent: false,
   },
   {
     code: "events",
@@ -86,6 +89,7 @@ const roles: Role[] = [
     kind: "episodic",
     format: "offline",
     regions: ["moscow", "moscow_region"],
+    urgent: false,
   },
   {
     code: "shop_market",
@@ -96,6 +100,7 @@ const roles: Role[] = [
     kind: "episodic",
     format: "online",
     regions: ["moscow", "moscow_region", "yaroslavl", "north_ossetia", "other"],
+    urgent: false,
   },
   {
     code: "psy_support",
@@ -106,6 +111,7 @@ const roles: Role[] = [
     kind: "regular",
     format: "offline",
     regions: ["moscow", "yaroslavl"],
+    urgent: true,
   },
 ];
 
@@ -791,7 +797,13 @@ export const mockApi: typeof volunteersApi = {
       ai: false,
     });
   },
-  exportCsvUrl: "data:text/csv;charset=utf-8,%EF%BB%BF%D0%94%D0%B5%D0%BC%D0%BE-%D1%80%D0%B5%D0%B6%D0%B8%D0%BC",
+  exportCsv: () => {
+    const rows = [...volunteers]
+      .sort((a, b) => b.hours - a.hours)
+      .map((v) => `${v.name};${v.contact};${String(v.hours).replace(".", ",")}`);
+    const csv = "﻿Имя;Контакт;Часы\r\n" + rows.join("\r\n") + "\r\n";
+    return new Promise((resolve) => setTimeout(() => resolve(new Blob([csv], { type: "text/csv" })), 400));
+  },
   scheduleInterview: (volunteerId, startsAt) => {
     refresh();
     const v = findVolunteer(volunteerId);

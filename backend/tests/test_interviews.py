@@ -191,7 +191,7 @@ RESULT = {
     "readiness": 4,
     "regularity": 3,
     "decision": "next",
-    "roles": ["photographer"],
+    "roles": ["product_photographer"],
     "comment": "Снимает на свою камеру, готова по субботам",
 }
 
@@ -210,7 +210,7 @@ def test_result_saved_marks_done_and_can_be_corrected(client):
     body = r.json()
     assert body["status"] == "done"
     assert body["result"]["decision"] == "next"
-    assert body["result"]["roles"] == ["photographer"]
+    assert body["result"]["roles"] == ["product_photographer"]
 
     # координатор поправил итог — перезаписываем, а не создаём второй
     r = client.put(

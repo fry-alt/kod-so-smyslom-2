@@ -221,7 +221,7 @@ def test_fallback_when_rerank_returns_foreign_ids(client, llm, ids):
 
 
 def test_search_by_role_without_text(client, llm, ids):
-    r = client.post("/search", json={"role_code": "ceramics_assistant"})
+    r = client.post("/search", json={"role_code": "art_saturdays_host"})
     body = r.json()
     assert body["parsed"]["availability"] == ["weekend"]
     assert "керамика" in body["parsed"]["skills"]
@@ -229,11 +229,16 @@ def test_search_by_role_without_text(client, llm, ids):
     assert ids["photo_morning"] not in found(r)  # роль по субботам
 
 
+def test_search_by_role_online_or_offline(client, llm, ids):
+    body = client.post("/search", json={"role_code": "tutor"}).json()
+    assert body["parsed"]["format"] is None  # репетитор — очно или онлайн, никого не отсекаем
+
+
 def opportunity(client, **changes) -> int:
     data = {
         "title": "Мастер-класс по керамике",
         "description": "Помочь мастеру с глиной и гостями",
-        "role_code": "ceramics_assistant",
+        "role_code": "art_saturdays_host",
         "starts_at": "2026-10-31T12:00:00",  # суббота
         "region": "moscow",
         "format": "offline",

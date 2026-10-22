@@ -4,7 +4,7 @@ from app.services.opportunities import time_slot
 
 PHOTO = {
     "title": "Фотосъёмка изделий для каталога",
-    "role_code": "photographer",
+    "role_code": "product_photographer",
     "starts_at": "2026-10-31T12:00:00",  # суббота
     "region": "moscow",
     "format": "offline",
@@ -118,8 +118,8 @@ def test_recommended_and_my_status_for_volunteer(client):
     photo = create_opportunity(client)
     other_region = create_opportunity(client, region="yaroslavl")
     weekday = create_opportunity(client, starts_at="2026-10-27T10:00:00")  # вторник утром
-    no_skill = create_opportunity(client, role_code="driver")
-    online = create_opportunity(client, role_code="video_smm", format="online")
+    no_skill = create_opportunity(client, role_code="lawyer_pro_bono")
+    online = create_opportunity(client, role_code="video_editor", format="online")
     client.post(f"/opportunities/{photo['id']}/respond", json={"volunteer_id": v["id"]})
 
     feed = {

@@ -139,7 +139,11 @@ export default function Search() {
                 label="Найти под роль"
                 placeholder="Выберите роль"
                 value=""
-                options={roles.map((r) => ({ value: r.code, label: r.title, hint: r.description }))}
+                options={roles.map((r) => ({
+                  value: r.code,
+                  label: r.urgent ? `${r.title} — срочно` : r.title,
+                  hint: r.description,
+                }))}
                 onChange={(code) => {
                   setQuery("");
                   run({ query: "", role_code: code });
