@@ -92,7 +92,7 @@ export default function Me() {
         stats={
           v
             ? [
-                { value: formatHours(v.hours), label: "волонтёрских часов" },
+                { value: formatHours(v.hours), label: "часов помощи" },
                 { value: v.training_score === null ? "—" : `${v.training_score}%`, label: "балл за обучение" },
                 { value: String(attended), label: attended === 1 ? "занятие" : "занятий" },
               ]
@@ -199,8 +199,9 @@ function Hero(props: {
                 key={s.label}
                 className={`flex flex-col rounded-2xl px-3 py-3 backdrop-blur-sm sm:min-w-28 sm:px-4 ${dark ? "bg-white/12" : "bg-page/85"}`}
               >
-                <dt className="order-2 text-sm leading-tight text-hint">{s.label}</dt>
-                <dd className="order-1 font-display text-2xl font-semibold">{s.value}</dd>
+                <dt className="order-2 text-sm leading-tight text-hint hyphens-auto">{s.label}</dt>
+                {/* цифры — Onest: в Unbounded ноль похож на букву «О» */}
+                <dd className="order-1 text-2xl font-bold">{s.value}</dd>
               </div>
             ))}
           </dl>

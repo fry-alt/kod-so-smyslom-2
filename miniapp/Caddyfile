@@ -9,6 +9,13 @@
 
 	handle {
 		root * /srv
+		# у файлов сборки в имени хеш — браузер хранит их год и не перепроверяет.
+		# Только для настоящих файлов: на несуществующий /assets/... отдаётся index.html, его кешировать нельзя
+		@assets {
+			path /assets/*
+			file
+		}
+		header @assets Cache-Control "public, max-age=31536000, immutable"
 		try_files {path} /index.html
 		file_server
 	}

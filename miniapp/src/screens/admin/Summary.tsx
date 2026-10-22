@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import type { DashboardToday } from "../../api";
 import { backend } from "../../backend";
 import { Icon } from "../../icons";
-import { Badge, ErrorBox, formatWhen, Link, Loading, useLoad } from "../../ui";
+import { Badge, ErrorBox, formatWhen, Link, Loading, PageTitle, useLoad } from "../../ui";
 import {
   AllClear,
   coordinatorCallUrl,
@@ -30,7 +30,7 @@ export default function Summary() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-lg text-hint first-letter:uppercase">{today}</p>
-          <h1 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">Сводка на сегодня</h1>
+          <PageTitle>Сводка на сегодня</PageTitle>
         </div>
         <div className="flex flex-wrap gap-2">
           <LinkButton to="/admin/search" variant="secondary">

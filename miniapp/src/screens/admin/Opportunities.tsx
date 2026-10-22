@@ -3,7 +3,7 @@ import type { Opportunity } from "../../api";
 import { backend } from "../../backend";
 import { FORMAT, REGION } from "../../labels";
 import { navigate } from "../../router";
-import { Button, Card, Empty, ErrorBox, formatHours, formatWhen, Link, Loading, useLoad } from "../../ui";
+import { Button, Card, Empty, ErrorBox, formatHours, formatWhen, Link, Loading, PageTitle, useLoad } from "../../ui";
 
 export default function AdminOpportunities() {
   const { data, error, loading, reload } = useLoad(() => backend.opportunities());
@@ -12,7 +12,7 @@ export default function AdminOpportunities() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold">Занятия и события</h1>
+        <PageTitle>Занятия и события</PageTitle>
         <Button onClick={() => navigate("/admin/opportunities/new")}>+ Создать занятие</Button>
       </div>
       <p className="text-hint">

@@ -345,6 +345,15 @@ export function ErrorBox(props: { text: string; onRetry?: () => void; id?: strin
   );
 }
 
+/** Заголовок страницы — одна шкала на всех экранах: Unbounded, как на «Сводке» и «Аналитике». */
+export function PageTitle(props: { children: ReactNode; className?: string }) {
+  return (
+    <h1 className={`font-display text-3xl font-semibold tracking-tight text-balance break-words md:text-4xl ${props.className ?? ""}`}>
+      {props.children}
+    </h1>
+  );
+}
+
 export function Loading(props: { text?: string }) {
   return <p className="animate-pulse py-6 text-center text-hint">{props.text ?? "Загружаем…"}</p>;
 }
@@ -419,8 +428,10 @@ export function errorText(e: unknown): string {
   if (/failed to fetch|networkerror|load failed/i.test(msg)) return "Нет связи с сервером. Проверьте интернет.";
   if (/internal server error|bad gateway|service unavailable|gateway time-?out/i.test(msg))
     return "Сервер сейчас не отвечает. Попробуйте ещё раз через минуту.";
-  if (/^not found$/i.test(msg)) return "Эта функция на сервере ещё не готова.";
-  return msg || "Что-то пошло не так.";
+  if (/^not found$/i.test(msg)) return "Не нашли. Возможно, запись удалили.";
+  // свои ошибки сервер пишет по-русски — их показываем как есть; английский и технический текст — нет
+  if (/[а-яё]/i.test(msg)) return msg;
+  return "Не получилось. Попробуйте ещё раз или напишите координатору.";
 }
 
 /** Дата и время возможности по-русски: «23 октября, 10:00». */

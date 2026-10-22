@@ -3,27 +3,15 @@
 //   /me      — личный кабинет волонтёра: анкета, путь, занятия, обучение, часы (сайт и Telegram Mini App)
 //   /admin   — кабинет фонда (ноутбук, только после входа координатора): сводка, умный поиск, база, аналитика, настройки
 // Чтобы добавить экран: компонент в screens/, строка в VOLUNTEER_ROUTES или ADMIN_ROUTES.
-import { useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 
 import AdminDock from "./AdminDock";
 import { accountName, backend, getAccount, getVolunteerId, logout, USE_MOCK } from "./backend";
 import Footer from "./Footer";
-import CallScreen from "./call/CallScreen";
-import CoordinatorPanel from "./call/CoordinatorPanel";
 import { match, navigate, navigateBack, usePath } from "./router";
 import { tg } from "./telegram";
-import { ButtonLink, FLAIR, flairHandlers, Link, useLoad } from "./ui";
+import { ButtonLink, FLAIR, flairHandlers, Link, Loading, PageTitle, useLoad } from "./ui";
 import Auth from "./screens/Auth";
-import Analytics from "./screens/admin/Analytics";
-import AdminMessages from "./screens/admin/Messages";
-import AdminOpportunities from "./screens/admin/Opportunities";
-import OpportunityCard from "./screens/admin/OpportunityCard";
-import OpportunityForm from "./screens/admin/OpportunityForm";
-import Search from "./screens/admin/Search";
-import Settings from "./screens/admin/Settings";
-import Summary from "./screens/admin/Summary";
-import VolunteerCard from "./screens/admin/VolunteerCard";
-import Volunteers from "./screens/admin/Volunteers";
 import Ask from "./screens/volunteer/Ask";
 import Form from "./screens/volunteer/Form";
 import History from "./screens/volunteer/History";
@@ -33,6 +21,20 @@ import Messages from "./screens/volunteer/Messages";
 import Opportunities from "./screens/volunteer/Opportunities";
 import Training from "./screens/volunteer/Training";
 import Welcome from "./screens/volunteer/Welcome";
+
+// Кабинет фонда и видеозвонок волонтёру не нужны — грузим их отдельными файлами, только когда открывают
+const Analytics = lazy(() => import("./screens/admin/Analytics"));
+const AdminMessages = lazy(() => import("./screens/admin/Messages"));
+const AdminOpportunities = lazy(() => import("./screens/admin/Opportunities"));
+const OpportunityCard = lazy(() => import("./screens/admin/OpportunityCard"));
+const OpportunityForm = lazy(() => import("./screens/admin/OpportunityForm"));
+const Search = lazy(() => import("./screens/admin/Search"));
+const Settings = lazy(() => import("./screens/admin/Settings"));
+const Summary = lazy(() => import("./screens/admin/Summary"));
+const VolunteerCard = lazy(() => import("./screens/admin/VolunteerCard"));
+const Volunteers = lazy(() => import("./screens/admin/Volunteers"));
+const CallScreen = lazy(() => import("./call/CallScreen"));
+const CoordinatorPanel = lazy(() => import("./call/CoordinatorPanel"));
 
 type Route = [pattern: string, render: (params: Record<string, string>) => ReactNode];
 
@@ -101,9 +103,18 @@ export default function App() {
     const volunteerId = Number(q.get("volunteer"));
     const panel =
       interviewId > 0 && volunteerId > 0
-        ? (ended: boolean) => <CoordinatorPanel interviewId={interviewId} volunteerId={volunteerId} ended={ended} />
+        ? (ended: boolean) => (
+            // своя граница загрузки: пока грузится панель, звонок на экране не прячется
+            <Suspense fallback={<Loading />}>
+              <CoordinatorPanel interviewId={interviewId} volunteerId={volunteerId} ended={ended} />
+            </Suspense>
+          )
         : undefined;
-    return <CallScreen token={call.token} sidePanel={panel} />;
+    return (
+      <Suspense fallback={<Loading />}>
+        <CallScreen token={call.token} sidePanel={panel} />
+      </Suspense>
+    );
   }
   if (path === "/admin" || path.startsWith("/admin/")) {
     // кабинет фонда — только координатору; остальным — вход с выбранной ролью «координатор»
@@ -242,7 +253,7 @@ function AdminLayout(props: { path: string; children: ReactNode }) {
       <AdminDock path={props.path} />
       <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-6">
         <MockBanner />
-        {props.children}
+        <Suspense fallback={<Loading />}>{props.children}</Suspense>
       </main>
     </div>
   );
@@ -286,7 +297,7 @@ function MockBanner() {
 function NotFound(props: { home: string }) {
   return (
     <div className="flex flex-col gap-3">
-      <h1 className="text-3xl font-bold">Страница не найдена</h1>
+      <PageTitle>Страница не найдена</PageTitle>
       <Link to={props.home}>На главную</Link>
     </div>
   );
