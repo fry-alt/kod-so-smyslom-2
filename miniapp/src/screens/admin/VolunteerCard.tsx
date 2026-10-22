@@ -3,7 +3,7 @@
 // Всё, что меняет координатор, сразу сохраняется на сервере и видно после перезагрузки.
 // Заметки — только для фонда: в AI они не отправляются.
 // Благодарность (T-165): текст от фонда за часы и роли — скопировать или отправить в переписку.
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import type { Note, Role, Thanks, Volunteer, VolunteerStatus } from "../../api";
 import { backend } from "../../backend";
@@ -200,6 +200,7 @@ function ThanksCard({ v }: { v: Volunteer }) {
   const [busy, setBusy] = useState<"make" | "send" | null>(null);
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
+  const field = useRef<HTMLTextAreaElement>(null);
 
   async function make() {
     setBusy("make");
@@ -233,9 +234,13 @@ function ThanksCard({ v }: { v: Volunteer }) {
     try {
       await navigator.clipboard.writeText(text);
       setDone("Скопировано — вставьте в сообщение волонтёру");
+      return;
     } catch {
-      setError("Не получилось скопировать. Выделите текст и скопируйте вручную.");
+      /* в Telegram и встроенных браузерах буфер бывает закрыт — копируем по-старому, через выделение */
     }
+    field.current?.select();
+    if (document.execCommand("copy")) setDone("Скопировано — вставьте в сообщение волонтёру");
+    else setError("Не получилось скопировать. Текст выделен — нажмите Ctrl+C (на телефоне — «Копировать»).");
   }
 
   return (
@@ -251,6 +256,7 @@ function ThanksCard({ v }: { v: Volunteer }) {
       ) : (
         <>
           <textarea
+            ref={field}
             value={thanks.text}
             onChange={(e) => setThanks({ ...thanks, text: e.target.value })}
             rows={6}

@@ -2,11 +2,15 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import App from "./App";
-import { backend, getVolunteerId, setVolunteerId } from "./backend";
+import { backend, getAccount, getVolunteerId, setVolunteerId, USE_MOCK } from "./backend";
 import "./index.css";
 import { initTelegram, tg } from "./telegram";
 
 initTelegram();
+
+// Анкету сервер отдаёт только её хозяину — по входу или подписи Telegram (T-163). Номер анкеты,
+// оставшийся на устройстве без того и другого, ничего не откроет — забываем его, человек войдёт заново.
+if (!USE_MOCK && !getAccount() && !tg?.initData) setVolunteerId(null);
 
 /** Mini App, а анкета на этом телефоне не запомнена (другое устройство, Telegram очистил память):
  *  спрашиваем бэкенд по подписи Telegram. Ждём не дольше 3 секунд — без ответа открываемся как обычно. */
