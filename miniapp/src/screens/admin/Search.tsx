@@ -7,7 +7,7 @@ import type { Availability, Candidate, Format, Opportunity, ParsedQuery, Regular
 import { backend } from "../../backend";
 import { AVAILABILITY, formatAvailability, FORMAT, OCCUPATION, REGION, REGULARITY, STATUS, STATUS_COLOR } from "../../labels";
 import { useSearchParam } from "../../router";
-import { Badge, Button, ButtonLink, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link } from "../../ui";
+import { Badge, Button, ButtonLink, Card, Chips, Contact, Empty, ErrorBox, errorText, inputClass, Link, Select } from "../../ui";
 
 const EXAMPLES = [
   "Фотограф на четверг утром, разово",
@@ -133,21 +133,18 @@ export default function Search() {
             ))}
           </div>
           {roles.length > 0 && (
-            <label className="flex flex-col gap-1.5 font-semibold sm:max-w-sm">
-              Найти под роль
-              <select
+            <div className="sm:max-w-md">
+              <Select
+                label="Найти под роль"
+                placeholder="Выберите роль"
                 value=""
-                onChange={(event) => {
-                  if (!event.target.value) return;
+                options={roles.map((r) => ({ value: r.code, label: r.title, hint: r.description }))}
+                onChange={(code) => {
                   setQuery("");
-                  run({ query: "", role_code: event.target.value });
+                  run({ query: "", role_code: code });
                 }}
-                className={inputClass}
-              >
-                <option value="">Выберите роль</option>
-                {roles.map((r) => <option key={r.code} value={r.code}>{r.title}</option>)}
-              </select>
-            </label>
+              />
+            </div>
           )}
         </div>
       )}

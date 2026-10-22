@@ -1,5 +1,5 @@
 // Общие элементы интерфейса. Крупные: среди волонтёров пенсионеры, координатор не айтишник.
-import { useCallback, useEffect, useState, type PointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 
 import { navigate } from "./router";
 
@@ -136,6 +136,108 @@ export function Field(props: {
       {props.children}
       {props.error && <span className="text-sm font-medium text-red-700">{props.error}</span>}
     </Tag>
+  );
+}
+
+/** Выпадающий список в стиле приложения вместо системного <select>: карточка с вариантами,
+ *  у варианта может быть пояснение. Клавиатура: стрелки, Home/End, Enter — выбрать, Esc — закрыть. */
+export function Select(props: {
+  label: string;
+  placeholder: string;
+  options: { value: string; label: string; hint?: string }[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const id = useId();
+  const box = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const chosen = props.options.find((o) => o.value === props.value);
+
+  // клик мимо списка — закрыть
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: globalThis.PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
+
+  // подсвеченный вариант всегда виден в прокручиваемом списке
+  useEffect(() => {
+    if (open) list.current?.children[active]?.scrollIntoView({ block: "nearest" });
+  }, [open, active]);
+
+  function show() {
+    setActive(Math.max(0, props.options.findIndex((o) => o.value === props.value)));
+    setOpen(true);
+  }
+  function pick(index: number) {
+    setOpen(false);
+    props.onChange(props.options[index].value);
+  }
+  function onKey(e: KeyboardEvent) {
+    const last = props.options.length - 1;
+    const keys: Record<string, () => void> = {
+      ArrowDown: () => (open ? setActive((i) => Math.min(last, i + 1)) : show()),
+      ArrowUp: () => (open ? setActive((i) => Math.max(0, i - 1)) : show()),
+      Home: () => open && setActive(0),
+      End: () => open && setActive(last),
+      Enter: () => (open ? pick(active) : show()),
+      " ": () => (open ? pick(active) : show()),
+      Escape: () => setOpen(false),
+      Tab: () => setOpen(false),
+    };
+    if (!keys[e.key]) return;
+    if (e.key !== "Tab") e.preventDefault();
+    keys[e.key]();
+  }
+
+  return (
+    <div ref={box} className="relative flex flex-col gap-1.5">
+      <span id={`${id}-label`} className="font-semibold">
+        {props.label}
+      </span>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={`${id}-list`}
+        aria-labelledby={`${id}-label ${id}-value`}
+        aria-activedescendant={open ? `${id}-${active}` : undefined}
+        onClick={() => (open ? setOpen(false) : show())}
+        onKeyDown={onKey}
+        className={`select-trigger ${inputClass} flex items-center justify-between gap-3 text-left`}
+      >
+        <span id={`${id}-value`} className={chosen ? "" : "text-hint"}>
+          {chosen?.label ?? props.placeholder}
+        </span>
+        <svg viewBox="0 0 24 24" aria-hidden="true" className={`select-chevron ${open ? "is-open" : ""}`}>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <ul ref={list} id={`${id}-list`} role="listbox" aria-labelledby={`${id}-label`} className="select-list">
+          {props.options.map((o, i) => (
+            <li
+              key={o.value}
+              id={`${id}-${i}`}
+              role="option"
+              aria-selected={o.value === props.value}
+              onPointerEnter={() => setActive(i)}
+              onPointerDown={(e) => e.preventDefault()} // фокус остаётся на кнопке
+              onClick={() => pick(i)}
+              className={`select-option ${i === active ? "is-active" : ""}`}
+            >
+              <span className="font-semibold">{o.label}</span>
+              {o.hint && <span className="select-hint">{o.hint}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
