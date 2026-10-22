@@ -7,7 +7,13 @@ from app.services.accounts import check_password, hash_password
 
 def register(client, **changes) -> dict:
     """Регистрация в два шага: форма → код из письма → аккаунт."""
-    body = {"name": "Анна", "email": "Anna@Example.ru", "password": "secret1", "role": "volunteer", **changes}
+    body = {
+        "name": "Анна",
+        "email": "Anna@Example.ru",
+        "password": "secret1",
+        "role": "volunteer",
+        **changes,
+    }
     letters: list[str] = []
     mail.set_mailer(lambda to, subject, text, html: letters.append(subject))
     r = client.post("/auth/register", json=body)
@@ -93,7 +99,13 @@ def test_coordinator_code_defaults_to_1111(client):
 def test_coordinator_code_from_env(client, monkeypatch):
     monkeypatch.setenv("COORDINATOR_CODE", "deti")
     get_settings.cache_clear()
-    wrong = {"name": "Анна", "email": "c@fund.ru", "password": "secret1", "role": "coordinator", "code": "1111"}
+    wrong = {
+        "name": "Анна",
+        "email": "c@fund.ru",
+        "password": "secret1",
+        "role": "coordinator",
+        "code": "1111",
+    }
     assert client.post("/auth/register", json=wrong).status_code == 400
     register(client, email="c@fund.ru", role="coordinator", code="deti")
 
@@ -105,7 +117,13 @@ def test_coordinator_changes_fund_code(client):
     assert r.status_code == 200, r.text
     assert client.get("/auth/fund-code", headers=coord).json() == {"code": "deti2026"}
     # старый код больше не подходит, новый — подходит
-    old = {"name": "Анна", "email": "c2@fund.ru", "password": "secret1", "role": "coordinator", "code": "1111"}
+    old = {
+        "name": "Анна",
+        "email": "c2@fund.ru",
+        "password": "secret1",
+        "role": "coordinator",
+        "code": "1111",
+    }
     assert client.post("/auth/register", json=old).status_code == 400
     register(client, email="c2@fund.ru", role="coordinator", code="deti2026")
     # слишком короткий код не сохраняем
