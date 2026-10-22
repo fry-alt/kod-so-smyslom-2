@@ -2,7 +2,7 @@
 date: 2026-10-22
 author: gordeymos
 task: T-166 (#166)
-pr: https://github.com/fry-alt/kod-so-smyslom-2/pulls?q=T-166
+pr: https://github.com/fry-alt/kod-so-smyslom-2/pull/167
 areas: [интерфейс]
 ---
 
