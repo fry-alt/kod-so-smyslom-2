@@ -20,8 +20,10 @@
       href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap"
     />
     <title>Дети Марии — волонтёрам</title>
-    <!-- Telegram WebApp SDK: даёт window.Telegram.WebApp, initData и цвета темы -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Telegram WebApp SDK: даёт window.Telegram.WebApp, initData и цвета темы.
+         defer — не задерживает отрисовку и всё равно выполняется раньше скрипта приложения (он ниже, type="module"),
+         поэтому telegram.ts видит window.Telegram -->
+    <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
     <div id="root"></div>
